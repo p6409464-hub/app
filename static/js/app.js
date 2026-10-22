@@ -2,6 +2,7 @@
  * Pranesh Music Hub - Main Application Script
  * Features:
  * - Direct in-page HTML5 audio streaming with seekable progress bar
+ * - Live universal online search across YouTube Music / Web Audio (e.g. "kodi", "anirudh", etc.)
  * - Real direct MP3 file downloads with byte progress tracking & toast feedback
  * - Universal search & multi-language filtering (Tamil, English, Malayalam, Instrumental, Only Friends OST)
  * - Persistent Favourites & Recently Played history (localStorage)
@@ -11,6 +12,8 @@
 // Application State
 const AppState = {
   songs: [],
+  searchResults: [],
+  currentSong: null,
   currentSongIndex: -1,
   isPlaying: false,
   isShuffle: false,
@@ -20,6 +23,8 @@ const AppState = {
   activeLanguage: "all",
   activeSection: "all",
   searchQuery: "",
+  isSearching: false,
+  searchDebounceTimer: null,
   favourites: JSON.parse(localStorage.getItem("pranesh_hub_favs") || "[]"),
   history: JSON.parse(localStorage.getItem("pranesh_hub_history") || "[]"),
   queue: []
@@ -27,7 +32,7 @@ const AppState = {
 
 // Global HTML5 Audio Element
 const audioPlayer = new Audio();
-audioPlayer.preload = "metadata";
+audioPlayer.preload = "auto";
 
 // DOM Elements
 const DOM = {
@@ -91,16 +96,42 @@ document.addEventListener("DOMContentLoaded", () => {
 
 // Setup All UI Event Listeners
 function setupEventListeners() {
-  // Search Bar
+  // Search Bar with live debouncing + online search
   DOM.searchInput.addEventListener("input", (e) => {
-    AppState.searchQuery = e.target.value.trim().toLowerCase();
-    DOM.clearSearchBtn.style.display = AppState.searchQuery ? "block" : "none";
+    const val = e.target.value.trim();
+    AppState.searchQuery = val.toLowerCase();
+    DOM.clearSearchBtn.style.display = val ? "block" : "none";
+
+    clearTimeout(AppState.searchDebounceTimer);
+    if (!val) {
+      AppState.searchResults = [];
+      renderContent();
+      return;
+    }
+
+    // Immediate local search update
     renderContent();
+
+    // Debounced online search
+    AppState.searchDebounceTimer = setTimeout(() => {
+      performOnlineSearch(val);
+    }, 450);
+  });
+
+  DOM.searchInput.addEventListener("keydown", (e) => {
+    if (e.key === "Enter") {
+      clearTimeout(AppState.searchDebounceTimer);
+      const val = DOM.searchInput.value.trim();
+      if (val) {
+        performOnlineSearch(val);
+      }
+    }
   });
 
   DOM.clearSearchBtn.addEventListener("click", () => {
     DOM.searchInput.value = "";
     AppState.searchQuery = "";
+    AppState.searchResults = [];
     DOM.clearSearchBtn.style.display = "none";
     renderContent();
   });
@@ -108,6 +139,7 @@ function setupEventListeners() {
   DOM.resetSearchBtn.addEventListener("click", () => {
     DOM.searchInput.value = "";
     AppState.searchQuery = "";
+    AppState.searchResults = [];
     DOM.clearSearchBtn.style.display = "none";
     AppState.activeLanguage = "all";
     AppState.activeSection = "all";
@@ -121,7 +153,11 @@ function setupEventListeners() {
       DOM.langChips.forEach(c => c.classList.remove("active"));
       chip.classList.add("active");
       AppState.activeLanguage = chip.dataset.lang;
-      renderContent();
+      if (AppState.searchQuery) {
+        performOnlineSearch(AppState.searchQuery);
+      } else {
+        renderContent();
+      }
     });
   });
 
@@ -140,10 +176,20 @@ function setupEventListeners() {
   audioPlayer.addEventListener("loadedmetadata", () => {
     DOM.durationTimeEl.textContent = formatTime(audioPlayer.duration || 0);
   });
+  audioPlayer.addEventListener("playing", () => {
+    AppState.isPlaying = true;
+    DOM.playPauseIcon.textContent = "⏸";
+    updatePlayingCardHighlight();
+  });
+  audioPlayer.addEventListener("pause", () => {
+    AppState.isPlaying = false;
+    DOM.playPauseIcon.textContent = "▶";
+    updatePlayingCardHighlight();
+  });
   audioPlayer.addEventListener("ended", handleTrackEnded);
   audioPlayer.addEventListener("error", (e) => {
     console.error("Audio error:", e);
-    showToast("Error playing audio stream. Please try another track.", "error");
+    showToast("Error playing audio stream. Retrying...", "error");
   });
 
   // Seekbar Control
@@ -195,16 +241,14 @@ function setupEventListeners() {
 
   // Player Bar Actions
   DOM.playerFavBtn.addEventListener("click", () => {
-    if (AppState.currentSongIndex >= 0) {
-      const current = AppState.queue[AppState.currentSongIndex];
-      toggleFavourite(current.id);
+    if (AppState.currentSong) {
+      toggleFavourite(AppState.currentSong.id);
     }
   });
 
   DOM.playerDownloadBtn.addEventListener("click", () => {
-    if (AppState.currentSongIndex >= 0) {
-      const current = AppState.queue[AppState.currentSongIndex];
-      startDirectDownload(current);
+    if (AppState.currentSong) {
+      startDirectDownload(AppState.currentSong);
     }
   });
 
@@ -259,6 +303,40 @@ async function loadCatalogue() {
   }
 }
 
+async function performOnlineSearch(query) {
+  if (!query) return;
+  AppState.isSearching = true;
+  showSearchLoadingState();
+
+  try {
+    const res = await fetch(`/api/search?query=${encodeURIComponent(query)}&language=${encodeURIComponent(AppState.activeLanguage)}`);
+    const data = await res.json();
+    AppState.isSearching = false;
+
+    if (data.status === "success" && data.songs) {
+      AppState.searchResults = data.songs;
+      renderContent();
+    } else {
+      AppState.searchResults = [];
+      renderContent();
+    }
+  } catch (err) {
+    AppState.isSearching = false;
+    console.error("Online search failed:", err);
+    renderContent();
+  }
+}
+
+function showSearchLoadingState() {
+  DOM.contentContainer.innerHTML = `
+    <div style="text-align:center; padding: 60px 20px;">
+      <span class="spinner" style="width:40px;height:40px;border-width:3px;"></span>
+      <h3 style="margin-top:16px; font-size:1.15rem; color:#fff;">Searching for "${escapeHTML(AppState.searchQuery)}"...</h3>
+      <p style="color:var(--text-muted); font-size:0.88rem;">Finding songs, artists, and audio tracks across music hub...</p>
+    </div>
+  `;
+}
+
 function updateActivePills() {
   DOM.langChips.forEach(c => {
     c.classList.toggle("active", c.dataset.lang === AppState.activeLanguage);
@@ -269,9 +347,62 @@ function updateActivePills() {
 }
 
 function renderContent() {
+  let displayList = [];
+
+  // When searching, use searchResults (or fallback to local matches)
+  if (AppState.searchQuery) {
+    const q = AppState.searchQuery;
+    if (AppState.searchResults.length > 0) {
+      displayList = [...AppState.searchResults];
+    } else {
+      // Local immediate fallback
+      displayList = AppState.songs.filter(s => 
+        s.title.toLowerCase().includes(q) ||
+        s.artist.toLowerCase().includes(q) ||
+        s.album.toLowerCase().includes(q) ||
+        (s.tags && s.tags.some(t => t.toLowerCase().includes(q)))
+      );
+    }
+
+    if (AppState.activeLanguage !== "all") {
+      displayList = displayList.filter(s => 
+        s.language.toLowerCase() === AppState.activeLanguage.toLowerCase() ||
+        (s.tags && s.tags.some(t => t.toLowerCase() === AppState.activeLanguage.toLowerCase())) ||
+        s.title.toLowerCase().includes(AppState.activeLanguage.toLowerCase())
+      );
+    }
+
+    if (displayList.length === 0 && !AppState.isSearching) {
+      DOM.contentContainer.innerHTML = "";
+      DOM.emptyState.style.display = "block";
+      DOM.emptySearchQuery.textContent = `"${AppState.searchQuery}"`;
+      return;
+    }
+
+    DOM.emptyState.style.display = "none";
+    DOM.contentContainer.innerHTML = `
+      <section class="music-section">
+        <div class="section-header">
+          <div class="section-title-wrap">
+            <span class="section-icon">🔍</span>
+            <h2 class="section-title">Search Results for "${escapeHTML(AppState.searchQuery)}"</h2>
+            <span class="section-badge">${displayList.length} tracks found</span>
+          </div>
+        </div>
+        <div class="songs-grid">
+          ${displayList.map(s => createSongCardHTML(s)).join("")}
+        </div>
+      </section>
+    `;
+    attachCardListeners(displayList);
+    updatePlayingCardHighlight();
+    return;
+  }
+
+  // Not searching: filter local songs
   let filtered = [...AppState.songs];
 
-  // 1. Language Filter
+  // Language Filter
   if (AppState.activeLanguage !== "all") {
     if (AppState.activeLanguage === "only_friends") {
       filtered = filtered.filter(s => s.category === "Only Friends OST");
@@ -280,7 +411,7 @@ function renderContent() {
     }
   }
 
-  // 2. Section Navigation Filter
+  // Section Navigation Filter
   if (AppState.activeSection === "trending") {
     filtered = filtered.filter(s => (s.sections || []).includes("trending"));
   } else if (AppState.activeSection === "recent") {
@@ -290,37 +421,25 @@ function renderContent() {
   } else if (AppState.activeSection === "history") {
     const histIds = AppState.history;
     filtered = histIds
-      .map(id => AppState.songs.find(s => s.id === id))
+      .map(id => AppState.songs.find(s => s.id === id) || AppState.searchResults.find(s => s.id === id))
       .filter(Boolean);
   }
 
-  // 3. Search Query Filter
-  if (AppState.searchQuery) {
-    const q = AppState.searchQuery;
-    filtered = filtered.filter(s => 
-      s.title.toLowerCase().includes(q) ||
-      s.artist.toLowerCase().includes(q) ||
-      s.album.toLowerCase().includes(q) ||
-      (s.tags && s.tags.some(t => t.toLowerCase().includes(q)))
-    );
-  }
-
-  // If no matching songs
   if (filtered.length === 0) {
     DOM.contentContainer.innerHTML = "";
     DOM.emptyState.style.display = "block";
-    DOM.emptySearchQuery.textContent = AppState.searchQuery 
-      ? `"${AppState.searchQuery}"` 
-      : (AppState.activeSection === "favourites" ? "No favourites added yet" : "No songs found for this selection");
+    DOM.emptySearchQuery.textContent = AppState.activeSection === "favourites" 
+      ? "Favourites (No songs added yet)" 
+      : "No tracks available for this filter";
     return;
   }
 
   DOM.emptyState.style.display = "none";
 
-  // When searching or viewing Favourites / History / Single Section: render single unified grid
-  if (AppState.searchQuery || AppState.activeSection !== "all" || AppState.activeLanguage !== "all") {
-    let headerTitle = "Search Results";
-    let headerIcon = "🔍";
+  // Viewing single section or language
+  if (AppState.activeSection !== "all" || AppState.activeLanguage !== "all") {
+    let headerTitle = "Music Collection";
+    let headerIcon = "🎵";
 
     if (AppState.activeSection === "favourites") {
       headerTitle = "My Favourite Songs";
@@ -335,8 +454,8 @@ function renderContent() {
       headerTitle = "🆕 Recently Added Songs";
       headerIcon = "🆕";
     } else if (AppState.activeLanguage !== "all") {
-      headerTitle = `${capitalize(AppState.activeLanguage)} Music Collection`;
-      headerIcon = "🎵";
+      headerTitle = `${capitalize(AppState.activeLanguage)} Music`;
+      headerIcon = "🌺";
     }
 
     DOM.contentContainer.innerHTML = `
@@ -353,7 +472,8 @@ function renderContent() {
         </div>
       </section>
     `;
-    attachCardListeners();
+    attachCardListeners(filtered);
+    updatePlayingCardHighlight();
     return;
   }
 
@@ -390,20 +510,19 @@ function renderContent() {
   });
 
   DOM.contentContainer.innerHTML = fullHTML;
-  attachCardListeners();
+  attachCardListeners(filtered);
+  updatePlayingCardHighlight();
 }
 
 // Generate HTML for a single song card
 function createSongCardHTML(song) {
-  const isPlayingNow = AppState.currentSongIndex >= 0 && 
-    AppState.queue[AppState.currentSongIndex]?.id === song.id && 
-    AppState.isPlaying;
+  const isPlayingNow = AppState.currentSong && AppState.currentSong.id === song.id && AppState.isPlaying;
   const isFav = AppState.favourites.includes(song.id);
 
   return `
     <div class="song-card ${isPlayingNow ? 'now-playing' : ''}" data-id="${song.id}">
       <div class="card-thumb-wrap">
-        <img class="card-thumb-img" src="${song.cover_url}" alt="${escapeHTML(song.title)}" loading="lazy" />
+        <img class="card-thumb-img" src="${song.cover_url}" alt="${escapeHTML(song.title)}" loading="lazy" onerror="this.src='/static/images/only_friends_theme.svg'" />
         <span class="card-category-tag">${escapeHTML(song.language)}</span>
         <span class="card-duration-badge">${song.duration_str}</span>
         <div class="play-overlay">
@@ -422,14 +541,9 @@ function createSongCardHTML(song) {
         </button>
         
         <div class="card-action-right">
-          ${song.download_authorized 
-            ? `<button class="download-btn card-download-trigger" data-id="${song.id}" title="Direct MP3 Download">
-                 <span>⬇️</span> Download
-               </button>`
-            : `<a class="official-link-btn" href="${song.official_listening_url}" target="_blank" rel="noopener noreferrer" title="Official Stream Link">
-                 <span>🔗</span> Official
-               </a>`
-          }
+          <button class="download-btn card-download-trigger" data-id="${song.id}" title="Direct MP3 Download">
+            <span>⬇️</span> Download
+          </button>
         </div>
       </div>
     </div>
@@ -437,13 +551,19 @@ function createSongCardHTML(song) {
 }
 
 // Attach event listeners to newly generated song cards
-function attachCardListeners() {
+function attachCardListeners(pool = []) {
+  const getSongById = (id) => {
+    return pool.find(s => s.id === id) || 
+           AppState.songs.find(s => s.id === id) || 
+           AppState.searchResults.find(s => s.id === id);
+  };
+
   // Play Triggers
   document.querySelectorAll(".card-play-trigger").forEach(btn => {
     btn.addEventListener("click", (e) => {
       e.stopPropagation();
       const songId = btn.dataset.id;
-      const song = AppState.songs.find(s => s.id === songId);
+      const song = getSongById(songId);
       if (song) playSong(song);
     });
   });
@@ -453,7 +573,7 @@ function attachCardListeners() {
     card.addEventListener("click", (e) => {
       if (e.target.closest("button") || e.target.closest("a")) return;
       const songId = card.dataset.id;
-      const song = AppState.songs.find(s => s.id === songId);
+      const song = getSongById(songId);
       if (song) playSong(song);
     });
   });
@@ -472,9 +592,20 @@ function attachCardListeners() {
     btn.addEventListener("click", (e) => {
       e.stopPropagation();
       const songId = btn.dataset.id;
-      const song = AppState.songs.find(s => s.id === songId);
+      const song = getSongById(songId);
       if (song) startDirectDownload(song, btn);
     });
+  });
+}
+
+function updatePlayingCardHighlight() {
+  document.querySelectorAll(".song-card").forEach(card => {
+    const isThisPlaying = AppState.currentSong && card.dataset.id === AppState.currentSong.id && AppState.isPlaying;
+    card.classList.toggle("now-playing", isThisPlaying);
+    const playBtn = card.querySelector(".card-play-trigger");
+    if (playBtn) {
+      playBtn.textContent = isThisPlaying ? "⏸" : "▶";
+    }
   });
 }
 
@@ -482,6 +613,8 @@ function attachCardListeners() {
 // In-Page HTML5 Music Player Engine
 // ==========================================================================
 function playSong(song) {
+  AppState.currentSong = song;
+
   // Update Queue and Index
   let idx = AppState.queue.findIndex(s => s.id === song.id);
   if (idx === -1) {
@@ -494,21 +627,30 @@ function playSong(song) {
   AppState.history = [song.id, ...AppState.history.filter(id => id !== song.id)].slice(0, 30);
   localStorage.setItem("pranesh_hub_history", JSON.stringify(AppState.history));
 
-  // Update Audio Source and Play
+  updatePlayerBarUI(song);
+  DOM.playPauseIcon.textContent = "⏳";
+
+  // Stream directly from API
   audioPlayer.src = `/api/stream/${song.id}`;
+  audioPlayer.load();
+
   audioPlayer.play().then(() => {
     AppState.isPlaying = true;
-    updatePlayerBarUI(song);
-    renderContent();
+    DOM.playPauseIcon.textContent = "⏸";
+    updatePlayingCardHighlight();
   }).catch(err => {
-    console.error("Playback failed:", err);
-    showToast("Unable to stream track. Try another track.", "error");
+    console.warn("Autoplay / playback deferred:", err);
+    // User can click play button to initiate audio context
+    DOM.playPauseIcon.textContent = "▶";
+    AppState.isPlaying = false;
   });
 }
 
 function togglePlayPause() {
-  if (AppState.currentSongIndex === -1 && AppState.songs.length > 0) {
-    playSong(AppState.songs[0]);
+  if (!AppState.currentSong) {
+    if (AppState.songs.length > 0) {
+      playSong(AppState.songs[0]);
+    }
     return;
   }
 
@@ -516,7 +658,7 @@ function togglePlayPause() {
     audioPlayer.play().then(() => {
       AppState.isPlaying = true;
       DOM.playPauseIcon.textContent = "⏸";
-      renderContent();
+      updatePlayingCardHighlight();
     }).catch(err => {
       console.error("Playback resume failed:", err);
     });
@@ -524,7 +666,7 @@ function togglePlayPause() {
     audioPlayer.pause();
     AppState.isPlaying = false;
     DOM.playPauseIcon.textContent = "▶";
-    renderContent();
+    updatePlayingCardHighlight();
   }
 }
 
@@ -542,7 +684,6 @@ function playNextSong() {
 
 function playPreviousSong() {
   if (AppState.queue.length === 0) return;
-  // If track played > 3s, restart track
   if (audioPlayer.currentTime > 3) {
     audioPlayer.currentTime = 0;
     return;
@@ -583,33 +724,23 @@ function updatePlayerBarUI(song) {
   DOM.playerThumb.src = song.cover_url;
   DOM.playerTitle.textContent = song.title;
   DOM.playerArtist.textContent = song.artist;
-  DOM.playPauseIcon.textContent = "⏸";
 
   const isFav = AppState.favourites.includes(song.id);
   DOM.playerFavBtn.textContent = isFav ? "❤️" : "🤍";
 
-  if (song.download_authorized) {
-    DOM.playerDownloadBtn.style.display = "block";
-    DOM.playerDownloadBtn.title = `Download ${song.title} MP3`;
-  } else {
-    DOM.playerDownloadBtn.style.display = "none";
-  }
+  DOM.playerDownloadBtn.style.display = "block";
+  DOM.playerDownloadBtn.title = `Download ${song.title} MP3`;
 }
 
 // ==========================================================================
 // Direct High-Speed MP3 Downloader Engine (Progress + No Redirection)
 // ==========================================================================
 function startDirectDownload(song, triggerBtn = null) {
-  if (!song.download_authorized) {
-    showToast("This song is restricted by copyright; use official link.", "error");
-    return;
-  }
-
-  showToast(`Starting download: ${song.title}...`);
+  showToast(`Preparing MP3 download for: ${song.title}...`);
 
   if (triggerBtn) {
     triggerBtn.disabled = true;
-    triggerBtn.innerHTML = `<span class="spinner" style="width:14px;height:14px;border-width:2px;"></span> 0%`;
+    triggerBtn.innerHTML = `<span class="spinner" style="width:14px;height:14px;border-width:2px;"></span> DL...`;
   }
 
   const xhr = new XMLHttpRequest();
@@ -674,7 +805,7 @@ function startDirectDownload(song, triggerBtn = null) {
 // ==========================================================================
 function toggleFavourite(songId) {
   const idx = AppState.favourites.indexOf(songId);
-  const song = AppState.songs.find(s => s.id === songId);
+  const song = AppState.songs.find(s => s.id === songId) || AppState.searchResults.find(s => s.id === songId);
   const title = song ? song.title : "Song";
 
   if (idx === -1) {
@@ -687,8 +818,7 @@ function toggleFavourite(songId) {
 
   localStorage.setItem("pranesh_hub_favs", JSON.stringify(AppState.favourites));
   
-  // Update player bar heart if current
-  if (AppState.currentSongIndex >= 0 && AppState.queue[AppState.currentSongIndex]?.id === songId) {
+  if (AppState.currentSong && AppState.currentSong.id === songId) {
     DOM.playerFavBtn.textContent = idx === -1 ? "❤️" : "🤍";
   }
 
