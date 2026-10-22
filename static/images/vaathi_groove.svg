@@ -1,0 +1,52 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 500 500" width="500" height="500">
+  <defs>
+    <linearGradient id="bgGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#f43f5e" />
+      <stop offset="100%" stop-color="#8b5cf6" />
+    </linearGradient>
+    <radialGradient id="glowGrad" cx="50%" cy="50%" r="50%">
+      <stop offset="0%" stop-color="#ffffff" stop-opacity="0.3" />
+      <stop offset="100%" stop-color="#ffffff" stop-opacity="0" />
+    </radialGradient>
+    <linearGradient id="discGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#111827" />
+      <stop offset="50%" stop-color="#1f2937" />
+      <stop offset="100%" stop-color="#0f172a" />
+    </linearGradient>
+  </defs>
+
+  <!-- Background -->
+  <rect width="500" height="500" rx="36" fill="url(#bgGrad)" />
+
+  <!-- Radial Glow -->
+  <circle cx="250" cy="200" r="180" fill="url(#glowGrad)" />
+
+  <!-- Vinyl Record Graphic -->
+  <circle cx="250" cy="200" r="130" fill="url(#discGrad)" stroke="rgba(255,255,255,0.2)" stroke-width="3" />
+  <circle cx="250" cy="200" r="100" fill="none" stroke="rgba(255,255,255,0.12)" stroke-width="1.5" />
+  <circle cx="250" cy="200" r="70" fill="none" stroke="rgba(255,255,255,0.12)" stroke-width="1.5" />
+  
+  <!-- Vinyl Center Badge -->
+  <circle cx="250" cy="200" r="45" fill="#f43f5e" stroke="#ffffff" stroke-width="2.5" />
+  <circle cx="250" cy="200" r="10" fill="#0b0817" />
+
+  <!-- Animated Sound Wave Lines -->
+  <g stroke="#ffffff" stroke-width="3.5" stroke-linecap="round" opacity="0.85">
+    <line x1="160" y1="200" x2="160" y2="200" />
+    <line x1="180" y1="185" x2="180" y2="215" />
+    <line x1="200" y1="170" x2="200" y2="230" />
+    <line x1="220" y1="155" x2="220" y2="245" />
+    <line x1="280" y1="155" x2="280" y2="245" />
+    <line x1="300" y1="170" x2="300" y2="230" />
+    <line x1="320" y1="185" x2="320" y2="215" />
+    <line x1="340" y1="200" x2="340" y2="200" />
+  </g>
+
+  <!-- Title & Subtitle Badge -->
+  <rect x="30" y="360" width="440" height="105" rx="20" fill="rgba(10, 8, 23, 0.75)" stroke="rgba(255,255,255,0.15)" stroke-width="1.5" />
+  <text x="50" y="405" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" font-size="24" font-weight="700" fill="#ffffff">Vaathi Kuthu Beat</text>
+  <text x="50" y="440" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" font-size="16" font-weight="500" fill="#cbd5e1">Anirudh Tribute Mix</text>
+  
+  <!-- Pranesh Music Hub Watermark -->
+  <text x="445" y="440" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" font-size="13" font-weight="600" fill="#f43f5e" text-anchor="end">PRANESH HUB</text>
+</svg>

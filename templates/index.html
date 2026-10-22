@@ -1,0 +1,213 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Pranesh Music Hub - Modern Dark Music Experience</title>
+  <meta name="description" content="Stream and directly download Tamil, English, Malayalam, Instrumental, and Only Friends OST tracks in a modern, ad-free dark theme." />
+  <link rel="stylesheet" href="/static/css/style.css" />
+  <!-- Google Fonts: Inter -->
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
+</head>
+<body>
+
+  <!-- ========================================================================
+       Top Navigation Bar
+       ======================================================================== -->
+  <header class="navbar">
+    <!-- Brand -->
+    <div class="brand" onclick="location.reload()">
+      <div class="brand-icon">🎵</div>
+      <div class="brand-text">
+        <h1>Pranesh Music Hub</h1>
+        <span>Ad-Free • Stream &amp; Download</span>
+      </div>
+    </div>
+
+    <!-- Search Bar -->
+    <div class="search-container">
+      <div class="search-input-wrapper">
+        <span class="search-icon">🔍</span>
+        <input 
+          type="text" 
+          id="searchInput" 
+          class="search-input" 
+          placeholder="Search by song name, artist, movie, or genre..." 
+          autocomplete="off" 
+          spellcheck="false"
+        />
+        <button id="clearSearchBtn" class="clear-search-btn" title="Clear search">✕</button>
+      </div>
+    </div>
+
+    <!-- Nav Actions -->
+    <div class="nav-actions">
+      <button id="openInspectionBtn" class="btn btn-inspection" title="Inspect requested Only Friends MP3 music source">
+        <span>⚡</span> Only Friends MP3 Inspector
+      </button>
+      <button class="btn btn-pill section-pill" data-section="favourites" title="View your favourite tracks">
+        <span>❤️</span> Favourites
+      </button>
+      <button class="btn btn-pill section-pill" data-section="history" title="View recently played tracks">
+        <span>🕒</span> History
+      </button>
+    </div>
+  </header>
+
+  <!-- ========================================================================
+       Hero Spotlight Banner
+       ======================================================================== -->
+  <div class="hero-banner">
+    <div class="hero-card">
+      <div class="hero-glow-overlay"></div>
+      
+      <div class="hero-content">
+        <div class="hero-tag">
+          <span>✨</span> Trending Feature
+        </div>
+        <h2 class="hero-title">Experience Pure Sound with Pranesh Music Hub</h2>
+        <p class="hero-desc">
+          High-definition streaming, authorized 1-click MP3 downloads, and zero interruptions. 
+          Enjoy the latest Tamil blockbusters, English indie hits, Malayalam melodies, and the iconic Only Friends OST.
+        </p>
+        
+        <div class="hero-buttons">
+          <button id="heroPlayBtn" class="btn btn-primary">
+            <span>▶</span> Listen Now
+          </button>
+          <span style="font-size: 0.84rem; color: var(--text-dim); display: flex; align-items: center; gap: 6px;">
+            🔒 100% Ad-Free • ⚡ Direct MP3 Saves • 🎧 Lossless Audio
+          </span>
+        </div>
+      </div>
+
+      <div class="hero-visual">
+        <div class="soundwave-anim">
+          <div class="wave-bar"></div>
+          <div class="wave-bar"></div>
+          <div class="wave-bar"></div>
+          <div class="wave-bar"></div>
+          <div class="wave-bar"></div>
+          <div class="wave-bar"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ========================================================================
+       Filter Controls: Language & Section Pills
+       ======================================================================== -->
+  <main class="container">
+    <div class="filter-section">
+      <!-- Language Chips Row -->
+      <div class="filter-row">
+        <span class="filter-label">Language:</span>
+        <button class="chip lang-chip active" data-lang="all">All Languages</button>
+        <button class="chip lang-chip" data-lang="tamil">🌺 Tamil</button>
+        <button class="chip lang-chip" data-lang="english">🎸 English</button>
+        <button class="chip lang-chip" data-lang="malayalam">🌴 Malayalam</button>
+        <button class="chip lang-chip" data-lang="instrumental">🎹 Instrumental</button>
+        <button class="chip lang-chip" data-lang="only_friends">🎬 Only Friends OST</button>
+      </div>
+
+      <!-- Section Navigation Row -->
+      <div class="filter-row">
+        <span class="filter-label">Browse:</span>
+        <button class="chip section-pill active" data-section="all">All Sections</button>
+        <button class="chip section-pill" data-section="trending">🔥 Trending Songs</button>
+        <button class="chip section-pill" data-section="recent">🆕 Recently Added</button>
+      </div>
+    </div>
+
+    <!-- Dynamic Song Sections Container -->
+    <div id="contentContainer">
+      <!-- Populated dynamically via app.js -->
+    </div>
+
+    <!-- Empty Search State -->
+    <div id="emptyState" class="empty-state" style="display: none;">
+      <div class="empty-state-icon">🔎</div>
+      <h3>No matching songs found</h3>
+      <p>We could not find any tracks matching <span id="emptySearchQuery" style="color:#c084fc; font-weight:700;"></span>.</p>
+      <button id="resetSearchBtn" class="btn btn-primary">
+        <span>🔄</span> Reset Search &amp; Filters
+      </button>
+    </div>
+  </main>
+
+  <!-- ========================================================================
+       Sticky In-Page Music Player (Fixed at Bottom)
+       ======================================================================== -->
+  <footer id="playerBar" class="player-bar" style="display: none;">
+    <!-- Left: Track Info -->
+    <div class="player-track-info">
+      <img id="playerThumb" class="player-thumb-img" src="/static/images/only_friends_theme.svg" alt="Cover" />
+      <div class="player-track-details">
+        <span id="playerTitle" class="player-title">Song Title</span>
+        <span id="playerArtist" class="player-artist">Artist Name</span>
+      </div>
+      <button id="playerFavBtn" class="fav-btn" title="Toggle Favourite">🤍</button>
+    </div>
+
+    <!-- Center: Playback Controls & Seekbar -->
+    <div class="player-controls-container">
+      <div class="player-buttons">
+        <button id="shuffleBtn" class="control-btn" title="Shuffle Playback">🔀</button>
+        <button id="prevBtn" class="control-btn" title="Previous Track">⏮</button>
+        <button id="playPauseBtn" class="btn-play-pause-main" title="Play / Pause (Spacebar)">
+          <span id="playPauseIcon">▶</span>
+        </button>
+        <button id="nextBtn" class="control-btn" title="Next Track">⏭</button>
+        <button id="repeatBtn" class="control-btn" title="Repeat Track">🔁</button>
+      </div>
+
+      <div class="player-progress-bar">
+        <span id="currentTime" class="time-label">0:00</span>
+        <input type="range" id="seekbar" class="seekbar-slider" min="0" max="100" value="0" step="0.1" />
+        <span id="durationTime" class="time-label">0:00</span>
+      </div>
+    </div>
+
+    <!-- Right: Volume & Download -->
+    <div class="player-extra-actions">
+      <div class="volume-wrapper">
+        <button id="volumeBtn" class="player-action-btn" title="Mute / Unmute">
+          <span id="volumeIcon">🔊</span>
+        </button>
+        <input type="range" id="volumeSlider" class="volume-slider" min="0" max="1" step="0.05" value="0.85" />
+      </div>
+
+      <button id="playerDownloadBtn" class="download-btn" title="Direct MP3 Download">
+        <span>⬇️</span> Download
+      </button>
+    </div>
+  </footer>
+
+  <!-- ========================================================================
+       Source Inspection Modal (Only Friends MP3 Verification)
+       ======================================================================== -->
+  <div id="inspectionModal" class="modal-overlay">
+    <div class="modal-card">
+      <div class="modal-header">
+        <h3 class="modal-title">
+          <span>⚡</span> Music Source Inspection: Only Friends MP3
+        </h3>
+        <button id="closeInspectionBtn" class="modal-close-btn" title="Close modal">✕</button>
+      </div>
+      <div id="inspectionContent" class="modal-body">
+        <!-- Loaded asynchronously from /api/source-inspection -->
+      </div>
+    </div>
+  </div>
+
+  <!-- ========================================================================
+       Toast Notification Hub
+       ======================================================================== -->
+  <div id="toastContainer" class="toast-container"></div>
+
+  <!-- JavaScript Application Logic -->
+  <script src="/static/js/app.js"></script>
+</body>
+</html>
