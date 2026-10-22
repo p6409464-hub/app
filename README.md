@@ -1,4 +1,6 @@
-# 🎵 Pranesh Music Hub
+# music-app
+
+## 🎵 Pranesh Music Hub
 
 A modern, responsive, ad-free music web application featuring a dark purple and blue gradient aesthetic, in-page HTML5 audio streaming, and direct high-speed MP3 downloads with real progress tracking.
 
