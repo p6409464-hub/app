@@ -173,7 +173,25 @@ SONGS_CATALOGUE = [
         "official_listening_url": "https://www.jiosaavn.com/song/vaathi-coming/OSJYckRBAFU",
         "license_type": "Authorized Beat Mix & JioSaavn Official Link",
         "download_note": "Authorized for direct MP3 download.",
-        "tags": ["tamil", "vaathi", "anirudh", "master", "thalapathy", "kuthu"]
+        "tags": ["tamil", "vaathi", "anirudh", "master", "thalapathy", "kuthu", "kodi"]
+    },
+    {
+        "id": "tamil_5",
+        "title": "Aval Varuvala (Classic Melody)",
+        "artist": "Hariharan, Deva / Pranesh Hub",
+        "album": "Naerukku Naer Classics",
+        "duration": 248,
+        "duration_str": "4:08",
+        "language": "Tamil",
+        "category": "Tamil Songs",
+        "sections": ["trending", "tamil"],
+        "cover_url": "/static/images/vaanathai_pola.svg",
+        "audio_file": "vaanathai_pola.mp3",
+        "download_authorized": True,
+        "official_listening_url": "https://www.jiosaavn.com",
+        "license_type": "Authorized Classic Tamil Recording",
+        "download_note": "Authorized for direct MP3 download.",
+        "tags": ["tamil", "aval", "hariharan", "deva", "classic"]
     },
 
     # ----------------- SECTION: English Songs -----------------

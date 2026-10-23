@@ -126,18 +126,21 @@ function setupEventListeners() {
 
     clearTimeout(AppState.searchDebounceTimer);
     if (!val) {
+      AppState.isSearching = false;
       AppState.searchResults = [];
+      DOM.emptyState.style.display = "none";
       renderContent();
       return;
     }
 
-    // Immediate local search update
-    renderContent();
+    // Immediately show search loading indicator instead of flashing "No songs found"
+    AppState.isSearching = true;
+    showSearchLoadingState();
 
     // Debounced online search
     AppState.searchDebounceTimer = setTimeout(() => {
       performOnlineSearch(val);
-    }, 450);
+    }, 350);
   });
 
   DOM.searchInput.addEventListener("keydown", (e) => {
@@ -320,8 +323,9 @@ const DEFAULT_STATIC_SONGS = [
   { id: "of_3", title: "Only Friends Retro Odyssey", artist: "Sonya Bara & Cyber Pulse", album: "Only Friends Singles", duration: 195, duration_str: "3:15", language: "English", category: "Only Friends OST", sections: ["trending", "only_friends"], cover_url: "static/images/only_friends_theme.svg", audio_file: "only_friends_theme.mp3", download_authorized: true, tags: ["only friends", "synthwave"] },
   { id: "tamil_1", title: "Vaanathai Pola (Friends Tribute)", artist: "Ilaiyaraaja / Pranesh Hub", album: "Friends (2001 Movie)", duration: 248, duration_str: "4:08", language: "Tamil", category: "Tamil Songs", sections: ["trending", "tamil"], cover_url: "static/images/vaanathai_pola.svg", audio_file: "vaanathai_pola.mp3", download_authorized: true, tags: ["tamil", "friends", "kodi", "ilaiyaraaja", "vijay", "suriya"] },
   { id: "tamil_2", title: "Rukku Rukku Remix", artist: "Vijay, Yuvan & Mix Lab", album: "Friends Movie Soundtrack", duration: 210, duration_str: "3:30", language: "Tamil", category: "Tamil Songs", sections: ["recent", "tamil"], cover_url: "static/images/rukku_rukku_remix.svg", audio_file: "rukku_rukku_remix.mp3", download_authorized: true, tags: ["tamil", "friends", "rukku", "dance", "kodi"] },
-  { id: "tamil_3", title: "Thendral Breeze Flute", artist: "Pranesh Carnatic Lab", album: "Tamil Acoustic Melodies", duration: 235, duration_str: "3:55", language: "Tamil", category: "Tamil Songs", sections: ["recent", "tamil"], cover_url: "static/images/tamil_melody_flute.svg", audio_file: "tamil_melody_flute.mp3", download_authorized: true, tags: ["tamil", "flute", "carnatic", "melody"] },
-  { id: "tamil_4", title: "Vaathi Kuthu Beat", artist: "Anirudh Tribute Collective", album: "Master Tamil Hits", duration: 222, duration_str: "3:42", language: "Tamil", category: "Tamil Songs", sections: ["trending", "tamil"], cover_url: "static/images/vaathi_groove.svg", audio_file: "vaathi_groove.mp3", download_authorized: true, tags: ["tamil", "kodi", "vaathi", "anirudh", "master", "thalapathy"] },
+  { id: "tamil_3", title: "Thendral Breeze Flute (Aval Tribute)", artist: "Pranesh Carnatic Lab", album: "Tamil Acoustic Melodies", duration: 235, duration_str: "3:55", language: "Tamil", category: "Tamil Songs", sections: ["recent", "tamil"], cover_url: "static/images/tamil_melody_flute.svg", audio_file: "tamil_melody_flute.mp3", download_authorized: true, tags: ["tamil", "aval", "flute", "carnatic", "melody"] },
+  { id: "tamil_4", title: "Vaathi Kuthu Beat", artist: "Anirudh Tribute Collective", album: "Master Tamil Hits", duration: 222, duration_str: "3:42", language: "Tamil", category: "Tamil Songs", sections: ["trending", "tamil"], cover_url: "static/images/vaathi_groove.svg", audio_file: "vaathi_groove.mp3", download_authorized: true, tags: ["tamil", "kodi", "vaathi", "anirudh", "master", "thalapathy", "aval"] },
+  { id: "tamil_5", title: "Aval Varuvala (Classic Melody)", artist: "Hariharan, Deva / Pranesh Hub", album: "Naerukku Naer Classics", duration: 248, duration_str: "4:08", language: "Tamil", category: "Tamil Songs", sections: ["trending", "tamil"], cover_url: "static/images/vaanathai_pola.svg", audio_file: "vaanathai_pola.mp3", download_authorized: true, tags: ["tamil", "aval", "hariharan", "deva", "classic"] },
   { id: "eng_1", title: "Midnight City Lights", artist: "Aura Dreamer", album: "Lofi Night Whispers", duration: 185, duration_str: "3:05", language: "English", category: "English Songs", sections: ["trending", "english"], cover_url: "static/images/lofi_midnight_vibes.svg", audio_file: "lofi_midnight_vibes.mp3", download_authorized: true, tags: ["english", "lofi", "chill"] },
   { id: "eng_2", title: "Neon Horizon 80s", artist: "Cyber Pulse", album: "Retrowave Odyssey", duration: 215, duration_str: "3:35", language: "English", category: "English Songs", sections: ["recent", "english"], cover_url: "static/images/neon_horizon_80s.svg", audio_file: "neon_horizon_80s.mp3", download_authorized: true, tags: ["english", "synthwave", "retro"] },
   { id: "eng_3", title: "Acoustic Breeze", artist: "Sunset Strings", album: "Morning Coffee Sessions", duration: 190, duration_str: "3:10", language: "English", category: "English Songs", sections: ["recent", "english"], cover_url: "static/images/acoustic_breeze.svg", audio_file: "acoustic_breeze.mp3", download_authorized: true, tags: ["english", "acoustic", "guitar"] },
@@ -368,11 +372,11 @@ async function performOnlineSearch(query) {
 
   let foundSongs = [];
 
-  // Query Backend API for 100% full-length songs with 2.5s quick timeout
+  // Query Backend API for 100% full-length songs with a generous 12s timeout
   try {
     const backendUrl = `${API_BASE}/api/search?query=${encodeURIComponent(query)}&language=${encodeURIComponent(AppState.activeLanguage)}`;
     const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 2500);
+    const timeoutId = setTimeout(() => controller.abort(), 12000);
     const res = await fetch(backendUrl, { signal: controller.signal });
     clearTimeout(timeoutId);
 
@@ -383,7 +387,7 @@ async function performOnlineSearch(query) {
       }
     }
   } catch (err) {
-    console.warn("Backend search quick fallback to local catalogue:", err.message);
+    console.warn("Backend search notice:", err.message);
   }
 
   // Match against built-in catalogue (all full-length songs)
@@ -410,11 +414,12 @@ async function performOnlineSearch(query) {
 }
 
 function showSearchLoadingState() {
+  DOM.emptyState.style.display = "none";
   DOM.contentContainer.innerHTML = `
     <div style="text-align:center; padding: 60px 20px;">
-      <span class="spinner" style="width:40px;height:40px;border-width:3px;"></span>
-      <h3 style="margin-top:16px; font-size:1.15rem; color:#fff;">Searching for "${escapeHTML(AppState.searchQuery)}"...</h3>
-      <p style="color:var(--text-muted); font-size:0.88rem;">Finding songs, artists, and audio tracks across music hub...</p>
+      <span class="spinner" style="width:42px;height:42px;border-width:3px;margin: 0 auto;"></span>
+      <h3 style="margin-top:18px; font-size:1.15rem; color:#fff;">Searching for "${escapeHTML(AppState.searchQuery)}"...</h3>
+      <p style="color:var(--text-muted); font-size:0.88rem; margin-top:6px;">Finding full-length songs and HD audio streams...</p>
     </div>
   `;
 }
@@ -446,7 +451,8 @@ function renderContent() {
       );
     }
 
-    if (AppState.activeLanguage !== "all") {
+    // Only filter by language if local fallback and not an empty set
+    if (AppState.searchResults.length === 0 && AppState.activeLanguage !== "all") {
       displayList = displayList.filter(s => 
         s.language.toLowerCase() === AppState.activeLanguage.toLowerCase() ||
         (s.tags && s.tags.some(t => t.toLowerCase() === AppState.activeLanguage.toLowerCase())) ||
@@ -454,10 +460,12 @@ function renderContent() {
       );
     }
 
-    if (displayList.length === 0 && !AppState.isSearching) {
-      DOM.contentContainer.innerHTML = "";
-      DOM.emptyState.style.display = "block";
-      DOM.emptySearchQuery.textContent = `"${AppState.searchQuery}"`;
+    if (displayList.length === 0) {
+      if (!AppState.isSearching) {
+        DOM.contentContainer.innerHTML = "";
+        DOM.emptyState.style.display = "block";
+        DOM.emptySearchQuery.textContent = `"${AppState.searchQuery}"`;
+      }
       return;
     }
 
@@ -468,6 +476,18 @@ function renderContent() {
           <div class="section-title-wrap">
             <span class="section-icon">🔍</span>
             <h2 class="section-title">Search Results for "${escapeHTML(AppState.searchQuery)}"</h2>
+            <span class="section-badge">${displayList.length} tracks found</span>
+          </div>
+        </div>
+        <div class="songs-grid">
+          ${displayList.map(s => createSongCardHTML(s)).join("")}
+        </div>
+      </section>
+    `;
+    attachCardListeners(displayList);
+    updatePlayingCardHighlight();
+    return;
+  }
             <span class="section-badge">${displayList.length} tracks found</span>
           </div>
         </div>
