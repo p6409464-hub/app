@@ -10,7 +10,7 @@
  */
 
 // Application State & Endpoints
-const LIVE_BACKEND_URL = "https://recycling-innovation-bradley-agreement.trycloudflare.com";
+const LIVE_BACKEND_URL = "https://expensive-original-criteria-bolt.trycloudflare.com";
 const isStaticHost = window.location.hostname.includes("github.io") || window.location.protocol === "file:";
 const API_BASE = isStaticHost ? LIVE_BACKEND_URL : "";
 
