@@ -553,25 +553,13 @@ def search_songs():
         "songs": unique_songs
     })
 
-    # Deduplicate
-    seen_ids = set()
-    unique_songs = []
-    for s in matched_builtin + online_songs:
-        if s["id"] not in seen_ids:
-            seen_ids.add(s["id"])
-            unique_songs.append(s)
-
-    return jsonify({
-        "status": "success",
-        "count": len(unique_songs),
-        "songs": unique_songs
-    })
-
 
 @app.route("/api/stream/<song_id>")
 def stream_song(song_id):
     """
-    Direct audio streaming with range support and 0 freeze.
+    Seamless audio streaming proxy for mobile & desktop.
+    Handles Range requests (HTTP 206 Partial Content) required by iOS Safari & Android Chrome.
+    Streams directly from backend without cross-origin redirects.
     """
     # 1. Built-in songs
     built_in = next((s for s in SONGS_CATALOGUE if s["id"] == song_id), None)
@@ -585,17 +573,50 @@ def stream_song(song_id):
     if os.path.exists(cached_mp3) and os.path.getsize(cached_mp3) > 50000:
         return send_file(cached_mp3, mimetype="audio/mpeg", conditional=True)
 
-    # 3. Online audio URL
+    # 3. Retrieve online audio URL
     audio_url = stream_url_cache.get(song_id)
     if not audio_url:
         meta = song_meta_cache.get(song_id)
         if meta and meta.get("audio_url"):
             audio_url = meta["audio_url"]
 
-    if audio_url:
-        return redirect(audio_url, code=302)
+    if not audio_url:
+        return jsonify({"error": "Audio track not found"}), 404
 
-    return jsonify({"error": "Audio track not found"}), 404
+    # Proxy the audio stream directly with Range support for iOS Safari and mobile Chrome
+    range_header = request.headers.get("Range")
+    proxy_headers = {
+        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+        "Referer": "https://www.jiosaavn.com/"
+    }
+    if range_header:
+        proxy_headers["Range"] = range_header
+
+    try:
+        upstream = requests.get(audio_url, headers=proxy_headers, stream=True, timeout=12)
+        
+        def generate():
+            for chunk in upstream.iter_content(chunk_size=65536):
+                if chunk:
+                    yield chunk
+
+        resp = Response(
+            generate(),
+            status=upstream.status_code,
+            mimetype="audio/mp4"
+        )
+        
+        # Pass essential headers for mobile seekbar and buffered playback
+        for h in ["Content-Range", "Content-Length", "Accept-Ranges"]:
+            if h in upstream.headers:
+                resp.headers[h] = upstream.headers[h]
+        if "Accept-Ranges" not in resp.headers:
+            resp.headers["Accept-Ranges"] = "bytes"
+        resp.headers["Access-Control-Allow-Origin"] = "*"
+        return resp
+    except Exception as e:
+        print("Proxy stream error:", e)
+        return redirect(audio_url, code=302)
 
 
 @app.route("/api/download/<song_id>")

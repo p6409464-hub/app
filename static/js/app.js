@@ -10,7 +10,7 @@
  */
 
 // Application State & Endpoints
-const LIVE_BACKEND_URL = "https://kay-lying-carries-cabinets.trycloudflare.com";
+const LIVE_BACKEND_URL = "https://attachments-chips-investigators-twenty.trycloudflare.com";
 const isStaticHost = window.location.hostname.includes("github.io") || window.location.protocol === "file:";
 const API_BASE = isStaticHost ? LIVE_BACKEND_URL : "";
 
@@ -34,9 +34,27 @@ const AppState = {
   queue: []
 };
 
-// Global HTML5 Audio Element
-const audioPlayer = new Audio();
+// Global HTML5 Audio Element (DOM-attached for mobile autoplay permissions)
+const audioPlayer = document.getElementById("mainAudioPlayer") || new Audio();
 audioPlayer.preload = "auto";
+
+// Mobile Audio Context Unblocker (Required by iOS Safari and Android Chrome)
+let audioUnlocked = false;
+function unlockMobileAudio() {
+  if (audioUnlocked) return;
+  audioPlayer.play().then(() => {
+    audioPlayer.pause();
+    audioUnlocked = true;
+  }).catch(() => {
+    audioUnlocked = true;
+  });
+  document.removeEventListener("touchstart", unlockMobileAudio);
+  document.removeEventListener("touchend", unlockMobileAudio);
+  document.removeEventListener("click", unlockMobileAudio);
+}
+document.addEventListener("touchstart", unlockMobileAudio, { passive: true, once: true });
+document.addEventListener("touchend", unlockMobileAudio, { passive: true, once: true });
+document.addEventListener("click", unlockMobileAudio, { passive: true, once: true });
 
 // DOM Elements
 const DOM = {
@@ -193,7 +211,13 @@ function setupEventListeners() {
   audioPlayer.addEventListener("ended", handleTrackEnded);
   audioPlayer.addEventListener("error", (e) => {
     console.error("Audio error:", e);
-    showToast("Error playing audio stream. Retrying...", "error");
+    if (AppState.currentSong && AppState.currentSong.audio_url && audioPlayer.src !== AppState.currentSong.audio_url) {
+      console.log("Retrying with direct CDN audio URL...");
+      audioPlayer.src = AppState.currentSong.audio_url;
+      audioPlayer.play().catch(() => {});
+      return;
+    }
+    showToast("Playback paused. Tap ▶ to play.", "info");
   });
 
   // Seekbar Control
@@ -294,10 +318,10 @@ const DEFAULT_STATIC_SONGS = [
   { id: "of_1", title: "Let's Try (เอาเลยมั้ย)", artist: "Khaotung Thanawat", album: "Only Friends OST", duration: 218, duration_str: "3:38", language: "Thai/Multi", category: "Only Friends OST", sections: ["trending", "only_friends"], cover_url: "static/images/lets_try_acoustic.svg", audio_file: "lets_try_acoustic.mp3", download_authorized: true, tags: ["only friends", "gmmtv", "khaotung", "ost", "trending"] },
   { id: "of_2", title: "No One Can (ห้ามแตะ)", artist: "Gawin Caskey", album: "Only Friends : Dream On", duration: 204, duration_str: "3:24", language: "Thai/Multi", category: "Only Friends OST", sections: ["recent", "only_friends"], cover_url: "static/images/no_one_can_chill.svg", audio_file: "no_one_can_chill.mp3", download_authorized: true, tags: ["only friends", "gawin caskey", "dream on"] },
   { id: "of_3", title: "Only Friends Retro Odyssey", artist: "Sonya Bara & Cyber Pulse", album: "Only Friends Singles", duration: 195, duration_str: "3:15", language: "English", category: "Only Friends OST", sections: ["trending", "only_friends"], cover_url: "static/images/only_friends_theme.svg", audio_file: "only_friends_theme.mp3", download_authorized: true, tags: ["only friends", "synthwave"] },
-  { id: "tamil_1", title: "Vaanathai Pola (Friends Tribute)", artist: "Ilaiyaraaja / Pranesh Hub", album: "Friends (2001 Movie)", duration: 248, duration_str: "4:08", language: "Tamil", category: "Tamil Songs", sections: ["trending", "tamil"], cover_url: "static/images/vaanathai_pola.svg", audio_file: "vaanathai_pola.mp3", download_authorized: true, tags: ["tamil", "friends", "ilaiyaraaja", "vijay", "suriya"] },
-  { id: "tamil_2", title: "Rukku Rukku Remix", artist: "Vijay, Yuvan & Mix Lab", album: "Friends Movie Soundtrack", duration: 210, duration_str: "3:30", language: "Tamil", category: "Tamil Songs", sections: ["recent", "tamil"], cover_url: "static/images/rukku_rukku_remix.svg", audio_file: "rukku_rukku_remix.mp3", download_authorized: true, tags: ["tamil", "friends", "rukku", "dance"] },
+  { id: "tamil_1", title: "Vaanathai Pola (Friends Tribute)", artist: "Ilaiyaraaja / Pranesh Hub", album: "Friends (2001 Movie)", duration: 248, duration_str: "4:08", language: "Tamil", category: "Tamil Songs", sections: ["trending", "tamil"], cover_url: "static/images/vaanathai_pola.svg", audio_file: "vaanathai_pola.mp3", download_authorized: true, tags: ["tamil", "friends", "kodi", "ilaiyaraaja", "vijay", "suriya"] },
+  { id: "tamil_2", title: "Rukku Rukku Remix", artist: "Vijay, Yuvan & Mix Lab", album: "Friends Movie Soundtrack", duration: 210, duration_str: "3:30", language: "Tamil", category: "Tamil Songs", sections: ["recent", "tamil"], cover_url: "static/images/rukku_rukku_remix.svg", audio_file: "rukku_rukku_remix.mp3", download_authorized: true, tags: ["tamil", "friends", "rukku", "dance", "kodi"] },
   { id: "tamil_3", title: "Thendral Breeze Flute", artist: "Pranesh Carnatic Lab", album: "Tamil Acoustic Melodies", duration: 235, duration_str: "3:55", language: "Tamil", category: "Tamil Songs", sections: ["recent", "tamil"], cover_url: "static/images/tamil_melody_flute.svg", audio_file: "tamil_melody_flute.mp3", download_authorized: true, tags: ["tamil", "flute", "carnatic", "melody"] },
-  { id: "tamil_4", title: "Vaathi Kuthu Beat", artist: "Anirudh Tribute Collective", album: "Master Tamil Hits", duration: 222, duration_str: "3:42", language: "Tamil", category: "Tamil Songs", sections: ["trending", "tamil"], cover_url: "static/images/vaathi_groove.svg", audio_file: "vaathi_groove.mp3", download_authorized: true, tags: ["tamil", "vaathi", "anirudh", "master"] },
+  { id: "tamil_4", title: "Vaathi Kuthu Beat", artist: "Anirudh Tribute Collective", album: "Master Tamil Hits", duration: 222, duration_str: "3:42", language: "Tamil", category: "Tamil Songs", sections: ["trending", "tamil"], cover_url: "static/images/vaathi_groove.svg", audio_file: "vaathi_groove.mp3", download_authorized: true, tags: ["tamil", "kodi", "vaathi", "anirudh", "master", "thalapathy"] },
   { id: "eng_1", title: "Midnight City Lights", artist: "Aura Dreamer", album: "Lofi Night Whispers", duration: 185, duration_str: "3:05", language: "English", category: "English Songs", sections: ["trending", "english"], cover_url: "static/images/lofi_midnight_vibes.svg", audio_file: "lofi_midnight_vibes.mp3", download_authorized: true, tags: ["english", "lofi", "chill"] },
   { id: "eng_2", title: "Neon Horizon 80s", artist: "Cyber Pulse", album: "Retrowave Odyssey", duration: 215, duration_str: "3:35", language: "English", category: "English Songs", sections: ["recent", "english"], cover_url: "static/images/neon_horizon_80s.svg", audio_file: "neon_horizon_80s.mp3", download_authorized: true, tags: ["english", "synthwave", "retro"] },
   { id: "eng_3", title: "Acoustic Breeze", artist: "Sunset Strings", album: "Morning Coffee Sessions", duration: 190, duration_str: "3:10", language: "English", category: "English Songs", sections: ["recent", "english"], cover_url: "static/images/acoustic_breeze.svg", audio_file: "acoustic_breeze.mp3", download_authorized: true, tags: ["english", "acoustic", "guitar"] },
@@ -310,27 +334,31 @@ const DEFAULT_STATIC_SONGS = [
 ];
 
 async function loadCatalogue() {
-  try {
-    const res = await fetch(`${API_BASE}/api/songs`);
-    if (!res.ok) throw new Error("API not reachable");
-    const data = await res.json();
-    if (data.status === "success" && data.songs && data.songs.length > 0) {
-      AppState.songs = data.songs.map(s => ({
-        ...s,
-        cover_url: s.cover_url ? (s.cover_url.startsWith("http") ? s.cover_url : s.cover_url.replace(/^\//, "")) : ""
-      }));
-      AppState.queue = [...AppState.songs];
-      renderContent();
-      return;
-    }
-  } catch (err) {
-    console.log("Serving static catalogue for offline hosting");
-  }
-
-  // Fallback to static catalogue (all full-length tracks)
+  // 1. Instantly render built-in curated songs so mobile user NEVER sees an empty screen
   AppState.songs = [...DEFAULT_STATIC_SONGS];
   AppState.queue = [...AppState.songs];
   renderContent();
+
+  // 2. Fetch fresh catalogue from backend asynchronously
+  try {
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 2000);
+    const res = await fetch(`${API_BASE}/api/songs`, { signal: controller.signal });
+    clearTimeout(timeoutId);
+    if (res.ok) {
+      const data = await res.json();
+      if (data.status === "success" && data.songs && data.songs.length > 0) {
+        AppState.songs = data.songs.map(s => ({
+          ...s,
+          cover_url: s.cover_url ? (s.cover_url.startsWith("http") ? s.cover_url : s.cover_url.replace(/^\//, "")) : ""
+        }));
+        AppState.queue = [...AppState.songs];
+        renderContent();
+      }
+    }
+  } catch (err) {
+    console.log("Using static catalogue:", err.message);
+  }
 }
 
 async function performOnlineSearch(query) {
@@ -340,11 +368,11 @@ async function performOnlineSearch(query) {
 
   let foundSongs = [];
 
-  // 1. Query Backend API for 100% FULL-LENGTH 320kbps songs
+  // Query Backend API for 100% full-length songs with 2.5s quick timeout
   try {
     const backendUrl = `${API_BASE}/api/search?query=${encodeURIComponent(query)}&language=${encodeURIComponent(AppState.activeLanguage)}`;
     const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 9000);
+    const timeoutId = setTimeout(() => controller.abort(), 2500);
     const res = await fetch(backendUrl, { signal: controller.signal });
     clearTimeout(timeoutId);
 
@@ -355,10 +383,10 @@ async function performOnlineSearch(query) {
       }
     }
   } catch (err) {
-    console.warn("Backend search unreachable:", err);
+    console.warn("Backend search quick fallback to local catalogue:", err.message);
   }
 
-  // 2. Match against built-in catalogue (all full-length songs)
+  // Match against built-in catalogue (all full-length songs)
   const localMatches = AppState.songs.filter(s =>
     s.title.toLowerCase().includes(query.toLowerCase()) ||
     s.artist.toLowerCase().includes(query.toLowerCase()) ||
@@ -612,24 +640,30 @@ function attachCardListeners(pool = []) {
            AppState.searchResults.find(s => s.id === id);
   };
 
-  // Play Triggers
+  // Play Triggers (supporting click & touchend for mobile)
   document.querySelectorAll(".card-play-trigger").forEach(btn => {
-    btn.addEventListener("click", (e) => {
+    const handlePlay = (e) => {
       e.stopPropagation();
       const songId = btn.dataset.id;
       const song = getSongById(songId);
       if (song) playSong(song);
-    });
+    };
+    btn.addEventListener("click", handlePlay);
+    btn.addEventListener("touchend", (e) => {
+      e.preventDefault();
+      handlePlay(e);
+    }, { passive: false });
   });
 
-  // Card click (whole card can trigger play)
+  // Card click (whole card triggers play on mobile and desktop)
   document.querySelectorAll(".song-card").forEach(card => {
-    card.addEventListener("click", (e) => {
+    const handleCardPlay = (e) => {
       if (e.target.closest("button") || e.target.closest("a")) return;
       const songId = card.dataset.id;
       const song = getSongById(songId);
       if (song) playSong(song);
-    });
+    };
+    card.addEventListener("click", handleCardPlay);
   });
 
   // Favorite Triggers
@@ -684,29 +718,39 @@ function playSong(song) {
   updatePlayerBarUI(song);
   DOM.playPauseIcon.textContent = "⏳";
 
-  // Stream directly from audio_url, static storage, or API route
+  // Determine stream source:
+  // For built-in songs: use static/audio/
+  // For online search songs: route through streaming proxy so mobile carriers never block it
   let streamSrc = "";
-  if (song.audio_url) {
-    streamSrc = song.audio_url;
-  } else if (song.audio_file) {
-    streamSrc = song.audio_file.startsWith("http") ? song.audio_file : `static/audio/${song.audio_file}`;
+  if (song.audio_file && !song.audio_file.startsWith("http")) {
+    streamSrc = `static/audio/${song.audio_file}`;
   } else {
     streamSrc = `${API_BASE}/api/stream/${song.id}`;
   }
 
-  audioPlayer.src = streamSrc;
-  audioPlayer.load();
+  // Set audio source
+  if (audioPlayer.src !== streamSrc) {
+    audioPlayer.src = streamSrc;
+  }
 
-  audioPlayer.play().then(() => {
-    AppState.isPlaying = true;
-    DOM.playPauseIcon.textContent = "⏸";
-    updatePlayingCardHighlight();
-  }).catch(err => {
-    console.warn("Autoplay / playback deferred:", err);
-    // User can click play button to initiate audio context
-    DOM.playPauseIcon.textContent = "▶";
-    AppState.isPlaying = false;
-  });
+  // Play audio (supports mobile promises & user gestures)
+  const playPromise = audioPlayer.play();
+  if (playPromise !== undefined) {
+    playPromise.then(() => {
+      AppState.isPlaying = true;
+      DOM.playPauseIcon.textContent = "⏸";
+      updatePlayingCardHighlight();
+    }).catch(err => {
+      console.warn("Mobile playback deferred:", err);
+      // Fallback directly to CDN URL if proxy had issue
+      if (song.audio_url && audioPlayer.src !== song.audio_url) {
+        audioPlayer.src = song.audio_url;
+        audioPlayer.play().catch(() => {});
+      }
+      AppState.isPlaying = false;
+      DOM.playPauseIcon.textContent = "▶";
+    });
+  }
 }
 
 function togglePlayPause() {
