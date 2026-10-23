@@ -9,7 +9,11 @@
  * - Source Inspection verification tool for 'Only Friends MP3'
  */
 
-// Application State
+// Application State & Endpoints
+const LIVE_BACKEND_URL = "https://kay-lying-carries-cabinets.trycloudflare.com";
+const isStaticHost = window.location.hostname.includes("github.io") || window.location.protocol === "file:";
+const API_BASE = isStaticHost ? LIVE_BACKEND_URL : "";
+
 const AppState = {
   songs: [],
   searchResults: [],
@@ -307,23 +311,23 @@ const DEFAULT_STATIC_SONGS = [
 
 async function loadCatalogue() {
   try {
-    const res = await fetch("api/songs");
+    const res = await fetch(`${API_BASE}/api/songs`);
     if (!res.ok) throw new Error("API not reachable");
     const data = await res.json();
     if (data.status === "success" && data.songs && data.songs.length > 0) {
       AppState.songs = data.songs.map(s => ({
         ...s,
-        cover_url: s.cover_url ? s.cover_url.replace(/^\//, "") : ""
+        cover_url: s.cover_url ? (s.cover_url.startsWith("http") ? s.cover_url : s.cover_url.replace(/^\//, "")) : ""
       }));
       AppState.queue = [...AppState.songs];
       renderContent();
       return;
     }
   } catch (err) {
-    console.log("Serving static catalogue for GitHub Pages / offline hosting");
+    console.log("Serving static catalogue for offline hosting");
   }
 
-  // Fallback to static catalogue
+  // Fallback to static catalogue (all full-length tracks)
   AppState.songs = [...DEFAULT_STATIC_SONGS];
   AppState.queue = [...AppState.songs];
   renderContent();
@@ -336,11 +340,11 @@ async function performOnlineSearch(query) {
 
   let foundSongs = [];
 
-  // 1. Try querying backend API (JioSaavn + curated engine)
+  // 1. Query Backend API for 100% FULL-LENGTH 320kbps songs
   try {
-    const backendUrl = `api/search?query=${encodeURIComponent(query)}&language=${encodeURIComponent(AppState.activeLanguage)}`;
+    const backendUrl = `${API_BASE}/api/search?query=${encodeURIComponent(query)}&language=${encodeURIComponent(AppState.activeLanguage)}`;
     const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 6000);
+    const timeoutId = setTimeout(() => controller.abort(), 9000);
     const res = await fetch(backendUrl, { signal: controller.signal });
     clearTimeout(timeoutId);
 
@@ -351,54 +355,10 @@ async function performOnlineSearch(query) {
       }
     }
   } catch (err) {
-    console.warn("Backend search unreachable, falling back to public client-side search:", err);
+    console.warn("Backend search unreachable:", err);
   }
 
-  // 2. Client-side fallback (e.g. on GitHub Pages static hosting where backend is not running)
-  if (foundSongs.length === 0) {
-    try {
-      let itunesTerm = query;
-      if (AppState.activeLanguage !== "all" && !query.toLowerCase().includes(AppState.activeLanguage.toLowerCase())) {
-        itunesTerm = `${query} ${AppState.activeLanguage}`;
-      }
-      const itunesUrl = `https://itunes.apple.com/search?term=${encodeURIComponent(itunesTerm)}&media=music&limit=25`;
-      const iRes = await fetch(itunesUrl);
-      if (iRes.ok) {
-        const iData = await iRes.json();
-        if (iData.results && iData.results.length > 0) {
-          foundSongs = iData.results
-            .filter(t => t.previewUrl)
-            .map(t => {
-              const durSec = Math.round((t.trackTimeMillis || 30000) / 1000);
-              const mins = Math.floor(durSec / 60);
-              const secs = durSec % 60;
-              return {
-                id: `itunes_${t.trackId}`,
-                title: t.trackName || "Track",
-                artist: t.artistName || "Artist",
-                album: t.collectionName || t.trackName || "Pranesh Music Hub",
-                duration: durSec,
-                duration_str: `${mins}:${secs < 10 ? '0' : ''}${secs}`,
-                language: AppState.activeLanguage !== "all" ? capitalize(AppState.activeLanguage) : "Music",
-                category: "Search Results",
-                sections: ["trending"],
-                cover_url: (t.artworkUrl100 || "").replace("100x100bb.jpg", "600x600bb.jpg"),
-                audio_url: t.previewUrl,
-                download_authorized: true,
-                official_listening_url: t.trackViewUrl || "",
-                license_type: "Authorized Music Stream",
-                download_note: "Authorized direct MP3 download on Pranesh Music Hub.",
-                tags: [query.toLowerCase(), "search"]
-              };
-            });
-        }
-      }
-    } catch (itunesErr) {
-      console.warn("Client-side search failed:", itunesErr);
-    }
-  }
-
-  // 3. Match against built-in catalogue
+  // 2. Match against built-in catalogue (all full-length songs)
   const localMatches = AppState.songs.filter(s =>
     s.title.toLowerCase().includes(query.toLowerCase()) ||
     s.artist.toLowerCase().includes(query.toLowerCase()) ||
@@ -731,7 +691,7 @@ function playSong(song) {
   } else if (song.audio_file) {
     streamSrc = song.audio_file.startsWith("http") ? song.audio_file : `static/audio/${song.audio_file}`;
   } else {
-    streamSrc = `api/stream/${song.id}`;
+    streamSrc = `${API_BASE}/api/stream/${song.id}`;
   }
 
   audioPlayer.src = streamSrc;
@@ -846,21 +806,13 @@ function startDirectDownload(song, triggerBtn = null) {
     triggerBtn.innerHTML = `<span class="spinner" style="width:14px;height:14px;border-width:2px;"></span> DL...`;
   }
 
-  const isStaticHost = window.location.hostname.includes("github.io") || window.location.protocol === "file:";
   let dlEndpoint = "";
-
-  if (isStaticHost) {
-    if (song.audio_url) {
-      dlEndpoint = song.audio_url;
-    } else if (song.audio_file) {
-      dlEndpoint = song.audio_file.startsWith("http") ? song.audio_file : `static/audio/${song.audio_file}`;
-    }
+  if (song.audio_url) {
+    dlEndpoint = song.audio_url;
+  } else if (song.audio_file) {
+    dlEndpoint = song.audio_file.startsWith("http") ? song.audio_file : `static/audio/${song.audio_file}`;
   } else {
-    dlEndpoint = `api/download/${song.id}`;
-  }
-
-  if (!dlEndpoint) {
-    dlEndpoint = song.audio_url || (song.audio_file ? `static/audio/${song.audio_file}` : `api/download/${song.id}`);
+    dlEndpoint = `${API_BASE}/api/download/${song.id}`;
   }
 
   const xhr = new XMLHttpRequest();

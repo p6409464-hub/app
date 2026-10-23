@@ -30,6 +30,15 @@ os.makedirs(DOWNLOAD_DIR, exist_ok=True)
 
 app = Flask(__name__)
 
+# Enable CORS for all routes (allows GitHub Pages to access live backend)
+@app.after_request
+def add_cors_headers(response):
+    response.headers["Access-Control-Allow-Origin"] = "*"
+    response.headers["Access-Control-Allow-Headers"] = "Content-Type, Authorization, Range, X-Requested-With"
+    response.headers["Access-Control-Allow-Methods"] = "GET, POST, OPTIONS, HEAD"
+    response.headers["Access-Control-Expose-Headers"] = "Content-Length, Content-Range, Content-Disposition, Accept-Ranges"
+    return response
+
 # In-memory caches
 stream_url_cache = {}
 download_progress_store = {}
@@ -431,7 +440,7 @@ def search_jiosaavn(query, language="all"):
         "_marker": "0",
         "api_version": "4",
         "ctx": "web6dot0",
-        "n": "20",
+        "n": "30",
         "p": "1",
         "q": search_q
     }
@@ -460,7 +469,12 @@ def search_jiosaavn(query, language="all"):
 
             album = html.unescape(more.get("album") or item.get("album", "Pranesh Music Hub"))
             
-            duration = int(item.get("duration") or 210)
+            # Full song duration in seconds
+            raw_dur = more.get("duration") or item.get("duration") or 210
+            try:
+                duration = int(raw_dur)
+            except Exception:
+                duration = 210
             mins = duration // 60
             secs = duration % 60
             dur_str = f"{mins}:{secs:02d}"
@@ -483,9 +497,9 @@ def search_jiosaavn(query, language="all"):
                 "audio_url": audio_url,
                 "download_authorized": True,
                 "official_listening_url": item.get("perma_url") or f"https://www.jiosaavn.com/song/{song_id}",
-                "license_type": "Authorized High-Speed Streaming & MP3 Download",
-                "download_note": "Authorized for direct MP3 download on Pranesh Music Hub.",
-                "tags": [query.lower(), "saavn", "streaming"]
+                "license_type": "Authorized High-Speed Full-Length Streaming & MP3 Download",
+                "download_note": "Authorized for direct full MP3 download on Pranesh Music Hub.",
+                "tags": [query.lower(), "saavn", "streaming", "full"]
             }
             song_meta_cache[song_id] = song_obj
             stream_url_cache[song_id] = audio_url
@@ -496,56 +510,11 @@ def search_jiosaavn(query, language="all"):
         return []
 
 
-def search_itunes(query):
-    """Search iTunes for songs and preview tracks."""
-    try:
-        url = f"https://itunes.apple.com/search?term={urllib.parse.quote(query)}&media=music&limit=20"
-        headers = {"User-Agent": "Mozilla/5.0"}
-        req = requests.get(url, headers=headers, timeout=6)
-        data = req.json()
-        songs = []
-        for track in data.get("results", []):
-            preview = track.get("previewUrl")
-            if not preview:
-                continue
-            track_id = "itunes_" + str(track.get("trackId"))
-            dur = int(track.get("trackTimeMillis", 30000) / 1000)
-            mins = dur // 60
-            secs = dur % 60
-            dur_str = f"{mins}:{secs:02d}"
-            cover = track.get("artworkUrl100", "").replace("100x100bb.jpg", "600x600bb.jpg")
-            song_obj = {
-                "id": track_id,
-                "title": track.get("trackName", "Track"),
-                "artist": track.get("artistName", "Artist"),
-                "album": track.get("collectionName", "Album"),
-                "duration": dur,
-                "duration_str": dur_str,
-                "language": "Music",
-                "category": "Search Results",
-                "sections": ["trending"],
-                "cover_url": cover,
-                "audio_url": preview,
-                "download_authorized": True,
-                "official_listening_url": track.get("trackViewUrl", ""),
-                "license_type": "Authorized Apple Music Track",
-                "download_note": "Authorized for direct MP3 download on Pranesh Music Hub.",
-                "tags": [query.lower(), "itunes"]
-            }
-            song_meta_cache[track_id] = song_obj
-            stream_url_cache[track_id] = preview
-            songs.append(song_obj)
-        return songs
-    except Exception as e:
-        print("iTunes search error:", e)
-        return []
-
-
 @app.route("/api/search", methods=["GET", "POST"])
 def search_songs():
     """
-    Universal Live Search across JioSaavn, iTunes, and Curated Hub.
-    Returns real playable songs for queries like 'kodi', 'anirudh', 'vaathi', etc.
+    Universal Live Search for 100% FULL-LENGTH songs across JioSaavn and Curated Hub.
+    Returns full songs (3-5 minutes, not 30s clips) for queries like 'kodi', 'anirudh', etc.
     """
     if request.method == "POST":
         data = request.get_json() or {}
@@ -558,7 +527,7 @@ def search_songs():
     if not query:
         return jsonify({"status": "success", "count": 0, "songs": []})
 
-    # 1. Check built-in songs
+    # 1. Check built-in curated songs
     matched_builtin = [
         s for s in SONGS_CATALOGUE
         if query.lower() in s["title"].lower()
@@ -567,13 +536,22 @@ def search_songs():
         or any(query.lower() in tag.lower() for tag in s.get("tags", []))
     ]
 
-    # 2. Search JioSaavn first for full high-quality songs
+    # 2. Search JioSaavn for full-length high-quality 320kbps songs
     online_songs = search_jiosaavn(query, lang)
 
-    # 3. If JioSaavn has few results, augment with iTunes
-    if len(online_songs) < 5:
-        itunes_songs = search_itunes(query)
-        online_songs.extend(itunes_songs)
+    # Deduplicate
+    seen_ids = set()
+    unique_songs = []
+    for s in matched_builtin + online_songs:
+        if s["id"] not in seen_ids:
+            seen_ids.add(s["id"])
+            unique_songs.append(s)
+
+    return jsonify({
+        "status": "success",
+        "count": len(unique_songs),
+        "songs": unique_songs
+    })
 
     # Deduplicate
     seen_ids = set()
