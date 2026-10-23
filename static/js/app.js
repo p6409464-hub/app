@@ -133,9 +133,22 @@ function setupEventListeners() {
       return;
     }
 
-    // Immediately show search loading indicator instead of flashing "No songs found"
+    // Check if we have instant local matches
+    const localMatches = AppState.songs.filter(s =>
+      s.title.toLowerCase().includes(AppState.searchQuery) ||
+      s.artist.toLowerCase().includes(AppState.searchQuery) ||
+      s.album.toLowerCase().includes(AppState.searchQuery) ||
+      (s.tags && s.tags.some(t => t.toLowerCase().includes(AppState.searchQuery)))
+    );
+
     AppState.isSearching = true;
-    showSearchLoadingState();
+    if (localMatches.length > 0) {
+      // Show instant matches immediately (0ms delay)
+      AppState.searchResults = localMatches;
+      renderContent(true);
+    } else {
+      showSearchLoadingState();
+    }
 
     // Debounced online search
     AppState.searchDebounceTimer = setTimeout(() => {
@@ -433,7 +446,7 @@ function updateActivePills() {
   });
 }
 
-function renderContent() {
+function renderContent(searchingOnline = false) {
   let displayList = [];
 
   // When searching, use searchResults (or fallback to local matches)
@@ -470,6 +483,10 @@ function renderContent() {
     }
 
     DOM.emptyState.style.display = "none";
+    const onlineBadge = searchingOnline 
+      ? `<span class="section-badge" style="background: rgba(147, 51, 234, 0.4); animation: pulse 1.5s infinite;">⚡ Searching more online...</span>` 
+      : "";
+
     DOM.contentContainer.innerHTML = `
       <section class="music-section">
         <div class="section-header">
@@ -477,18 +494,7 @@ function renderContent() {
             <span class="section-icon">🔍</span>
             <h2 class="section-title">Search Results for "${escapeHTML(AppState.searchQuery)}"</h2>
             <span class="section-badge">${displayList.length} tracks found</span>
-          </div>
-        </div>
-        <div class="songs-grid">
-          ${displayList.map(s => createSongCardHTML(s)).join("")}
-        </div>
-      </section>
-    `;
-    attachCardListeners(displayList);
-    updatePlayingCardHighlight();
-    return;
-  }
-            <span class="section-badge">${displayList.length} tracks found</span>
+            ${onlineBadge}
           </div>
         </div>
         <div class="songs-grid">
