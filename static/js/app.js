@@ -10,7 +10,7 @@
  */
 
 // Application State & Endpoints
-const LIVE_BACKEND_URL = "https://attachments-chips-investigators-twenty.trycloudflare.com";
+const LIVE_BACKEND_URL = "https://recycling-innovation-bradley-agreement.trycloudflare.com";
 const isStaticHost = window.location.hostname.includes("github.io") || window.location.protocol === "file:";
 const API_BASE = isStaticHost ? LIVE_BACKEND_URL : "";
 
@@ -351,12 +351,23 @@ const DEFAULT_STATIC_SONGS = [
 ];
 
 async function loadCatalogue() {
-  // 1. Instantly render built-in curated songs so mobile user NEVER sees an empty screen
-  AppState.songs = [...DEFAULT_STATIC_SONGS];
+  // 1. Instantly render high-definition curated catalogue (70+ top hit songs)
+  const sourceList = (window.CATALOGUE_SONGS && window.CATALOGUE_SONGS.length > 0)
+    ? [...window.CATALOGUE_SONGS, ...DEFAULT_STATIC_SONGS]
+    : DEFAULT_STATIC_SONGS;
+  const seenIds = new Set();
+  const deduped = [];
+  for (const s of sourceList) {
+    if (!seenIds.has(s.id)) {
+      seenIds.add(s.id);
+      deduped.push(s);
+    }
+  }
+  AppState.songs = deduped;
   AppState.queue = [...AppState.songs];
   renderContent();
 
-  // 2. Fetch fresh catalogue from backend asynchronously
+  // 2. Fetch fresh catalogue from backend asynchronously if available
   try {
     const controller = new AbortController();
     const timeoutId = setTimeout(() => controller.abort(), 2000);
@@ -745,11 +756,16 @@ function playSong(song) {
   DOM.playPauseIcon.textContent = "⏳";
 
   // Determine stream source:
-  // For built-in songs: use static/audio/
-  // For online search songs: route through streaming proxy so mobile carriers never block it
+  // 1. Direct CDN link (fastest, unblocked 320kbps full song with Range support)
+  // 2. Built-in static mp3 file
+  // 3. Fallback to proxy stream if needed
   let streamSrc = "";
-  if (song.audio_file && !song.audio_file.startsWith("http")) {
+  if (song.audio_url && song.audio_url.startsWith("http")) {
+    streamSrc = song.audio_url;
+  } else if (song.audio_file && !song.audio_file.startsWith("http")) {
     streamSrc = `static/audio/${song.audio_file}`;
+  } else if (song.audio_file && song.audio_file.startsWith("http")) {
+    streamSrc = song.audio_file;
   } else {
     streamSrc = `${API_BASE}/api/stream/${song.id}`;
   }
@@ -898,7 +914,7 @@ function startDirectDownload(song, triggerBtn = null) {
 
   xhr.onload = () => {
     if (xhr.status === 200) {
-      const blob = xhr.response;
+      const blob = new Blob([xhr.response], { type: "audio/mp3" });
       const downloadUrl = window.URL.createObjectURL(blob);
       const a = document.createElement("a");
       a.style.display = "none";

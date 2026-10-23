@@ -1,5 +1,6 @@
 import os
 import re
+import json
 import glob
 import html
 import base64
@@ -362,6 +363,19 @@ SONGS_CATALOGUE = [
         "tags": ["instrumental", "ambient", "soundhelix", "electronic", "symphony"]
     }
 ]
+
+# Load high-definition compiled songs catalogue if available
+try:
+    songs_data_path = os.path.join(BASE_DIR, "static", "js", "songs_data.js")
+    if os.path.exists(songs_data_path):
+        with open(songs_data_path, "r", encoding="utf-8") as f:
+            txt = f.read()
+            m = re.search(r"window\.CATALOGUE_SONGS\s*=\s*(\[.*?\]);", txt, re.DOTALL)
+            if m:
+                compiled_songs = json.loads(m.group(1))
+                SONGS_CATALOGUE = compiled_songs
+except Exception as e:
+    print("Notice loading songs_data.js:", e)
 
 # Populate meta cache
 for s in SONGS_CATALOGUE:
