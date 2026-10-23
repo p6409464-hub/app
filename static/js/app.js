@@ -476,12 +476,15 @@ function renderContent(searchingOnline = false) {
     }
 
     // Only filter by language if local fallback and not an empty set
-    if (AppState.searchResults.length === 0 && AppState.activeLanguage !== "all") {
-      displayList = displayList.filter(s => 
+    if (AppState.activeLanguage !== "all") {
+      const langFiltered = displayList.filter(s => 
         s.language.toLowerCase() === AppState.activeLanguage.toLowerCase() ||
         (s.tags && s.tags.some(t => t.toLowerCase() === AppState.activeLanguage.toLowerCase())) ||
         s.title.toLowerCase().includes(AppState.activeLanguage.toLowerCase())
       );
+      if (langFiltered.length > 0) {
+        displayList = langFiltered;
+      }
     }
 
     if (displayList.length === 0) {
@@ -652,7 +655,7 @@ function createSongCardHTML(song) {
       </div>
       <div class="card-info">
         <h3 class="card-title" title="${escapeHTML(song.title)}">${escapeHTML(song.title)}</h3>
-        <p class="card-artist" title="${escapeHTML(song.artist)}">${escapeHTML(song.artist)}</p>
+        <p class="card-artist" title="${escapeHTML(song.artist)}">${escapeHTML(song.artist)}${song.album ? ' • <span style=\"color:#c084fc;font-weight:600;\">' + escapeHTML(song.album) + '</span>' : ''}</p>
       </div>
       <div class="card-actions">
         <button class="fav-btn ${isFav ? 'favorited' : ''}" data-id="${song.id}" title="Add to Favourites">
