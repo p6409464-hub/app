@@ -381,7 +381,7 @@ window.CATALOGUE_SONGS = [
     ],
     "cover_url": "https://c.saavncdn.com/415/Leo-Original-Motion-Picture-Soundtrack-English-2023-20231019170311-500x500.jpg",
     "audio_url": "https://aac.saavncdn.com/415/46a7b21d2a3f4b9e019a7cdff7442c55_320.mp4",
-    "download_authorized": false,
+    "download_authorized": true,
     "tags": [
       "badass leo",
       "badass",
@@ -405,7 +405,7 @@ window.CATALOGUE_SONGS = [
     ],
     "cover_url": "https://c.saavncdn.com/415/Leo-Original-Motion-Picture-Soundtrack-English-2023-20231019170311-500x500.jpg",
     "audio_url": "https://aac.saavncdn.com/415/3789bee89b94522160f1e50b2266d2c4_320.mp4",
-    "download_authorized": false,
+    "download_authorized": true,
     "tags": [
       "tamil",
       "naa ready",
@@ -429,7 +429,7 @@ window.CATALOGUE_SONGS = [
     ],
     "cover_url": "https://c.saavncdn.com/187/Jailer-Tamil-2023-20230728081443-500x500.jpg",
     "audio_url": "https://aac.saavncdn.com/187/0c4d0aee91a3ac81d4b645ec448a2960_320.mp4",
-    "download_authorized": false,
+    "download_authorized": true,
     "tags": [
       "hukum - thalaivar alappara",
       "jailer",
@@ -453,7 +453,7 @@ window.CATALOGUE_SONGS = [
     ],
     "cover_url": "https://c.saavncdn.com/187/Jailer-Tamil-2023-20230728081443-500x500.jpg",
     "audio_url": "https://aac.saavncdn.com/187/49797372d021638077d8a6b749068bc8_320.mp4",
-    "download_authorized": false,
+    "download_authorized": true,
     "tags": [
       "anirudh ravichander, shilpa rao, arunraja kamaraj",
       "jailer",
@@ -477,7 +477,7 @@ window.CATALOGUE_SONGS = [
     ],
     "cover_url": "https://c.saavncdn.com/510/Beast-Tamil-2022-20220504184736-500x500.jpg",
     "audio_url": "https://aac.saavncdn.com/510/9d96fc7ddd4ffadb745f25aed86f7a4e_320.mp4",
-    "download_authorized": false,
+    "download_authorized": true,
     "tags": [
       "anirudh ravichander, sivakarthikeyan",
       "arabic kuthu - halamithi habibo",
@@ -501,7 +501,7 @@ window.CATALOGUE_SONGS = [
     ],
     "cover_url": "https://c.saavncdn.com/347/Master-Tamil-2020-20200316084627-500x500.jpg",
     "audio_url": "https://aac.saavncdn.com/347/c536b256fca6b96aa432322c11c21fbb_320.mp4",
-    "download_authorized": false,
+    "download_authorized": true,
     "tags": [
       "tamil",
       "master",
@@ -525,7 +525,7 @@ window.CATALOGUE_SONGS = [
     ],
     "cover_url": "https://c.saavncdn.com/973/Vikram-Tamil-2022-20220515182605-500x500.jpg",
     "audio_url": "https://aac.saavncdn.com/973/59aea3adfea3141ddbe1bd7e1d62c762_320.mp4",
-    "download_authorized": false,
+    "download_authorized": true,
     "tags": [
       "tamil",
       "pathala pathala",
@@ -549,7 +549,7 @@ window.CATALOGUE_SONGS = [
     ],
     "cover_url": "https://c.saavncdn.com/973/Vikram-Tamil-2022-20220515182605-500x500.jpg",
     "audio_url": "https://aac.saavncdn.com/973/8c9943527b672a6d1fb192431c57b6fe_320.mp4",
-    "download_authorized": false,
+    "download_authorized": true,
     "tags": [
       "vikram title track",
       "tamil",
@@ -573,7 +573,7 @@ window.CATALOGUE_SONGS = [
     ],
     "cover_url": "https://c.saavncdn.com/888/Latest-Evergreen-Melody-Tamil-2026-20260716203740-500x500.jpg",
     "audio_url": "https://aac.saavncdn.com/888/8dd6e156bdcc1366f0fa8cbe31ae5460_320.mp4",
-    "download_authorized": false,
+    "download_authorized": true,
     "tags": [
       "latest evergreen melody",
       "tamil",
@@ -596,7 +596,7 @@ window.CATALOGUE_SONGS = [
     ],
     "cover_url": "https://c.saavncdn.com/803/Vettaiyan-Original-Motion-Picture-Soundtrack-Tamil-2024-20241014154253-500x500.jpg",
     "audio_url": "https://aac.saavncdn.com/803/54aa7ee23bad8894b04c1250a64a2f0a_320.mp4",
-    "download_authorized": false,
+    "download_authorized": true,
     "tags": [
       "tamil",
       "manasilaayo vettaiyan",
@@ -620,7 +620,7 @@ window.CATALOGUE_SONGS = [
     ],
     "cover_url": "https://c.saavncdn.com/803/Vettaiyan-Original-Motion-Picture-Soundtrack-Tamil-2024-20241014154253-500x500.jpg",
     "audio_url": "https://aac.saavncdn.com/803/6fb743e4593b69786449d88e4ab2fd52_320.mp4",
-    "download_authorized": false,
+    "download_authorized": true,
     "tags": [
       "hunter vantaar vettaiyan",
       "tamil",
@@ -644,7 +644,7 @@ window.CATALOGUE_SONGS = [
     ],
     "cover_url": "https://c.saavncdn.com/161/The-Greatest-Of-All-Time-Ost-Tamil-2024-20241022171002-500x500.jpg",
     "audio_url": "https://aac.saavncdn.com/161/5ade808693d51b62c20fec7a8b5bfafe_320.mp4",
-    "download_authorized": false,
+    "download_authorized": true,
     "tags": [
       "yuvan shankar raja - the greatest of all time ost",
       "tamil",
@@ -668,7 +668,7 @@ window.CATALOGUE_SONGS = [
     ],
     "cover_url": "https://c.saavncdn.com/275/Raayan-Tamil-2024-20240706124553-500x500.jpg",
     "audio_url": "https://aac.saavncdn.com/275/86db4085f978b305a23d666daf01b85e_320.mp4",
-    "download_authorized": false,
+    "download_authorized": true,
     "tags": [
       "water packet",
       "tamil",
@@ -692,7 +692,7 @@ window.CATALOGUE_SONGS = [
     ],
     "cover_url": "https://c.saavncdn.com/275/Raayan-Tamil-2024-20240706124553-500x500.jpg",
     "audio_url": "https://aac.saavncdn.com/275/4b988d817ffa35407cee1a306e7bca8f_320.mp4",
-    "download_authorized": false,
+    "download_authorized": true,
     "tags": [
       "adangaatha asuran",
       "adangaatha asuran raayan",
@@ -716,7 +716,7 @@ window.CATALOGUE_SONGS = [
     ],
     "cover_url": "https://c.saavncdn.com/276/Maari-2-Tamil-2018-20260203193952-500x500.jpg",
     "audio_url": "https://aac.saavncdn.com/276/64b835b4e1829992f8d35f54d6dad5f3_320.mp4",
-    "download_authorized": false,
+    "download_authorized": true,
     "tags": [
       "tamil",
       "yuvan shankar raja",
@@ -740,7 +740,7 @@ window.CATALOGUE_SONGS = [
     ],
     "cover_url": "https://c.saavncdn.com/195/3-Tamil-2011-20210522203119-500x500.jpg",
     "audio_url": "https://aac.saavncdn.com/195/83f3042097cdca8e1c2ce1e44f370dda_320.mp4",
-    "download_authorized": false,
+    "download_authorized": true,
     "tags": [
       "tamil",
       "why this kolaveri di 3",
@@ -764,7 +764,7 @@ window.CATALOGUE_SONGS = [
     ],
     "cover_url": "https://c.saavncdn.com/312/Doctor-Tamil-2021-20211005133149-500x500.jpg",
     "audio_url": "https://aac.saavncdn.com/312/9faaf9ef4a0f3596b15adfbf3b9cc273_320.mp4",
-    "download_authorized": false,
+    "download_authorized": true,
     "tags": [
       "doctor",
       "chellamma doctor",
@@ -788,7 +788,7 @@ window.CATALOGUE_SONGS = [
     ],
     "cover_url": "https://c.saavncdn.com/312/Doctor-Tamil-2021-20211005133149-500x500.jpg",
     "audio_url": "https://aac.saavncdn.com/312/af028821abce11d56bcb6417f5c58f6c_320.mp4",
-    "download_authorized": false,
+    "download_authorized": true,
     "tags": [
       "doctor",
       "so baby",
@@ -812,7 +812,7 @@ window.CATALOGUE_SONGS = [
     ],
     "cover_url": "https://c.saavncdn.com/435/Don-Tamil-2022-20220512162818-500x500.jpg",
     "audio_url": "https://aac.saavncdn.com/435/8978e3a1d9c992345afce463e496db42_320.mp4",
-    "download_authorized": false,
+    "download_authorized": true,
     "tags": [
       "jalabulajangu don",
       "tamil",
@@ -836,7 +836,7 @@ window.CATALOGUE_SONGS = [
     ],
     "cover_url": "https://c.saavncdn.com/403/Kaathuvaakula-Rendu-Kaadhal-Original-Motion-Picture-Soundtrack-Tamil-2022-20220428131043-500x500.jpg",
     "audio_url": "https://aac.saavncdn.com/403/61f8646652ea2868752228807aa3f343_320.mp4",
-    "download_authorized": false,
+    "download_authorized": true,
     "tags": [
       "two two two",
       "two two two kaathuvaakula",
@@ -860,7 +860,7 @@ window.CATALOGUE_SONGS = [
     ],
     "cover_url": "https://c.saavncdn.com/403/Kaathuvaakula-Rendu-Kaadhal-Original-Motion-Picture-Soundtrack-Tamil-2022-20220428131043-500x500.jpg",
     "audio_url": "https://aac.saavncdn.com/403/1a833ab353132dfe3d5f48ecd1c80334_320.mp4",
-    "download_authorized": false,
+    "download_authorized": true,
     "tags": [
       "kaathuvaakula rendu kaadhal",
       "tamil",
@@ -883,7 +883,7 @@ window.CATALOGUE_SONGS = [
     ],
     "cover_url": "https://c.saavncdn.com/113/Ponniyin-Selvan-Part-1-Tamil-2022-20260330193159-500x500.jpg",
     "audio_url": "https://aac.saavncdn.com/113/6af3b4bf7d81627274d624047d8f6a5f_320.mp4",
-    "download_authorized": false,
+    "download_authorized": true,
     "tags": [
       "a.r. rahman",
       "tamil",
@@ -908,7 +908,7 @@ window.CATALOGUE_SONGS = [
     ],
     "cover_url": "https://c.saavncdn.com/613/Aga-Naga-From-Ponniyin-Selvan-Part-2-Tamil-2023-20260122133314-500x500.jpg",
     "audio_url": "https://aac.saavncdn.com/613/4022f676e32929654f03aa446c8b137d_320.mp4",
-    "download_authorized": false,
+    "download_authorized": true,
     "tags": [
       "a.r. rahman, shakthisree gopalan, ilango krishnan",
       "aga naga ps2",
@@ -932,7 +932,7 @@ window.CATALOGUE_SONGS = [
     ],
     "cover_url": "https://c.saavncdn.com/006/Viswasam-Tamil-2020-20240321064638-500x500.jpg",
     "audio_url": "https://aac.saavncdn.com/006/40aacc11863cba58d37eefcbd23bee99_320.mp4",
-    "download_authorized": false,
+    "download_authorized": true,
     "tags": [
       "sid sriram, d. imman",
       "tamil",
@@ -956,7 +956,7 @@ window.CATALOGUE_SONGS = [
     ],
     "cover_url": "https://c.saavncdn.com/497/Anirudh-Certified-Bangers-Tamil-2026-20261014185600-500x500.jpg",
     "audio_url": "https://aac.saavncdn.com/497/8c0d3e5a86ad4cd7bdcef898bb81062b_320.mp4",
-    "download_authorized": false,
+    "download_authorized": true,
     "tags": [
       "marana mass",
       "tamil",
@@ -981,7 +981,7 @@ window.CATALOGUE_SONGS = [
     ],
     "cover_url": "https://c.saavncdn.com/492/Mersal-Tamil-2017-20170820120559-500x500.jpg",
     "audio_url": "https://aac.saavncdn.com/492/eb45d961a1639b3c3a6df4c8777fa71c_320.mp4",
-    "download_authorized": false,
+    "download_authorized": true,
     "tags": [
       "mersal",
       "a.r. rahman",
@@ -1005,7 +1005,7 @@ window.CATALOGUE_SONGS = [
     ],
     "cover_url": "https://c.saavncdn.com/162/Bigil-Tamil-2019-20191017202521-500x500.jpg",
     "audio_url": "https://aac.saavncdn.com/162/c005e1ef77af574df7ba1d24bd8ee9ea_320.mp4",
-    "download_authorized": false,
+    "download_authorized": true,
     "tags": [
       "a.r. rahman",
       "tamil",
@@ -1029,7 +1029,7 @@ window.CATALOGUE_SONGS = [
     ],
     "cover_url": "https://c.saavncdn.com/769/Naerukku-Naer-1997-500x500.jpg",
     "audio_url": "https://aac.saavncdn.com/837/72db4e57f7475281bf3382259ffe02ed_320.mp4",
-    "download_authorized": false,
+    "download_authorized": true,
     "tags": [
       "tamil",
       "aval varuvala naerukku naer",
@@ -1053,7 +1053,7 @@ window.CATALOGUE_SONGS = [
     ],
     "cover_url": "https://c.saavncdn.com/435/Oh-My-Kadavule-Tamil-2020-20200207054852-500x500.jpg",
     "audio_url": "https://aac.saavncdn.com/435/d83cd596c606b01c8952b45b6956ca06_320.mp4",
-    "download_authorized": false,
+    "download_authorized": true,
     "tags": [
       "leon james",
       "friendship anthem",
@@ -1077,7 +1077,7 @@ window.CATALOGUE_SONGS = [
     ],
     "cover_url": "https://c.saavncdn.com/864/Aval-Varuwaala-Tamil-2017-500x500.jpg",
     "audio_url": "https://aac.saavncdn.com/864/3a9d1669e17c2005db6724265acdf8cb_320.mp4",
-    "download_authorized": false,
+    "download_authorized": true,
     "tags": [
       "tamil",
       "rukku rukku",
@@ -1101,7 +1101,7 @@ window.CATALOGUE_SONGS = [
     ],
     "cover_url": "https://c.saavncdn.com/705/Engeyum-Kadhal-Tamil-2010-20190731133246-500x500.jpg",
     "audio_url": "https://aac.saavncdn.com/705/cf8bae4a2fee1edd5da866e1c55b68b4_320.mp4",
-    "download_authorized": false,
+    "download_authorized": true,
     "tags": [
       "engeyum kaadhal",
       "tamil",
@@ -1124,7 +1124,7 @@ window.CATALOGUE_SONGS = [
     ],
     "cover_url": "https://c.saavncdn.com/435/Oh-My-Kadavule-Tamil-2020-20200207054852-500x500.jpg",
     "audio_url": "https://aac.saavncdn.com/435/c8c5e3d0895c11377439673577049ddd_320.mp4",
-    "download_authorized": false,
+    "download_authorized": true,
     "tags": [
       "leon james",
       "tamil",
@@ -1148,7 +1148,7 @@ window.CATALOGUE_SONGS = [
     ],
     "cover_url": "https://c.saavncdn.com/420/Vendhu-Thanindhathu-Kaadu-Original-Motion-Picture-Soundtrack-Tamil-2022-20250905072731-500x500.jpg",
     "audio_url": "https://aac.saavncdn.com/420/14cb0983229d366c09447dbfb731f351_320.mp4",
-    "download_authorized": false,
+    "download_authorized": true,
     "tags": [
       "a.r. rahman",
       "marakkuma nenjam",
@@ -1172,7 +1172,7 @@ window.CATALOGUE_SONGS = [
     ],
     "cover_url": "https://c.saavncdn.com/126/Shape-of-You-English-2017-500x500.jpg",
     "audio_url": "https://aac.saavncdn.com/126/da7cde34b008294e181842062530546d_320.mp4",
-    "download_authorized": false,
+    "download_authorized": true,
     "tags": [
       "shape of you",
       "shape of you ed sheeran",
@@ -1195,7 +1195,7 @@ window.CATALOGUE_SONGS = [
     ],
     "cover_url": "https://c.saavncdn.com/820/Blinding-Lights-English-2020-20200912094411-500x500.jpg",
     "audio_url": "https://aac.saavncdn.com/820/5ddb9a79a5218f85ca9bef170f3a461d_320.mp4",
-    "download_authorized": false,
+    "download_authorized": true,
     "tags": [
       "blinding lights the weeknd",
       "max martin, oscar holter, abel \"the weeknd\" tesfaye, ahmad balshe, jason \"daheala\" quenneville",
@@ -1218,7 +1218,7 @@ window.CATALOGUE_SONGS = [
     ],
     "cover_url": "https://c.saavncdn.com/396/The-Highlights-English-2021-20240207045714-500x500.jpg",
     "audio_url": "https://aac.saavncdn.com/396/b4e570050007b056c662f2a98c9f28ec_320.mp4",
-    "download_authorized": false,
+    "download_authorized": true,
     "tags": [
       "starboy",
       "abel tesfaye, thomas bangalter, guy-manuel de homem-christo, martin mckinney, henry walter, jason quenneville",
@@ -1242,7 +1242,7 @@ window.CATALOGUE_SONGS = [
     ],
     "cover_url": "https://c.saavncdn.com/248/Evolve-English-2018-20260605220036-500x500.jpg",
     "audio_url": "https://aac.saavncdn.com/248/46944eb7b4b31f5b0abf5eb2e1be2d2a_320.mp4",
-    "download_authorized": false,
+    "download_authorized": true,
     "tags": [
       "dan reynolds, wayne sermon, ben mckee, daniel platzman, robin fredriksson, mattias larsson, justin tranter",
       "believer",
@@ -1266,7 +1266,7 @@ window.CATALOGUE_SONGS = [
     ],
     "cover_url": "https://c.saavncdn.com/562/Different-World-English-2018-20181130144209-500x500.jpg",
     "audio_url": "https://aac.saavncdn.com/562/b331b68fc5e35ff7d7cd7ce0e25158d7_320.mp4",
-    "download_authorized": false,
+    "download_authorized": true,
     "tags": [
       "jesper borgen, alan walker, anders frøen, gunnar greve",
       "faded",
@@ -1290,7 +1290,7 @@ window.CATALOGUE_SONGS = [
     ],
     "cover_url": "https://c.saavncdn.com/895/Stay-English-2021-20210706223809-500x500.jpg",
     "audio_url": "https://aac.saavncdn.com/895/9a3f48fb98e9dd0b201f6cacfb554408_320.mp4",
-    "download_authorized": false,
+    "download_authorized": true,
     "tags": [
       "stay",
       "stay kid laroi justin bieber",
@@ -1313,7 +1313,7 @@ window.CATALOGUE_SONGS = [
     ],
     "cover_url": "https://c.saavncdn.com/207/Dua-Lipa-Live-From-Mexico-English-2026-20260526161014-500x500.jpg",
     "audio_url": "https://aac.saavncdn.com/207/35add090eadc52dbd0205f0f4500176b_320.mp4",
-    "download_authorized": false,
+    "download_authorized": true,
     "tags": [
       "dua lipa - dua lipa - live from mexico",
       "levitating dua lipa",
@@ -1337,7 +1337,7 @@ window.CATALOGUE_SONGS = [
     ],
     "cover_url": "https://c.saavncdn.com/798/Mundial-2026-Copa-de-F-tbol-del-Mundo-2026-English-2026-20260714021441-500x500.jpg",
     "audio_url": "https://aac.saavncdn.com/798/d05a7404f5bba5c3a8077ad3f36d546a_320.mp4",
-    "download_authorized": false,
+    "download_authorized": true,
     "tags": [
       "as it was harry styles",
       "mundial 2026: copa de fútbol del mundo 2026",
@@ -1361,7 +1361,7 @@ window.CATALOGUE_SONGS = [
     ],
     "cover_url": "https://c.saavncdn.com/644/Ultimate-2010-Throwbacks-English-2026-20260319053726-500x500.jpg",
     "audio_url": "https://aac.saavncdn.com/644/343ddc1f721631958453acdb402d2943_320.mp4",
-    "download_authorized": false,
+    "download_authorized": true,
     "tags": [
       "someone you loved",
       "lewis capaldi, peter kelleher, tom barnes, benjamin kohn, sam roman",
@@ -1385,7 +1385,7 @@ window.CATALOGUE_SONGS = [
     ],
     "cover_url": "https://c.saavncdn.com/286/WMG_190295851286-English-2017-500x500.jpg",
     "audio_url": "https://aac.saavncdn.com/286/71bb6cc3391ddf619a4a3f1a1134f1c4_320.mp4",
-    "download_authorized": false,
+    "download_authorized": true,
     "tags": [
       "perfect",
       "÷",
@@ -1409,7 +1409,7 @@ window.CATALOGUE_SONGS = [
     ],
     "cover_url": "https://c.saavncdn.com/640/WHEN-WE-ALL-FALL-ASLEEP-WHERE-DO-WE-GO-English-2019-20261021022943-500x500.jpg",
     "audio_url": "https://aac.saavncdn.com/640/e310d23789c6bf1c70b8499610faf467_320.mp4",
-    "download_authorized": false,
+    "download_authorized": true,
     "tags": [
       "finneas o'connell, billie eilish o'connell",
       "bad guy billie eilish",
@@ -1433,7 +1433,7 @@ window.CATALOGUE_SONGS = [
     ],
     "cover_url": "https://c.saavncdn.com/147/Closer-English-2016-500x500.jpg",
     "audio_url": "https://aac.saavncdn.com/147/88201a8381e13cd6a9399f4bbfc5b7e9_320.mp4",
-    "download_authorized": false,
+    "download_authorized": true,
     "tags": [
       "closer",
       "english",
@@ -1456,7 +1456,7 @@ window.CATALOGUE_SONGS = [
     ],
     "cover_url": "https://c.saavncdn.com/504/The-Diamond-Collection-English-2023-20240201105640-500x500.jpg",
     "audio_url": "https://aac.saavncdn.com/504/b3bc79be82cb12784fd3f8835bd22bf5_320.mp4",
-    "download_authorized": false,
+    "download_authorized": true,
     "tags": [
       "carter lang, khalif malik ibn shaman brown, louis russel bell, austin post, william walsh, carl rosen",
       "sunflower (spider-man: into the spider-verse)",
@@ -1480,7 +1480,7 @@ window.CATALOGUE_SONGS = [
     ],
     "cover_url": "https://c.saavncdn.com/624/Se-orita-English-2019-20190822022326-500x500.jpg",
     "audio_url": "https://aac.saavncdn.com/624/08f3aeb374b4b6d641c47a0400b52db2_320.mp4",
-    "download_authorized": false,
+    "download_authorized": true,
     "tags": [
       "shawn mendes, camila cabello, andrew wotman, benjamin levin, ali tamposi, charlotte aitchison, jack patterson, magnus hoiberg",
       "senorita shawn mendes",
@@ -1503,7 +1503,7 @@ window.CATALOGUE_SONGS = [
     ],
     "cover_url": "https://c.saavncdn.com/574/Native-English-2014-20250626055252-500x500.jpg",
     "audio_url": "https://aac.saavncdn.com/574/69e45c811eb2619a79ce66447f7cac32_320.mp4",
-    "download_authorized": false,
+    "download_authorized": true,
     "tags": [
       "ryan tedder",
       "counting stars onerepublic",
@@ -1527,7 +1527,7 @@ window.CATALOGUE_SONGS = [
     ],
     "cover_url": "https://c.saavncdn.com/243/The-Cruelest-Summer-English-2023-20231109123211-500x500.jpg",
     "audio_url": "https://aac.saavncdn.com/243/cf6b522de1390996fdbe109298873c72_320.mp4",
-    "download_authorized": false,
+    "download_authorized": true,
     "tags": [
       "the cruelest summer",
       "cruel summer taylor swift",
@@ -1551,7 +1551,7 @@ window.CATALOGUE_SONGS = [
     ],
     "cover_url": "https://c.saavncdn.com/361/Endless-Summer-Vacation-English-2023-20230830062637-500x500.jpg",
     "audio_url": "https://aac.saavncdn.com/361/76f4573834ee4db705e0a80818878dca_320.mp4",
-    "download_authorized": false,
+    "download_authorized": true,
     "tags": [
       "flowers",
       "flowers miley cyrus",
@@ -1575,7 +1575,7 @@ window.CATALOGUE_SONGS = [
     ],
     "cover_url": "https://c.saavncdn.com/440/MONTERO-English-2021-20210914233101-500x500.jpg",
     "audio_url": "https://aac.saavncdn.com/440/616cc55bb4bf6e7f6e580a311e30520c_320.mp4",
-    "download_authorized": false,
+    "download_authorized": true,
     "tags": [
       "industry baby lil nas x",
       "industry baby",
@@ -1599,7 +1599,7 @@ window.CATALOGUE_SONGS = [
     ],
     "cover_url": "https://c.saavncdn.com/851/FOUR-Deluxe--English-2014-500x500.jpg",
     "audio_url": "https://aac.saavncdn.com/851/d3f6d5e7ae7c9050697a779f85eaabe8_320.mp4",
-    "download_authorized": false,
+    "download_authorized": true,
     "tags": [
       "english",
       "john ryan, julian bunetta, jamie scott, liam payne, louis tomlinson, niall horan, zayn malik, harry styles",
@@ -1623,7 +1623,7 @@ window.CATALOGUE_SONGS = [
     ],
     "cover_url": "https://c.saavncdn.com/202/Aavesham-Original-Motion-Picture-Soundtrack-Malayalam-2024-20250910150630-500x500.jpg",
     "audio_url": "https://aac.saavncdn.com/202/ba6006006a2f40e6b20b5ced32cc2885_320.mp4",
-    "download_authorized": false,
+    "download_authorized": true,
     "tags": [
       "illuminati",
       "aavesham (original motion picture soundtrack)",
@@ -1647,7 +1647,7 @@ window.CATALOGUE_SONGS = [
     ],
     "cover_url": "https://c.saavncdn.com/202/Aavesham-Original-Motion-Picture-Soundtrack-Malayalam-2024-20250910150630-500x500.jpg",
     "audio_url": "https://aac.saavncdn.com/202/b488cef5bfd15a995dcc4fcc455b71ec_320.mp4",
-    "download_authorized": false,
+    "download_authorized": true,
     "tags": [
       "sushin shyam, sreenath bhasi, vinayak sasikumar",
       "aavesham (original motion picture soundtrack)",
@@ -1671,7 +1671,7 @@ window.CATALOGUE_SONGS = [
     ],
     "cover_url": "https://c.saavncdn.com/202/Aavesham-Original-Motion-Picture-Soundtrack-Malayalam-2024-20250910150630-500x500.jpg",
     "audio_url": "https://aac.saavncdn.com/202/2e8ce109866b92c79404e8f8961fd149_320.mp4",
-    "download_authorized": false,
+    "download_authorized": true,
     "tags": [
       "armadham",
       "armadham aavesham",
@@ -1695,7 +1695,7 @@ window.CATALOGUE_SONGS = [
     ],
     "cover_url": "https://c.saavncdn.com/665/Premam-Malayalam-2015-500x500.jpg",
     "audio_url": "https://aac.saavncdn.com/665/64fe9e59b56dfb5f644e9e461923979b_320.mp4",
-    "download_authorized": false,
+    "download_authorized": true,
     "tags": [
       "premam",
       "rajesh murugesan",
@@ -1719,7 +1719,7 @@ window.CATALOGUE_SONGS = [
     ],
     "cover_url": "https://c.saavncdn.com/555/Hridayam-Side-A-Malayalam-2022-20230803211029-500x500.jpg",
     "audio_url": "https://aac.saavncdn.com/555/dd42c3e603cb40b91cc2ddd03ae6a499_320.mp4",
-    "download_authorized": false,
+    "download_authorized": true,
     "tags": [
       "darshana hridayam",
       "darshana",
@@ -1743,7 +1743,7 @@ window.CATALOGUE_SONGS = [
     ],
     "cover_url": "https://c.saavncdn.com/411/RDX-Malayalam-2023-20250130073151-500x500.jpg",
     "audio_url": "https://aac.saavncdn.com/411/b1fe94ac64a44fa8c0102f8ad25cdf17_320.mp4",
-    "download_authorized": false,
+    "download_authorized": true,
     "tags": [
       "neela nilave rdx",
       "sam c.s., kapil kapilan",
@@ -1767,7 +1767,7 @@ window.CATALOGUE_SONGS = [
     ],
     "cover_url": "https://c.saavncdn.com/934/Manjummel-Boys-Original-Motion-Picture-Soundtrack-Malayalam-2024-20250905071140-500x500.jpg",
     "audio_url": "https://aac.saavncdn.com/934/a907bd3ca1d14ac2b04b7ab10a0ddcd1_320.mp4",
-    "download_authorized": false,
+    "download_authorized": true,
     "tags": [
       "kuthanthram",
       "vedan, sushin shyam",
@@ -1791,7 +1791,7 @@ window.CATALOGUE_SONGS = [
     ],
     "cover_url": "https://c.saavncdn.com/993/Kumbalangi-Nights-Malayalam-2019-20260210193755-500x500.jpg",
     "audio_url": "https://aac.saavncdn.com/993/84d3c0a7f13ef6091b16a9c31c5540b2_320.mp4",
-    "download_authorized": false,
+    "download_authorized": true,
     "tags": [
       "sushin shyam, anwar ali, sithara krishnakumar",
       "cherathukal",
@@ -1815,7 +1815,7 @@ window.CATALOGUE_SONGS = [
     ],
     "cover_url": "https://c.saavncdn.com/499/Bheeshma-Parvam-Malayalam-2023-20230330102726-500x500.jpg",
     "audio_url": "https://aac.saavncdn.com/499/1149244e60de4f960b5ffb7e778ab751_320.mp4",
-    "download_authorized": false,
+    "download_authorized": true,
     "tags": [
       "bheeshma parvam",
       "parudeesa bheeshma parvam",
@@ -1839,7 +1839,7 @@ window.CATALOGUE_SONGS = [
     ],
     "cover_url": "https://c.saavncdn.com/140/Minnal-Murali-Malayalam-2021-20220118112804-500x500.jpg",
     "audio_url": "https://aac.saavncdn.com/140/0f6eef54bd866b2e167395b8591ebf69_320.mp4",
-    "download_authorized": false,
+    "download_authorized": true,
     "tags": [
       "thee minnal minnal murali",
       "thee minnal",
@@ -1863,7 +1863,7 @@ window.CATALOGUE_SONGS = [
     ],
     "cover_url": "https://c.saavncdn.com/276/Charlie-Malayalam-2015-500x500.jpg",
     "audio_url": "https://aac.saavncdn.com/276/f42b26601593f85ee5745627f6f94ec1_320.mp4",
-    "download_authorized": false,
+    "download_authorized": true,
     "tags": [
       "akale",
       "charlie",
@@ -1887,7 +1887,7 @@ window.CATALOGUE_SONGS = [
     ],
     "cover_url": "https://c.saavncdn.com/121/The-Goat-Life-Aadujeevitham-Malayalam-2024-20240320233642-500x500.jpg",
     "audio_url": "https://aac.saavncdn.com/121/94deb0a53e330dc3a5a5e00c1e1f5790_320.mp4",
-    "download_authorized": false,
+    "download_authorized": true,
     "tags": [
       "the goat life - aadujeevitham",
       "omane",
@@ -1911,7 +1911,7 @@ window.CATALOGUE_SONGS = [
     ],
     "cover_url": "https://c.saavncdn.com/143/Appadipodu-From-Gilli-Tamil-2026-20260207053745-500x500.jpg",
     "audio_url": "https://aac.saavncdn.com/143/0f30f2b7a52946a7cac8c4158b3d3dba_320.mp4",
-    "download_authorized": false,
+    "download_authorized": true,
     "tags": [
       "vidyasagar",
       "tamil",
@@ -1937,7 +1937,7 @@ window.CATALOGUE_SONGS = [
     ],
     "cover_url": "https://c.saavncdn.com/113/Mankatha-Tamil-2011-20190731133254-500x500.jpg",
     "audio_url": "https://aac.saavncdn.com/113/a2b08ff65f215cce75330bdba34d1cb7_320.mp4",
-    "download_authorized": false,
+    "download_authorized": true,
     "tags": [
       "tamil",
       "yuvan shankar raja",
@@ -1962,7 +1962,7 @@ window.CATALOGUE_SONGS = [
     ],
     "cover_url": "https://c.saavncdn.com/113/Mankatha-Tamil-2011-20190731133254-500x500.jpg",
     "audio_url": "https://aac.saavncdn.com/113/45bebe02da221b21d6c40d3127eeda67_320.mp4",
-    "download_authorized": false,
+    "download_authorized": true,
     "tags": [
       "tamil",
       "yuvan shankar raja",
@@ -1987,7 +1987,7 @@ window.CATALOGUE_SONGS = [
     ],
     "cover_url": "https://c.saavncdn.com/113/Mankatha-Tamil-2011-20190731133254-500x500.jpg",
     "audio_url": "https://aac.saavncdn.com/113/45e3f66d34ac990a6baf36f801541b3e_320.mp4",
-    "download_authorized": false,
+    "download_authorized": true,
     "tags": [
       "tamil",
       "vilayaadu mankatha (extended dance mix)",
@@ -2013,7 +2013,7 @@ window.CATALOGUE_SONGS = [
     ],
     "cover_url": "https://c.saavncdn.com/113/Mankatha-Tamil-2011-20190731133254-500x500.jpg",
     "audio_url": "https://aac.saavncdn.com/113/0a1eef3e716e79be8af20f11b2629a47_320.mp4",
-    "download_authorized": false,
+    "download_authorized": true,
     "tags": [
       "nanbane",
       "tamil",
@@ -2038,7 +2038,7 @@ window.CATALOGUE_SONGS = [
     ],
     "cover_url": "https://c.saavncdn.com/522/Love-Notes-by-Anirudh-Ravichander-Tamil-2026-20260605161958-500x500.jpg",
     "audio_url": "https://aac.saavncdn.com/522/0275a266c974272a8972e4f360d34caa_320.mp4",
-    "download_authorized": false,
+    "download_authorized": true,
     "tags": [
       "velicha poove (from \"ethir neechal\")",
       "tamil",
@@ -2065,7 +2065,7 @@ window.CATALOGUE_SONGS = [
     ],
     "cover_url": "https://c.saavncdn.com/632/Nandhavana-Theru-Tamil-1995-500x500.jpg",
     "audio_url": "https://aac.saavncdn.com/632/9ae00a2c0dab21d1008533a54071fece_320.mp4",
-    "download_authorized": false,
+    "download_authorized": true,
     "tags": [
       "tamil",
       "velli nilavea velli nilavea",
@@ -2091,7 +2091,7 @@ window.CATALOGUE_SONGS = [
     ],
     "cover_url": "https://c.saavncdn.com/268/Pudhu-Kavithai-Original-Motion-Picture-Soundtrack--Tamil-1982-20220113201840-500x500.jpg",
     "audio_url": "https://aac.saavncdn.com/268/f7d284ea5633c80d5c2307eebdf4608a_320.mp4",
-    "download_authorized": false,
+    "download_authorized": true,
     "tags": [
       "pudhu kavithai",
       "tamil",
@@ -2117,7 +2117,7 @@ window.CATALOGUE_SONGS = [
     ],
     "cover_url": "https://c.saavncdn.com/693/Mettukudi-Tamil-2016-20201124145530-500x500.jpg",
     "audio_url": "https://aac.saavncdn.com/693/002854f7eebeace484ac19714b9b06ea_320.mp4",
-    "download_authorized": false,
+    "download_authorized": true,
     "tags": [
       "velvetta velvetta",
       "tamil",
@@ -2143,7 +2143,7 @@ window.CATALOGUE_SONGS = [
     ],
     "cover_url": "https://c.saavncdn.com/870/Vel-Tamil-2007-20200518122213-500x500.jpg",
     "audio_url": "https://aac.saavncdn.com/870/7cf62d29ec02777f8abc29792ffd7df7_320.mp4",
-    "download_authorized": false,
+    "download_authorized": true,
     "tags": [
       "tamil",
       "kovakkara kiliye",
@@ -2168,7 +2168,7 @@ window.CATALOGUE_SONGS = [
     ],
     "cover_url": "https://c.saavncdn.com/672/Sivaji-Tamil-2022-20220413100451-500x500.jpg",
     "audio_url": "https://aac.saavncdn.com/672/3ed5f24dbf3c3a12ffb8cabdc73c8a27_320.mp4",
-    "download_authorized": false,
+    "download_authorized": true,
     "tags": [
       "hariharan, madhushree - sivaji",
       "tamil",
@@ -2193,7 +2193,7 @@ window.CATALOGUE_SONGS = [
     ],
     "cover_url": "https://c.saavncdn.com/672/Sivaji-Tamil-2022-20220413100451-500x500.jpg",
     "audio_url": "https://aac.saavncdn.com/672/b1eaadd551fb0042672de7e7d1fb9e93_320.mp4",
-    "download_authorized": false,
+    "download_authorized": true,
     "tags": [
       "a.r. rahman",
       "tamil",
@@ -2218,7 +2218,7 @@ window.CATALOGUE_SONGS = [
     ],
     "cover_url": "https://c.saavncdn.com/672/Sivaji-Tamil-2022-20220413100451-500x500.jpg",
     "audio_url": "https://aac.saavncdn.com/672/59aaf0fe9ff5afac99a49d60c47fc11f_320.mp4",
-    "download_authorized": false,
+    "download_authorized": true,
     "tags": [
       "tamil",
       "sahana saral thoo",
@@ -2243,7 +2243,7 @@ window.CATALOGUE_SONGS = [
     ],
     "cover_url": "https://c.saavncdn.com/672/Sivaji-Tamil-2022-20220413100451-500x500.jpg",
     "audio_url": "https://aac.saavncdn.com/672/246ff52f5c985b9c0a20608b1b88637a_320.mp4",
-    "download_authorized": false,
+    "download_authorized": true,
     "tags": [
       "adhareeni",
       "a.r.rahman, a.r. rahman",
@@ -2268,7 +2268,7 @@ window.CATALOGUE_SONGS = [
     ],
     "cover_url": "https://c.saavncdn.com/672/Sivaji-Tamil-2022-20220413100451-500x500.jpg",
     "audio_url": "https://aac.saavncdn.com/672/4a89b55317a5e9ac7bea99bf017348af_320.mp4",
-    "download_authorized": false,
+    "download_authorized": true,
     "tags": [
       "tamil",
       "a.r.rahman",
@@ -2293,7 +2293,7 @@ window.CATALOGUE_SONGS = [
     ],
     "cover_url": "https://c.saavncdn.com/658/Ayan-Tamil-2009-20261008052236-500x500.jpg",
     "audio_url": "https://aac.saavncdn.com/658/2c2e8862d13817dac90937a75a18a7e7_320.mp4",
-    "download_authorized": false,
+    "download_authorized": true,
     "tags": [
       "tamil",
       "harris jayaraj",
@@ -2318,7 +2318,7 @@ window.CATALOGUE_SONGS = [
     ],
     "cover_url": "https://c.saavncdn.com/658/Ayan-Tamil-2009-20261008052236-500x500.jpg",
     "audio_url": "https://aac.saavncdn.com/658/660d3ef7ca1d80091c683a7dbb1f48c7_320.mp4",
-    "download_authorized": false,
+    "download_authorized": true,
     "tags": [
       "tamil",
       "harris jayaraj",
@@ -2343,7 +2343,7 @@ window.CATALOGUE_SONGS = [
     ],
     "cover_url": "https://c.saavncdn.com/658/Ayan-Tamil-2009-20261008052236-500x500.jpg",
     "audio_url": "https://aac.saavncdn.com/658/705b934045e41c01ff7a79082c04be17_320.mp4",
-    "download_authorized": false,
+    "download_authorized": true,
     "tags": [
       "tamil",
       "harris jayaraj",
@@ -2368,7 +2368,7 @@ window.CATALOGUE_SONGS = [
     ],
     "cover_url": "https://c.saavncdn.com/658/Ayan-Tamil-2009-20261008052236-500x500.jpg",
     "audio_url": "https://aac.saavncdn.com/658/ee64144f2581d41f1a273dcb1e749818_320.mp4",
-    "download_authorized": false,
+    "download_authorized": true,
     "tags": [
       "tamil",
       "harris jayaraj",
@@ -2393,7 +2393,7 @@ window.CATALOGUE_SONGS = [
     ],
     "cover_url": "https://c.saavncdn.com/658/Ayan-Tamil-2009-20261008052236-500x500.jpg",
     "audio_url": "https://aac.saavncdn.com/658/ed22e69c915d19a7f8d28adaf0e26dc2_320.mp4",
-    "download_authorized": false,
+    "download_authorized": true,
     "tags": [
       "tamil",
       "harris jayaraj",
@@ -2418,7 +2418,7 @@ window.CATALOGUE_SONGS = [
     ],
     "cover_url": "https://c.saavncdn.com/822/POV-She-s-in-Love-Tamil-2026-20260814183122-500x500.jpg",
     "audio_url": "https://aac.saavncdn.com/822/cf6b663b93fb1713cc07eda8f6130e2c_320.mp4",
-    "download_authorized": false,
+    "download_authorized": true,
     "tags": [
       "vaaranam aayiram",
       "pov: she's in love",
@@ -2445,7 +2445,7 @@ window.CATALOGUE_SONGS = [
     ],
     "cover_url": "https://c.saavncdn.com/196/The-Love-Diaries-of-Rahman-Harris-Tamil-2026-20260612153757-500x500.jpg",
     "audio_url": "https://aac.saavncdn.com/196/defaad2c1d4e38cfd6d2004f1c4fe860_320.mp4",
-    "download_authorized": false,
+    "download_authorized": true,
     "tags": [
       "vaaranam aayiram",
       "the love diaries of rahman & harris",
@@ -2472,7 +2472,7 @@ window.CATALOGUE_SONGS = [
     ],
     "cover_url": "https://c.saavncdn.com/229/Harris-Jayaraj-Love-Beats-Tamil-2026-20260925163806-500x500.jpg",
     "audio_url": "https://aac.saavncdn.com/229/7f0d86a989d74a237b047bef73cde951_320.mp4",
-    "download_authorized": false,
+    "download_authorized": true,
     "tags": [
       "vaaranam aayiram",
       "adiyae kolluthey (from ''vaaranam aayiram'')",
@@ -2499,7 +2499,7 @@ window.CATALOGUE_SONGS = [
     ],
     "cover_url": "https://c.saavncdn.com/880/Vinnaithaandi-Varuvaayaa-Tamil-2010-20260120201226-500x500.jpg",
     "audio_url": "https://aac.saavncdn.com/880/9d7a6106cef53e28c144752d41e68db7_320.mp4",
-    "download_authorized": false,
+    "download_authorized": true,
     "tags": [
       "a.r. rahman",
       "tamil",
@@ -2523,7 +2523,7 @@ window.CATALOGUE_SONGS = [
     ],
     "cover_url": "https://c.saavncdn.com/880/Vinnaithaandi-Varuvaayaa-Tamil-2010-20260120201226-500x500.jpg",
     "audio_url": "https://aac.saavncdn.com/880/4927b38215013ed6e2329a6ccd8111e2_320.mp4",
-    "download_authorized": false,
+    "download_authorized": true,
     "tags": [
       "a.r. rahman",
       "tamil",
@@ -2548,7 +2548,7 @@ window.CATALOGUE_SONGS = [
     ],
     "cover_url": "https://c.saavncdn.com/880/Vinnaithaandi-Varuvaayaa-Tamil-2010-20260120201226-500x500.jpg",
     "audio_url": "https://aac.saavncdn.com/880/42c2865fcf3f2744c3131d8548e41e29_320.mp4",
-    "download_authorized": false,
+    "download_authorized": true,
     "tags": [
       "a.r. rahman",
       "tamil",
@@ -2573,7 +2573,7 @@ window.CATALOGUE_SONGS = [
     ],
     "cover_url": "https://c.saavncdn.com/880/Vinnaithaandi-Varuvaayaa-Tamil-2010-20260120201226-500x500.jpg",
     "audio_url": "https://aac.saavncdn.com/880/f67d1e7ef417ce4c37b4370d161d2312_320.mp4",
-    "download_authorized": false,
+    "download_authorized": true,
     "tags": [
       "a.r. rahman",
       "tamil",
@@ -2598,7 +2598,7 @@ window.CATALOGUE_SONGS = [
     ],
     "cover_url": "https://c.saavncdn.com/880/Vinnaithaandi-Varuvaayaa-Tamil-2010-20260120201226-500x500.jpg",
     "audio_url": "https://aac.saavncdn.com/880/5638232aeda02badfb3d1c1d4a5385b3_320.mp4",
-    "download_authorized": false,
+    "download_authorized": true,
     "tags": [
       "a.r. rahman",
       "tamil",
@@ -2623,7 +2623,7 @@ window.CATALOGUE_SONGS = [
     ],
     "cover_url": "https://c.saavncdn.com/780/In-the-Words-of-Na-Muthukumar-Tamil-2026-20260821175353-500x500.jpg",
     "audio_url": "https://aac.saavncdn.com/780/182f2fa70faaf19d328b8c0f36e15c10_320.mp4",
-    "download_authorized": false,
+    "download_authorized": true,
     "tags": [
       "in the words of na. muthukumar",
       "thuli thuli",
@@ -2650,7 +2650,7 @@ window.CATALOGUE_SONGS = [
     ],
     "cover_url": "https://c.saavncdn.com/780/In-the-Words-of-Na-Muthukumar-Tamil-2026-20260821175353-500x500.jpg",
     "audio_url": "https://aac.saavncdn.com/780/0a51878dd89c033aff57100c5523cf3d_320.mp4",
-    "download_authorized": false,
+    "download_authorized": true,
     "tags": [
       "en kadhal solla (from ''paiyaa'')",
       "in the words of na. muthukumar",
@@ -2677,7 +2677,7 @@ window.CATALOGUE_SONGS = [
     ],
     "cover_url": "https://c.saavncdn.com/661/The-Magic-of-Yuvan-Shankar-Raja-Tamil-2026-20260724105122-500x500.jpg",
     "audio_url": "https://aac.saavncdn.com/661/aa23befd44a05dc13e5f850eb5a467fa_320.mp4",
-    "download_authorized": false,
+    "download_authorized": true,
     "tags": [
       "tamil",
       "the magic of yuvan shankar raja",
@@ -2704,7 +2704,7 @@ window.CATALOGUE_SONGS = [
     ],
     "cover_url": "https://c.saavncdn.com/780/In-the-Words-of-Na-Muthukumar-Tamil-2026-20260821175353-500x500.jpg",
     "audio_url": "https://aac.saavncdn.com/780/0af97c7ea4340d84e826bd8853f86d8a_320.mp4",
-    "download_authorized": false,
+    "download_authorized": true,
     "tags": [
       "poongatre poongatre (from ''paiyaa'')",
       "in the words of na. muthukumar",
@@ -2731,7 +2731,7 @@ window.CATALOGUE_SONGS = [
     ],
     "cover_url": "https://c.saavncdn.com/872/Amaran-Tamil-Tamil-2024-20241119174100-500x500.jpg",
     "audio_url": "https://aac.saavncdn.com/872/d9f7fc1e9eccbcc9f9809e6791fd33ff_320.mp4",
-    "download_authorized": false,
+    "download_authorized": true,
     "tags": [
       "amaran (tamil)",
       "g.v. prakash kumar, haricharan, shweta mohan, karthik netha",
@@ -2757,7 +2757,7 @@ window.CATALOGUE_SONGS = [
     ],
     "cover_url": "https://c.saavncdn.com/872/Amaran-Tamil-Tamil-2024-20241119174100-500x500.jpg",
     "audio_url": "https://aac.saavncdn.com/872/e83e4b73ae86404e9a2bc49e1022160c_320.mp4",
-    "download_authorized": false,
+    "download_authorized": true,
     "tags": [
       "amaran (tamil)",
       "uyirey",
@@ -2783,7 +2783,7 @@ window.CATALOGUE_SONGS = [
     ],
     "cover_url": "https://c.saavncdn.com/872/Amaran-Tamil-Tamil-2024-20241119174100-500x500.jpg",
     "audio_url": "https://aac.saavncdn.com/872/5f2576ca5d42de6dba847c43f2a0e020_320.mp4",
-    "download_authorized": false,
+    "download_authorized": true,
     "tags": [
       "amaran (tamil)",
       "g.v. prakash kumar, kapil kapilan, rakshita suresh, yugabharathi",
@@ -2809,7 +2809,7 @@ window.CATALOGUE_SONGS = [
     ],
     "cover_url": "https://c.saavncdn.com/872/Amaran-Tamil-Tamil-2024-20241119174100-500x500.jpg",
     "audio_url": "https://aac.saavncdn.com/872/3dc4941cb2556fc9cab1bf93ff568e98_320.mp4",
-    "download_authorized": false,
+    "download_authorized": true,
     "tags": [
       "amaran (tamil)",
       "tamil",
@@ -2835,7 +2835,7 @@ window.CATALOGUE_SONGS = [
     ],
     "cover_url": "https://c.saavncdn.com/872/Amaran-Tamil-Tamil-2024-20241119174100-500x500.jpg",
     "audio_url": "https://aac.saavncdn.com/872/3115184379bb8b5a4fc2b99a70954f90_320.mp4",
-    "download_authorized": false,
+    "download_authorized": true,
     "tags": [
       "amaran (tamil)",
       "vaane vaane",
@@ -2861,7 +2861,7 @@ window.CATALOGUE_SONGS = [
     ],
     "cover_url": "https://c.saavncdn.com/238/Thiruchitrambalam-Tamil-2022-20220927091058-500x500.jpg",
     "audio_url": "https://aac.saavncdn.com/238/2711c742e89bb1c54121ab64ae2423e9_320.mp4",
-    "download_authorized": false,
+    "download_authorized": true,
     "tags": [
       "thenmozhi",
       "santhosh narayanan, dhanush, anirudh ravichander",
@@ -2886,7 +2886,7 @@ window.CATALOGUE_SONGS = [
     ],
     "cover_url": "https://c.saavncdn.com/238/Thiruchitrambalam-Tamil-2022-20220927091058-500x500.jpg",
     "audio_url": "https://aac.saavncdn.com/238/634dc4c3ebb417a16df268c85677462b_320.mp4",
-    "download_authorized": false,
+    "download_authorized": true,
     "tags": [
       "anirudh ravichander, vivek",
       "life of pazham",
@@ -2911,7 +2911,7 @@ window.CATALOGUE_SONGS = [
     ],
     "cover_url": "https://c.saavncdn.com/238/Thiruchitrambalam-Tamil-2022-20220927091058-500x500.jpg",
     "audio_url": "https://aac.saavncdn.com/238/32ed8b279bd3802539276b51fb8e310e_320.mp4",
-    "download_authorized": false,
+    "download_authorized": true,
     "tags": [
       "dhanush, anirudh ravichander",
       "tamil",
@@ -2936,7 +2936,7 @@ window.CATALOGUE_SONGS = [
     ],
     "cover_url": "https://c.saavncdn.com/238/Thiruchitrambalam-Tamil-2022-20220927091058-500x500.jpg",
     "audio_url": "https://aac.saavncdn.com/238/5d3f6c3a0e36f2a191ca4f5fa6790848_320.mp4",
-    "download_authorized": false,
+    "download_authorized": true,
     "tags": [
       "mayakkama kalakkama",
       "dhanush, anirudh ravichander",
@@ -2961,7 +2961,7 @@ window.CATALOGUE_SONGS = [
     ],
     "cover_url": "https://c.saavncdn.com/522/Love-Notes-by-Anirudh-Ravichander-Tamil-2026-20260605161958-500x500.jpg",
     "audio_url": "https://aac.saavncdn.com/522/e4ae6954689a74ea2ee9a56f08d167ae_320.mp4",
-    "download_authorized": false,
+    "download_authorized": true,
     "tags": [
       "hits",
       "naan pizhai (from \"kaathuvaakula rendu kaadhal\")",
@@ -2988,7 +2988,7 @@ window.CATALOGUE_SONGS = [
     ],
     "cover_url": "https://c.saavncdn.com/403/Kaathuvaakula-Rendu-Kaadhal-Original-Motion-Picture-Soundtrack-Tamil-2022-20220428131043-500x500.jpg",
     "audio_url": "https://aac.saavncdn.com/403/e356a65cd62bb57e0dba0a8d46254e8d_320.mp4",
-    "download_authorized": false,
+    "download_authorized": true,
     "tags": [
       "rendu kaadhal",
       "tamil",
@@ -3013,7 +3013,7 @@ window.CATALOGUE_SONGS = [
     ],
     "cover_url": "https://c.saavncdn.com/250/Neeyum-Naanum-Original-Motion-Picture-Soundtrack-Tamil-2018-20251024173032-500x500.jpg",
     "audio_url": "https://aac.saavncdn.com/250/edc255665840a33e2b0ebf69b9f3fc72_320.mp4",
-    "download_authorized": false,
+    "download_authorized": true,
     "tags": [
       "yaanji",
       "vikram vedha",
@@ -3040,7 +3040,7 @@ window.CATALOGUE_SONGS = [
     ],
     "cover_url": "https://c.saavncdn.com/037/Arunachalam-Tamil-1997-20201214100424-500x500.jpg",
     "audio_url": "https://aac.saavncdn.com/037/0d2a8b25ea52acc5f9d7290c96ee9e55_320.mp4",
-    "download_authorized": false,
+    "download_authorized": true,
     "tags": [
       "arunachalam",
       "tamil",
@@ -3066,7 +3066,7 @@ window.CATALOGUE_SONGS = [
     ],
     "cover_url": "https://c.saavncdn.com/037/Arunachalam-Tamil-1997-20201214100424-500x500.jpg",
     "audio_url": "https://aac.saavncdn.com/037/b590ae7331b52fcad94eafce4dac326a_320.mp4",
-    "download_authorized": false,
+    "download_authorized": true,
     "tags": [
       "arunachalam",
       "tamil",
@@ -3092,7 +3092,7 @@ window.CATALOGUE_SONGS = [
     ],
     "cover_url": "https://c.saavncdn.com/037/Arunachalam-Tamil-1997-20201214100424-500x500.jpg",
     "audio_url": "https://aac.saavncdn.com/037/b6a15849e13b11fd4622588de7e66cda_320.mp4",
-    "download_authorized": false,
+    "download_authorized": true,
     "tags": [
       "arunachalam",
       "athanda ithanda",
@@ -3118,7 +3118,7 @@ window.CATALOGUE_SONGS = [
     ],
     "cover_url": "https://c.saavncdn.com/037/Arunachalam-Tamil-1997-20201214100424-500x500.jpg",
     "audio_url": "https://aac.saavncdn.com/037/fcdc5f3fdb12ce59b0100390eb0d30ee_320.mp4",
-    "download_authorized": false,
+    "download_authorized": true,
     "tags": [
       "arunachalam",
       "tamil",
@@ -3144,7 +3144,7 @@ window.CATALOGUE_SONGS = [
     ],
     "cover_url": "https://c.saavncdn.com/192/Arangetra-Velai-Original-Motion-Picture-Soundtrack--Tamil-1990-20220114114102-500x500.jpg",
     "audio_url": "https://aac.saavncdn.com/192/8141361282d4d88adabd86a6d2918ddc_320.mp4",
-    "download_authorized": false,
+    "download_authorized": true,
     "tags": [
       "tamil",
       "ilaiyaraaja",
@@ -3170,7 +3170,7 @@ window.CATALOGUE_SONGS = [
     ],
     "cover_url": "https://c.saavncdn.com/448/Karthik-Melody-Hits-Tamil-2025-20260421163629-500x500.jpg",
     "audio_url": "https://aac.saavncdn.com/448/d33c1e133afbd7e77c5346c300b8045e_320.mp4",
-    "download_authorized": false,
+    "download_authorized": true,
     "tags": [
       "anbe sivam",
       "vidyasagar",
@@ -3195,7 +3195,7 @@ window.CATALOGUE_SONGS = [
     ],
     "cover_url": "https://c.saavncdn.com/752/Mudhalvan-1999-500x500.jpg",
     "audio_url": "https://aac.saavncdn.com/833/973725c928ad80788a174415cd3dd747_320.mp4",
-    "download_authorized": false,
+    "download_authorized": true,
     "tags": [
       "a.r. rahman",
       "mudhalvanae",
@@ -3220,7 +3220,7 @@ window.CATALOGUE_SONGS = [
     ],
     "cover_url": "https://c.saavncdn.com/070/Jeans-1998-500x500.jpg",
     "audio_url": "https://aac.saavncdn.com/744/1cbf2fddcff826b0c074b708db1692e8_320.mp4",
-    "download_authorized": false,
+    "download_authorized": true,
     "tags": [
       "jeans",
       "a.r. rahman",
@@ -3245,7 +3245,7 @@ window.CATALOGUE_SONGS = [
     ],
     "cover_url": "https://c.saavncdn.com/070/Jeans-1998-500x500.jpg",
     "audio_url": "https://aac.saavncdn.com/744/ef87614c30342e64375a4977a31bbb4e_320.mp4",
-    "download_authorized": false,
+    "download_authorized": true,
     "tags": [
       "jeans",
       "a.r. rahman",
@@ -3270,7 +3270,7 @@ window.CATALOGUE_SONGS = [
     ],
     "cover_url": "https://c.saavncdn.com/070/Jeans-1998-500x500.jpg",
     "audio_url": "https://aac.saavncdn.com/744/0713bd5614bf07aa31faa97710e48bb5_320.mp4",
-    "download_authorized": false,
+    "download_authorized": true,
     "tags": [
       "jeans",
       "a.r. rahman",
@@ -3295,7 +3295,7 @@ window.CATALOGUE_SONGS = [
     ],
     "cover_url": "https://c.saavncdn.com/070/Jeans-1998-500x500.jpg",
     "audio_url": "https://aac.saavncdn.com/744/9b042acec49940b9551dc24e117f6487_320.mp4",
-    "download_authorized": false,
+    "download_authorized": true,
     "tags": [
       "jeans",
       "kannuodu kaanbadhalam",
@@ -3320,7 +3320,7 @@ window.CATALOGUE_SONGS = [
     ],
     "cover_url": "https://c.saavncdn.com/736/Indian-2-Original-Motion-Picture-Soundtrack-Tamil-2024-20240611104646-500x500.jpg",
     "audio_url": "https://aac.saavncdn.com/736/1919e10452fa8eefefb865d3ce4c6230_320.mp4",
-    "download_authorized": false,
+    "download_authorized": true,
     "tags": [
       "come back indian",
       "tamil",
@@ -3346,7 +3346,7 @@ window.CATALOGUE_SONGS = [
     ],
     "cover_url": "https://c.saavncdn.com/771/Lingaa-Tamil-Tamil-2025-20250930143945-500x500.jpg",
     "audio_url": "https://aac.saavncdn.com/771/ad8ef956338d9b88071e88443ebf97b8_320.mp4",
-    "download_authorized": false,
+    "download_authorized": true,
     "tags": [
       "a.r. rahman",
       "indiane vaa",
@@ -3372,7 +3372,7 @@ window.CATALOGUE_SONGS = [
     ],
     "cover_url": "https://c.saavncdn.com/467/Indian-Tamil-1996-20251121224938-500x500.jpg",
     "audio_url": "https://aac.saavncdn.com/467/8f7e21099773cbfc0e50032f7b908dd2_320.mp4",
-    "download_authorized": false,
+    "download_authorized": true,
     "tags": [
       "tamil",
       "indian",
@@ -3397,7 +3397,7 @@ window.CATALOGUE_SONGS = [
     ],
     "cover_url": "https://c.saavncdn.com/736/Indian-2-Original-Motion-Picture-Soundtrack-Tamil-2024-20240611104646-500x500.jpg",
     "audio_url": "https://aac.saavncdn.com/736/75a98820c472a1dc5e5908d4a98fb358_320.mp4",
-    "download_authorized": false,
+    "download_authorized": true,
     "tags": [
       "tamil",
       "indian",
@@ -3423,7 +3423,7 @@ window.CATALOGUE_SONGS = [
     ],
     "cover_url": "https://c.saavncdn.com/467/Indian-Tamil-1996-20251121224938-500x500.jpg",
     "audio_url": "https://aac.saavncdn.com/467/826baabb5ee77a4fbc6b5975b6f6f2ac_320.mp4",
-    "download_authorized": false,
+    "download_authorized": true,
     "tags": [
       "tamil",
       "maaya machindhra",
@@ -3448,7 +3448,7 @@ window.CATALOGUE_SONGS = [
     ],
     "cover_url": "https://c.saavncdn.com/274/Anegan-Tamil-2014-20190822152158-500x500.jpg",
     "audio_url": "https://aac.saavncdn.com/274/6ce33c60d3e3b69617b3a6c757ddea2b_320.mp4",
-    "download_authorized": false,
+    "download_authorized": true,
     "tags": [
       "roja",
       "roja kadale",
@@ -3474,7 +3474,7 @@ window.CATALOGUE_SONGS = [
     ],
     "cover_url": "https://c.saavncdn.com/074/Isai-Sangamam-Tamil-2026-20260207053735-500x500.jpg",
     "audio_url": "https://aac.saavncdn.com/074/e4e2ba41e09e7d11b9ef84a503656203_320.mp4",
-    "download_authorized": false,
+    "download_authorized": true,
     "tags": [
       "roja",
       "a.r. rahman",
@@ -3501,7 +3501,7 @@ window.CATALOGUE_SONGS = [
     ],
     "cover_url": "https://c.saavncdn.com/596/Bombay-Tamil-2016-500x500.jpg",
     "audio_url": "https://aac.saavncdn.com/596/0a4a5972ac4eaaf04e3104f8241d2afa_320.mp4",
-    "download_authorized": false,
+    "download_authorized": true,
     "tags": [
       "bombay (theme) (version 1)",
       "tamil",
@@ -3526,7 +3526,7 @@ window.CATALOGUE_SONGS = [
     ],
     "cover_url": "https://c.saavncdn.com/596/Bombay-Tamil-2016-500x500.jpg",
     "audio_url": "https://aac.saavncdn.com/596/75ea5ae1526d57abcde36bc63db76776_320.mp4",
-    "download_authorized": false,
+    "download_authorized": true,
     "tags": [
       "tamil",
       "bombay (theme) (version 2)",
@@ -3551,7 +3551,7 @@ window.CATALOGUE_SONGS = [
     ],
     "cover_url": "https://c.saavncdn.com/012/Rasigan-Tamil-1970-20180503104237-500x500.jpg",
     "audio_url": "https://aac.saavncdn.com/012/95ce80c744a24af5591f9cba1b9c2cc8_320.mp4",
-    "download_authorized": false,
+    "download_authorized": true,
     "tags": [
       "tamil",
       "bombay city",
@@ -3577,7 +3577,7 @@ window.CATALOGUE_SONGS = [
     ],
     "cover_url": "https://c.saavncdn.com/892/Vedi-Original-Motion-Picture-Soundtrack-Tamil-2011-20250910162230-500x500.jpg",
     "audio_url": "https://aac.saavncdn.com/892/2135f81590a4777df6ddfd20cf44893b_320.mp4",
-    "download_authorized": false,
+    "download_authorized": true,
     "tags": [
       "tamil",
       "vijay antony, mamtha sharma, m. l. r. karthikeyan, senthil dass",
@@ -3603,7 +3603,7 @@ window.CATALOGUE_SONGS = [
     ],
     "cover_url": "https://c.saavncdn.com/596/Bombay-Tamil-2016-500x500.jpg",
     "audio_url": "https://aac.saavncdn.com/596/c16a01ccd82e5d94b43b02007b711bb6_320.mp4",
-    "download_authorized": false,
+    "download_authorized": true,
     "tags": [
       "tamil",
       "kannalanae",
@@ -3628,7 +3628,7 @@ window.CATALOGUE_SONGS = [
     ],
     "cover_url": "https://c.saavncdn.com/136/Padayppa-1999-500x500.jpg",
     "audio_url": "https://aac.saavncdn.com/625/5f3115a1b38828b1515905ffee1a9466_320.mp4",
-    "download_authorized": false,
+    "download_authorized": true,
     "tags": [
       "a.r. rahman",
       "tamil",
@@ -3653,7 +3653,7 @@ window.CATALOGUE_SONGS = [
     ],
     "cover_url": "https://c.saavncdn.com/136/Padayppa-1999-500x500.jpg",
     "audio_url": "https://aac.saavncdn.com/625/66686136355c96c28fa7251684a265dc_320.mp4",
-    "download_authorized": false,
+    "download_authorized": true,
     "tags": [
       "minsara kanna",
       "a.r. rahman",
@@ -3678,7 +3678,7 @@ window.CATALOGUE_SONGS = [
     ],
     "cover_url": "https://c.saavncdn.com/136/Padayppa-1999-500x500.jpg",
     "audio_url": "https://aac.saavncdn.com/625/d7407e2ed2097c83d2945a262556c748_320.mp4",
-    "download_authorized": false,
+    "download_authorized": true,
     "tags": [
       "a.r. rahman",
       "empearu padaiyappa",
@@ -3703,7 +3703,7 @@ window.CATALOGUE_SONGS = [
     ],
     "cover_url": "https://c.saavncdn.com/136/Padayppa-1999-500x500.jpg",
     "audio_url": "https://aac.saavncdn.com/625/e718822523d622c7d1d6d55e0a1fa571_320.mp4",
-    "download_authorized": false,
+    "download_authorized": true,
     "tags": [
       "a.r. rahman",
       "tamil",
@@ -3728,7 +3728,7 @@ window.CATALOGUE_SONGS = [
     ],
     "cover_url": "https://c.saavncdn.com/136/Padayppa-1999-500x500.jpg",
     "audio_url": "https://aac.saavncdn.com/625/b2ccef0e9e72f947558bc481a6a47af4_320.mp4",
-    "download_authorized": false,
+    "download_authorized": true,
     "tags": [
       "kikku aerudae",
       "a.r. rahman",
@@ -3753,7 +3753,7 @@ window.CATALOGUE_SONGS = [
     ],
     "cover_url": "https://c.saavncdn.com/606/Baashha-BGM-Tamil-2023-20251230133307-500x500.jpg",
     "audio_url": "https://aac.saavncdn.com/606/0033b31a5471c18786907f1ab1374f98_320.mp4",
-    "download_authorized": false,
+    "download_authorized": true,
     "tags": [
       "baashha",
       "tamil",
@@ -3778,7 +3778,7 @@ window.CATALOGUE_SONGS = [
     ],
     "cover_url": "https://c.saavncdn.com/995/Baasha-Tamil-1995-20260114164427-500x500.jpg",
     "audio_url": "https://aac.saavncdn.com/995/a9bc89336ba19531d66688cea140488f_320.mp4",
-    "download_authorized": false,
+    "download_authorized": true,
     "tags": [
       "baashha",
       "tamil",
@@ -3804,7 +3804,7 @@ window.CATALOGUE_SONGS = [
     ],
     "cover_url": "https://c.saavncdn.com/533/Baashha-Tamil-2021-20210304085029-500x500.jpg",
     "audio_url": "https://aac.saavncdn.com/533/07594d39415bb2c46f5072286f308efc_320.mp4",
-    "download_authorized": false,
+    "download_authorized": true,
     "tags": [
       "dj ganesh from paris, ramin ganeche",
       "baashha",
@@ -3828,7 +3828,7 @@ window.CATALOGUE_SONGS = [
     ],
     "cover_url": "https://c.saavncdn.com/995/Baasha-Tamil-1995-20260114164427-500x500.jpg",
     "audio_url": "https://aac.saavncdn.com/995/a650e9682fb2da7622e69fbb1b829a06_320.mp4",
-    "download_authorized": false,
+    "download_authorized": true,
     "tags": [
       "baashha",
       "tamil",
@@ -3854,7 +3854,7 @@ window.CATALOGUE_SONGS = [
     ],
     "cover_url": "https://c.saavncdn.com/084/Anbil-Avan-Original-Motion-Picture-Soundtrack-Tamil-2026-20260930181329-500x500.jpg",
     "audio_url": "https://aac.saavncdn.com/084/cf32c932c4376d740242c3b588c25619_320.mp4",
-    "download_authorized": false,
+    "download_authorized": true,
     "tags": [
       "anbil avan (original motion picture soundtrack)",
       "baashha",
@@ -3880,7 +3880,7 @@ window.CATALOGUE_SONGS = [
     ],
     "cover_url": "https://c.saavncdn.com/886/Muthumani-From-Dorothy-Tamil-2026-20260829092955-500x500.jpg",
     "audio_url": "https://aac.saavncdn.com/886/68e33d40a68a8d59fdf0d1965f8ddf8b_320.mp4",
-    "download_authorized": false,
+    "download_authorized": true,
     "tags": [
       "tamil",
       "ilaiyaraaja",
@@ -3906,7 +3906,7 @@ window.CATALOGUE_SONGS = [
     ],
     "cover_url": "https://c.saavncdn.com/187/Jailer-Tamil-2023-20230728081443-500x500.jpg",
     "audio_url": "https://aac.saavncdn.com/187/a0e327c0819275558e5f0520de62ac49_320.mp4",
-    "download_authorized": false,
+    "download_authorized": true,
     "tags": [
       "jailer",
       "tamil",
@@ -3932,7 +3932,7 @@ window.CATALOGUE_SONGS = [
     ],
     "cover_url": "https://c.saavncdn.com/174/Isaiyil-Kadhal-Tamil-2026-20260831193455-500x500.jpg",
     "audio_url": "https://aac.saavncdn.com/174/533df6d1131d5e1101e2b7539b23d424_320.mp4",
-    "download_authorized": false,
+    "download_authorized": true,
     "tags": [
       "tamil",
       "isaiyil kadhal",
@@ -3958,7 +3958,7 @@ window.CATALOGUE_SONGS = [
     ],
     "cover_url": "https://c.saavncdn.com/663/Enthiran-Original-Background-Score-Unknown-2018-20250905072508-500x500.jpg",
     "audio_url": "https://aac.saavncdn.com/663/68c55b31d3a670ed20f373bcc5324c84_320.mp4",
-    "download_authorized": false,
+    "download_authorized": true,
     "tags": [
       "a.r. rahman",
       "tamil",
@@ -3983,7 +3983,7 @@ window.CATALOGUE_SONGS = [
     ],
     "cover_url": "https://c.saavncdn.com/456/Enthiran-Tamil-2010-500x500.jpg",
     "audio_url": "https://aac.saavncdn.com/456/884a596bd61f6e06b35def2fbe12f323_320.mp4",
-    "download_authorized": false,
+    "download_authorized": true,
     "tags": [
       "arima arima",
       "a.r. rahman",
@@ -4008,7 +4008,7 @@ window.CATALOGUE_SONGS = [
     ],
     "cover_url": "https://c.saavncdn.com/398/We-Love-Chinmayi-Sripaada-Tamil-2018-20260519152146-500x500.jpg",
     "audio_url": "https://aac.saavncdn.com/398/1fb9e5a09086d6cd06febe82b7401110_320.mp4",
-    "download_authorized": false,
+    "download_authorized": true,
     "tags": [
       "we love chinmayi sripaada",
       "a.r. rahman",
@@ -4035,7 +4035,7 @@ window.CATALOGUE_SONGS = [
     ],
     "cover_url": "https://c.saavncdn.com/415/Leo-Original-Motion-Picture-Soundtrack-English-2023-20231019170311-500x500.jpg",
     "audio_url": "https://aac.saavncdn.com/415/37c60aa27b569c5fb8d1ca651599b0ee_320.mp4",
-    "download_authorized": false,
+    "download_authorized": true,
     "tags": [
       "lokiverse 2.0",
       "tamil",
@@ -4061,7 +4061,7 @@ window.CATALOGUE_SONGS = [
     ],
     "cover_url": "https://c.saavncdn.com/295/2-0-Tamil-Original-Motion-Picture-Soundtrack-Tamil-2017-20250307180101-500x500.jpg",
     "audio_url": "https://aac.saavncdn.com/295/fac334ccb206512cf1bdb9b39c29fc0d_320.mp4",
-    "download_authorized": false,
+    "download_authorized": true,
     "tags": [
       "tamil",
       "2.0 (tamil) [original motion picture soundtrack]",
@@ -4088,7 +4088,7 @@ window.CATALOGUE_SONGS = [
     ],
     "cover_url": "https://c.saavncdn.com/506/Kabali-Original-Motion-Picture-Soundtrack-Tamil-2016-20250905072302-500x500.jpg",
     "audio_url": "https://aac.saavncdn.com/911/2be21a604ece5e79ed75f5bd21043c5d_320.mp4",
-    "download_authorized": false,
+    "download_authorized": true,
     "tags": [
       "santhosh narayanan",
       "kabali",
@@ -4114,7 +4114,7 @@ window.CATALOGUE_SONGS = [
     ],
     "cover_url": "https://c.saavncdn.com/196/The-Swag-Mix-Tamil-2017-20260515204252-500x500.jpg",
     "audio_url": "https://aac.saavncdn.com/196/73f9f35370be41ab9a516677c009d8b0_320.mp4",
-    "download_authorized": false,
+    "download_authorized": true,
     "tags": [
       "santhosh narayanan",
       "kabali",
@@ -4141,7 +4141,7 @@ window.CATALOGUE_SONGS = [
     ],
     "cover_url": "https://c.saavncdn.com/237/Kaala-Tamil-Tamil-2018-20251210013452-500x500.jpg",
     "audio_url": "https://aac.saavncdn.com/237/ed5f6aaf8fa4144937ab0c7b76e938da_320.mp4",
-    "download_authorized": false,
+    "download_authorized": true,
     "tags": [
       "tamil",
       "kaala",
@@ -4167,7 +4167,7 @@ window.CATALOGUE_SONGS = [
     ],
     "cover_url": "https://c.saavncdn.com/237/Kaala-Tamil-Tamil-2018-20251210013452-500x500.jpg",
     "audio_url": "https://aac.saavncdn.com/237/5eccdbdbf151e4362995bd253ea710cc_320.mp4",
-    "download_authorized": false,
+    "download_authorized": true,
     "tags": [
       "thanga sela",
       "tamil",
@@ -4193,7 +4193,7 @@ window.CATALOGUE_SONGS = [
     ],
     "cover_url": "https://c.saavncdn.com/237/Kaala-Tamil-Tamil-2018-20251210013452-500x500.jpg",
     "audio_url": "https://aac.saavncdn.com/237/ede8b26d093c875b424f27d4379bc66d_320.mp4",
-    "download_authorized": false,
+    "download_authorized": true,
     "tags": [
       "kaala (tamil) teaser theme",
       "tamil",
@@ -4219,7 +4219,7 @@ window.CATALOGUE_SONGS = [
     ],
     "cover_url": "https://c.saavncdn.com/237/Kaala-Tamil-Tamil-2018-20251210013452-500x500.jpg",
     "audio_url": "https://aac.saavncdn.com/237/4db3b4b3896f766f4bfc40d9584904d7_320.mp4",
-    "download_authorized": false,
+    "download_authorized": true,
     "tags": [
       "tamil",
       "kaala",
@@ -4245,7 +4245,7 @@ window.CATALOGUE_SONGS = [
     ],
     "cover_url": "https://c.saavncdn.com/237/Kaala-Tamil-Tamil-2018-20251210013452-500x500.jpg",
     "audio_url": "https://aac.saavncdn.com/237/76b8dafc49717630d47e409188815a44_320.mp4",
-    "download_authorized": false,
+    "download_authorized": true,
     "tags": [
       "semma weightu",
       "harihara sudhan, santhosh narayanan, arunraja kamaraj, dope daddy, stony psyko, mc mawali, dopeadelicz, logan",
@@ -4271,7 +4271,7 @@ window.CATALOGUE_SONGS = [
     ],
     "cover_url": "https://c.saavncdn.com/687/Thiruvilayadal-Arambam-Tamil-2006-20190517115223-500x500.jpg",
     "audio_url": "https://aac.saavncdn.com/687/07591d7ccaad0e39daea35d303d633ce_sar_320.mp4\b\b\b\b\b\b\b\b",
-    "download_authorized": false,
+    "download_authorized": true,
     "tags": [
       "thiruvilayadal arambam",
       "theriyaama parthuputen",
@@ -4297,7 +4297,7 @@ window.CATALOGUE_SONGS = [
     ],
     "cover_url": "https://c.saavncdn.com/323/Vedalam-Tamil-2015-20260120201356-500x500.jpg",
     "audio_url": "https://aac.saavncdn.com/323/48650d90028cdafa6674fff4df67de33_320.mp4",
-    "download_authorized": false,
+    "download_authorized": true,
     "tags": [
       "tamil",
       "the theri theme",
@@ -4323,7 +4323,7 @@ window.CATALOGUE_SONGS = [
     ],
     "cover_url": "https://c.saavncdn.com/250/Neeyum-Naanum-Original-Motion-Picture-Soundtrack-Tamil-2018-20251024173032-500x500.jpg",
     "audio_url": "https://aac.saavncdn.com/250/bc4b5af0ea5937687f0a48a58e91b983_320.mp4",
-    "download_authorized": false,
+    "download_authorized": true,
     "tags": [
       "en jeevan (from \"theri\")",
       "tamil",
@@ -4350,7 +4350,7 @@ window.CATALOGUE_SONGS = [
     ],
     "cover_url": "https://c.saavncdn.com/590/I-Tamil-2014-20190822153052-500x500.jpg",
     "audio_url": "https://aac.saavncdn.com/590/1f3cfa386d53023f2691cb8093a64d8b_320.mp4",
-    "download_authorized": false,
+    "download_authorized": true,
     "tags": [
       "mersalaayitten",
       "mersal",
@@ -4376,7 +4376,7 @@ window.CATALOGUE_SONGS = [
     ],
     "cover_url": "https://c.saavncdn.com/710/Thalapathy-Vijay-Kondattam-Tamil-2026-20260422140259-500x500.jpg",
     "audio_url": "https://aac.saavncdn.com/710/c84903d38e31118378632f9396e1f670_320.mp4",
-    "download_authorized": false,
+    "download_authorized": true,
     "tags": [
       "mersal",
       "mersal arasan (from \"mersal\")",
@@ -4403,7 +4403,7 @@ window.CATALOGUE_SONGS = [
     ],
     "cover_url": "https://c.saavncdn.com/590/I-Tamil-2014-20190822153052-500x500.jpg",
     "audio_url": "https://aac.saavncdn.com/590/d2f08c9dcc5edaa06235731157ebeb17_320.mp4",
-    "download_authorized": false,
+    "download_authorized": true,
     "tags": [
       "mersal",
       "a.r. rahman",
@@ -4429,7 +4429,7 @@ window.CATALOGUE_SONGS = [
     ],
     "cover_url": "https://c.saavncdn.com/710/Thalapathy-Vijay-Kondattam-Tamil-2026-20260422140259-500x500.jpg",
     "audio_url": "https://aac.saavncdn.com/710/ec4eb2dba36b8b87be5d97477cf5e33a_320.mp4",
-    "download_authorized": false,
+    "download_authorized": true,
     "tags": [
       "a.r. rahman",
       "tamil",
@@ -4456,7 +4456,7 @@ window.CATALOGUE_SONGS = [
     ],
     "cover_url": "https://c.saavncdn.com/710/Thalapathy-Vijay-Kondattam-Tamil-2026-20260422140259-500x500.jpg",
     "audio_url": "https://aac.saavncdn.com/710/7a9b2d166ae6a9502202201910ac5e70_320.mp4",
-    "download_authorized": false,
+    "download_authorized": true,
     "tags": [
       "a.r. rahman",
       "tamil",
@@ -4483,7 +4483,7 @@ window.CATALOGUE_SONGS = [
     ],
     "cover_url": "https://c.saavncdn.com/162/Bigil-Tamil-2019-20191017202521-500x500.jpg",
     "audio_url": "https://aac.saavncdn.com/162/1e7065e4c17126fec26b7129ca19bfa1_320.mp4",
-    "download_authorized": false,
+    "download_authorized": true,
     "tags": [
       "bigil bigil bigiluma",
       "a.r. rahman",
@@ -4508,7 +4508,7 @@ window.CATALOGUE_SONGS = [
     ],
     "cover_url": "https://c.saavncdn.com/231/Master-the-Blaster-From-Master--English-2021-20210115102601-500x500.jpg",
     "audio_url": "https://aac.saavncdn.com/231/62e7a34859f457ddd4103f94c2d2f0a5_320.mp4",
-    "download_authorized": false,
+    "download_authorized": true,
     "tags": [
       "master the blaster",
       "tamil",
@@ -4534,7 +4534,7 @@ window.CATALOGUE_SONGS = [
     ],
     "cover_url": "https://c.saavncdn.com/025/Master-Original-Background-Score--Tamil-2021-20210208184449-500x500.jpg",
     "audio_url": "https://aac.saavncdn.com/025/0c8be97444ca1108f4865f49fed8c130_320.mp4",
-    "download_authorized": false,
+    "download_authorized": true,
     "tags": [
       "tamil",
       "master the blaster (background score)",
@@ -4560,7 +4560,7 @@ window.CATALOGUE_SONGS = [
     ],
     "cover_url": "https://c.saavncdn.com/145/Varisu-Tamil-2022-20221226190213-500x500.jpg",
     "audio_url": "https://aac.saavncdn.com/145/143277c609348c0f2d5a396fef2cd8f3_320.mp4",
-    "download_authorized": false,
+    "download_authorized": true,
     "tags": [
       "thee thalapathy",
       "varisu",
@@ -4585,7 +4585,7 @@ window.CATALOGUE_SONGS = [
     ],
     "cover_url": "https://c.saavncdn.com/292/Super-Dance-Hits-Of-K-Town-Tamil-2026-20260211161026-500x500.jpg",
     "audio_url": "https://aac.saavncdn.com/292/61a8eac2b8a69e65a42c2a99e4cfac67_320.mp4",
-    "download_authorized": false,
+    "download_authorized": true,
     "tags": [
       "varisu",
       "ranjithame",
@@ -4612,7 +4612,7 @@ window.CATALOGUE_SONGS = [
     ],
     "cover_url": "https://c.saavncdn.com/145/Varisu-Tamil-2022-20221226190213-500x500.jpg",
     "audio_url": "https://aac.saavncdn.com/145/b58fb16bcca4b777a5acb7a0a960a5d9_320.mp4",
-    "download_authorized": false,
+    "download_authorized": true,
     "tags": [
       "varisu",
       "thaman s",
@@ -4637,7 +4637,7 @@ window.CATALOGUE_SONGS = [
     ],
     "cover_url": "https://c.saavncdn.com/109/Leo-Das-Entry-From-Leo-Tamil-2024-20240108151125-500x500.jpg",
     "audio_url": "https://aac.saavncdn.com/109/5a7623ae2855a97fdadb9a2494c35cbc_320.mp4",
-    "download_authorized": false,
+    "download_authorized": true,
     "tags": [
       "leo das entry (from \"leo\")",
       "tamil",
@@ -4663,7 +4663,7 @@ window.CATALOGUE_SONGS = [
     ],
     "cover_url": "https://c.saavncdn.com/823/Jailer-2-Original-Motion-Picture-Soundtrack-Tamil-2026-20260930120445-500x500.jpg",
     "audio_url": "https://aac.saavncdn.com/823/0de09fdc0d602c98f870e5ebd0478fd9_320.mp4",
-    "download_authorized": false,
+    "download_authorized": true,
     "tags": [
       "jailer 2 (original motion picture soundtrack)",
       "jailer",
@@ -4689,7 +4689,7 @@ window.CATALOGUE_SONGS = [
     ],
     "cover_url": "https://c.saavncdn.com/187/Jailer-Tamil-2023-20230728081443-500x500.jpg",
     "audio_url": "https://aac.saavncdn.com/187/c8e5c9ac5d27b0a8587c9e5a4f2bce60_320.mp4",
-    "download_authorized": false,
+    "download_authorized": true,
     "tags": [
       "jailer theme (instrumental)",
       "jailer",
@@ -4714,7 +4714,7 @@ window.CATALOGUE_SONGS = [
     ],
     "cover_url": "https://c.saavncdn.com/187/Jailer-Tamil-2023-20230728081443-500x500.jpg",
     "audio_url": "https://aac.saavncdn.com/187/b73aafc99543ed855a770c082af14993_320.mp4",
-    "download_authorized": false,
+    "download_authorized": true,
     "tags": [
       "jailer",
       "tamil",
@@ -4739,7 +4739,7 @@ window.CATALOGUE_SONGS = [
     ],
     "cover_url": "https://c.saavncdn.com/557/Ala-Bolelo-From-Jailer-2-Tamil-2026-20260821084843-500x500.jpg",
     "audio_url": "https://aac.saavncdn.com/557/20ee77a20e37c568c827f1596ffa959c_320.mp4",
-    "download_authorized": false,
+    "download_authorized": true,
     "tags": [
       "anirudh ravichander, arunraja kamaraj",
       "ala bolelo",
@@ -4765,7 +4765,7 @@ window.CATALOGUE_SONGS = [
     ],
     "cover_url": "https://c.saavncdn.com/564/One-Name-From-Jailer-2-Tamil-2026-20260929100523-500x500.jpg",
     "audio_url": "https://aac.saavncdn.com/564/ec9dbebe4a1ebb4229737476f86b3f57_320.mp4",
-    "download_authorized": false,
+    "download_authorized": true,
     "tags": [
       "jailer",
       "tamil",
@@ -4791,7 +4791,7 @@ window.CATALOGUE_SONGS = [
     ],
     "cover_url": "https://c.saavncdn.com/836/Vikram-Maalik-Theme-From-The-Paradise-Tamil-Tamil-2026-20260620133636-500x500.jpg",
     "audio_url": "https://aac.saavncdn.com/836/e6df2d2add7b33065f2065537683952d_320.mp4",
-    "download_authorized": false,
+    "download_authorized": true,
     "tags": [
       "tamil",
       "vikram maalik theme",
@@ -4817,7 +4817,7 @@ window.CATALOGUE_SONGS = [
     ],
     "cover_url": "https://c.saavncdn.com/803/Vettaiyan-Original-Motion-Picture-Soundtrack-Tamil-2024-20241014154253-500x500.jpg",
     "audio_url": "https://aac.saavncdn.com/803/6443dc7f4eaef23f2135241b5dbc79b8_320.mp4",
-    "download_authorized": false,
+    "download_authorized": true,
     "tags": [
       "tamil",
       "vettaiyan theme",
@@ -4842,7 +4842,7 @@ window.CATALOGUE_SONGS = [
     ],
     "cover_url": "https://c.saavncdn.com/161/The-Greatest-Of-All-Time-Ost-Tamil-2024-20241022171002-500x500.jpg",
     "audio_url": "https://aac.saavncdn.com/161/cb862d9fecbd613c0c2242ee6ade7522_320.mp4",
-    "download_authorized": false,
+    "download_authorized": true,
     "tags": [
       "yuvan shankar raja - the greatest of all time ost",
       "tamil",
@@ -4868,7 +4868,7 @@ window.CATALOGUE_SONGS = [
     ],
     "cover_url": "https://c.saavncdn.com/310/Sorgame-Endralum-GOAT-Version-Tamil-2024-20241021174857-500x500.jpg",
     "audio_url": "https://aac.saavncdn.com/310/1cc340f43c819c83480f9372cb6c8d3b_320.mp4",
-    "download_authorized": false,
+    "download_authorized": true,
     "tags": [
       "tamil",
       "ilaiyaraaja",
@@ -4893,7 +4893,7 @@ window.CATALOGUE_SONGS = [
     ],
     "cover_url": "https://c.saavncdn.com/772/Goat-Tamil-2026-20260219003301-500x500.jpg",
     "audio_url": "https://aac.saavncdn.com/772/e7e5597a528c8a55cd8b459cb4ab32b1_320.mp4",
-    "download_authorized": false,
+    "download_authorized": true,
     "tags": [
       "santhosh yr, johanna kezia",
       "tamil",
@@ -4917,7 +4917,7 @@ window.CATALOGUE_SONGS = [
     ],
     "cover_url": "https://c.saavncdn.com/638/The-Goat-life-Aadujeevitham-Tamil-2024-20240318131950-500x500.jpg",
     "audio_url": "https://aac.saavncdn.com/638/06f5832fccbb9f3ce29b905271583add_320.mp4",
-    "download_authorized": false,
+    "download_authorized": true,
     "tags": [
       "the goat life - aadujeevitham",
       "jithin raj, a.r. rahman",
@@ -4943,7 +4943,7 @@ window.CATALOGUE_SONGS = [
     ],
     "cover_url": "https://c.saavncdn.com/275/Raayan-Tamil-2024-20240706124553-500x500.jpg",
     "audio_url": "https://aac.saavncdn.com/275/3b9da306e9a49258a82495593407990d_320.mp4",
-    "download_authorized": false,
+    "download_authorized": true,
     "tags": [
       "tamil",
       "arivu, a.r. rahman",
@@ -4968,7 +4968,7 @@ window.CATALOGUE_SONGS = [
     ],
     "cover_url": "https://c.saavncdn.com/851/Raayan-Original-Background-Score-Tamil-2024-20241204141135-500x500.jpg",
     "audio_url": "https://aac.saavncdn.com/851/05427b463bd545677e4fe27f7c2e7925_320.mp4",
-    "download_authorized": false,
+    "download_authorized": true,
     "tags": [
       "a.r. rahman",
       "raayan (original background score)",
@@ -4994,7 +4994,7 @@ window.CATALOGUE_SONGS = [
     ],
     "cover_url": "https://c.saavncdn.com/275/Raayan-Tamil-2024-20240706124553-500x500.jpg",
     "audio_url": "https://aac.saavncdn.com/275/1aa7e8897f9930e8203853f74838bc7d_320.mp4",
-    "download_authorized": false,
+    "download_authorized": true,
     "tags": [
       "a.r. rahman, ganavya, dhanush",
       "oh raaya",
@@ -5019,7 +5019,7 @@ window.CATALOGUE_SONGS = [
     ],
     "cover_url": "https://c.saavncdn.com/247/Kanguva-Tamil-Tamil-2024-20241211104206-500x500.jpg",
     "audio_url": "https://aac.saavncdn.com/247/710b92303c0368d08ced073fad94ab71_320.mp4",
-    "download_authorized": false,
+    "download_authorized": true,
     "tags": [
       "kanguva",
       "tamil",
@@ -5045,7 +5045,7 @@ window.CATALOGUE_SONGS = [
     ],
     "cover_url": "https://c.saavncdn.com/519/Kanguva-Title-Announcement-From-Kanguva-Tamil-2023-20230421103402-500x500.jpg",
     "audio_url": "https://aac.saavncdn.com/519/4fbbaa8e9bae3b8d266a0e66b08eb11b_sar_320.mp4\b\b\b\b\b\b\b\b",
-    "download_authorized": false,
+    "download_authorized": true,
     "tags": [
       "kanguva title announcement (from \"kanguva\")",
       "kanguva",
@@ -5071,7 +5071,7 @@ window.CATALOGUE_SONGS = [
     ],
     "cover_url": "https://c.saavncdn.com/805/Kanguva-Glimpse-From-Kanguva-Tamil-Tamil-2023-20250130063140-500x500.jpg",
     "audio_url": "https://aac.saavncdn.com/805/5fcf866cfffafbbdcfdf5a0703cd372b_320.mp4",
-    "download_authorized": false,
+    "download_authorized": true,
     "tags": [
       "kanguva glimpse (from \"kanguva\") (tamil)",
       "kanguva",
@@ -5097,7 +5097,7 @@ window.CATALOGUE_SONGS = [
     ],
     "cover_url": "https://c.saavncdn.com/247/Kanguva-Tamil-Tamil-2024-20241211104206-500x500.jpg",
     "audio_url": "https://aac.saavncdn.com/247/8f07421823c732ff1e3f94185dea682d_320.mp4",
-    "download_authorized": false,
+    "download_authorized": true,
     "tags": [
       "hits",
       "kanguva",
@@ -5123,7 +5123,7 @@ window.CATALOGUE_SONGS = [
     ],
     "cover_url": "https://c.saavncdn.com/247/Kanguva-Tamil-Tamil-2024-20241211104206-500x500.jpg",
     "audio_url": "https://aac.saavncdn.com/247/24de8b055d13d01126c83bc913d0344c_320.mp4",
-    "download_authorized": false,
+    "download_authorized": true,
     "tags": [
       "kanguva",
       "tamil",
@@ -5149,7 +5149,7 @@ window.CATALOGUE_SONGS = [
     ],
     "cover_url": "https://c.saavncdn.com/632/Pushpa-Pushpa-From-Pushpa-2-The-Rule-Tamil-Tamil-2024-20240501161051-500x500.jpg",
     "audio_url": "https://aac.saavncdn.com/632/bbf43ae5f4e07d8f27b2caa54f9c7051_320.mp4",
-    "download_authorized": false,
+    "download_authorized": true,
     "tags": [
       "pushpa pushpa",
       "tamil",
@@ -5176,7 +5176,7 @@ window.CATALOGUE_SONGS = [
     ],
     "cover_url": "https://c.saavncdn.com/292/Super-Dance-Hits-Of-K-Town-Tamil-2026-20260211161026-500x500.jpg",
     "audio_url": "https://aac.saavncdn.com/292/fa3fc5a977b6595c543c493cd31d25e5_320.mp4",
-    "download_authorized": false,
+    "download_authorized": true,
     "tags": [
       "peelings (from \"pushpa 2 the rule\")",
       "super-dance hits of k-town",
@@ -5204,7 +5204,7 @@ window.CATALOGUE_SONGS = [
     ],
     "cover_url": "https://c.saavncdn.com/617/Kissik-From-Pushpa-2-The-Rule-Tamil-Tamil-2024-20241124192121-500x500.jpg",
     "audio_url": "https://aac.saavncdn.com/617/35f151723c4d0654741138cd10b5534e_320.mp4",
-    "download_authorized": false,
+    "download_authorized": true,
     "tags": [
       "kissik (from \"pushpa 2 the rule\") (tamil)",
       "tamil",
@@ -5230,7 +5230,7 @@ window.CATALOGUE_SONGS = [
     ],
     "cover_url": "https://c.saavncdn.com/103/Tamil-Album-Songs-English-2021-20210204052311-500x500.jpg",
     "audio_url": "https://aac.saavncdn.com/103/b4e444f5ecf845f6042a4ed56e367f26_320.mp4",
-    "download_authorized": false,
+    "download_authorized": true,
     "tags": [
       "tamil",
       "kgf 2 theme (remake)",
@@ -5256,7 +5256,7 @@ window.CATALOGUE_SONGS = [
     ],
     "cover_url": "https://c.saavncdn.com/820/KGF-Chapter-2-Tamil-Tamil-2022-20260306193957-500x500.jpg",
     "audio_url": "https://aac.saavncdn.com/820/99e07146bfc8e29711ab4135f48d352c_320.mp4",
-    "download_authorized": false,
+    "download_authorized": true,
     "tags": [
       "kgf chapter 2 - tamil",
       "tamil",
@@ -5282,7 +5282,7 @@ window.CATALOGUE_SONGS = [
     ],
     "cover_url": "https://c.saavncdn.com/191/KGF-Chapter-1-Tamil-Tamil-2018-20260513110001-500x500.jpg",
     "audio_url": "https://aac.saavncdn.com/191/3e1a921d82ef0a12c4400490a47b9299_320.mp4",
-    "download_authorized": false,
+    "download_authorized": true,
     "tags": [
       "ravi basrur",
       "kgf chapter 1 (tamil)",
@@ -5308,7 +5308,7 @@ window.CATALOGUE_SONGS = [
     ],
     "cover_url": "https://c.saavncdn.com/230/2026-Kollywood-The-Valentine-Special-Tamil-2026-20260206171235-500x500.jpg",
     "audio_url": "https://aac.saavncdn.com/230/46c04acdb0739ff586275b719d8136c5_320.mp4",
-    "download_authorized": false,
+    "download_authorized": true,
     "tags": [
       "mehabooba (from \"kgf chapter 2\")",
       "ravi basrur",
@@ -5335,7 +5335,7 @@ window.CATALOGUE_SONGS = [
     ],
     "cover_url": "https://c.saavncdn.com/127/Monster-Song-Clean-Version-From-KGF-Chapter-2-Tamil-Tamil-2023-20260108193426-500x500.jpg",
     "audio_url": "https://aac.saavncdn.com/127/d4f33901a0986cff574a3b0e42b010aa_320.mp4",
-    "download_authorized": false,
+    "download_authorized": true,
     "tags": [
       "monster song clean version",
       "tamil",
@@ -5361,7 +5361,7 @@ window.CATALOGUE_SONGS = [
     ],
     "cover_url": "https://c.saavncdn.com/111/KGF-Chapter-2-Tamil-Tamil-2022-20250828181558-500x500.jpg",
     "audio_url": "https://aac.saavncdn.com/111/6aabc4c493850c7b7ac957f57090d9ce_320.mp4",
-    "download_authorized": false,
+    "download_authorized": true,
     "tags": [
       "ravi basrur",
       "kgf chapter 2 - tamil",
@@ -5387,7 +5387,7 @@ window.CATALOGUE_SONGS = [
     ],
     "cover_url": "https://c.saavncdn.com/111/KGF-Chapter-2-Tamil-Tamil-2022-20250828181558-500x500.jpg",
     "audio_url": "https://aac.saavncdn.com/111/667aa6c49f057f2449be31a6e3039895_320.mp4",
-    "download_authorized": false,
+    "download_authorized": true,
     "tags": [
       "ravi basrur",
       "kgf chapter 2 - tamil",
@@ -5413,7 +5413,7 @@ window.CATALOGUE_SONGS = [
     ],
     "cover_url": "https://c.saavncdn.com/230/2026-Kollywood-The-Valentine-Special-Tamil-2026-20260206171235-500x500.jpg",
     "audio_url": "https://aac.saavncdn.com/230/a0d82f384d782b19a7295e1c48cc44c4_320.mp4",
-    "download_authorized": false,
+    "download_authorized": true,
     "tags": [
       "paththavaikkum (from \"devara part 1\")",
       "tamil",
@@ -5440,7 +5440,7 @@ window.CATALOGUE_SONGS = [
     ],
     "cover_url": "https://c.saavncdn.com/135/Kollywood-Dancing-Dhamaka-Hits-Tamil-2026-20260708191024-500x500.jpg",
     "audio_url": "https://aac.saavncdn.com/135/09d2ea8b839295d94c36f4cfb1bb8875_320.mp4",
-    "download_authorized": false,
+    "download_authorized": true,
     "tags": [
       "fear song",
       "tamil",
@@ -5468,7 +5468,7 @@ window.CATALOGUE_SONGS = [
     ],
     "cover_url": "https://c.saavncdn.com/113/Ponniyin-Selvan-Part-1-Tamil-2022-20260330193159-500x500.jpg",
     "audio_url": "https://aac.saavncdn.com/113/93e39e67552a5e06a3a337fc6c13f90f_320.mp4",
-    "download_authorized": false,
+    "download_authorized": true,
     "tags": [
       "a.r. rahman",
       "tamil",
@@ -5495,7 +5495,7 @@ window.CATALOGUE_SONGS = [
     ],
     "cover_url": "https://c.saavncdn.com/092/ANIMAL-Hindi-2023-20260724191152-500x500.jpg",
     "audio_url": "https://aac.saavncdn.com/092/81b52beea90f186f27cf5c5eead972c8_320.mp4",
-    "download_authorized": false,
+    "download_authorized": true,
     "tags": [
       "animal",
       "pehle bhi main",
@@ -5520,7 +5520,7 @@ window.CATALOGUE_SONGS = [
     ],
     "cover_url": "https://c.saavncdn.com/179/World-Music-Day-Best-Of-Bollywood-Hits-Hindi-2026-20260622111029-500x500.jpg",
     "audio_url": "https://aac.saavncdn.com/179/7516f568c5f5140c05604dfb11810c52_320.mp4",
-    "download_authorized": false,
+    "download_authorized": true,
     "tags": [
       "shreyas puranik",
       "world music day - best of bollywood hits",
@@ -5547,7 +5547,7 @@ window.CATALOGUE_SONGS = [
     ],
     "cover_url": "https://c.saavncdn.com/217/Dil-Madharaasi-Original-Motion-Picture-Soundtrack-Hindi-2025-20250830165308-500x500.jpg",
     "audio_url": "https://aac.saavncdn.com/217/d1ca7fc25ef7a741911e65ce0d7a60a1_320.mp4",
-    "download_authorized": false,
+    "download_authorized": true,
     "tags": [
       "dil madharaasi (original motion picture soundtrack)",
       "animal",
@@ -5573,7 +5573,7 @@ window.CATALOGUE_SONGS = [
     ],
     "cover_url": "https://c.saavncdn.com/440/Yeh-Jawaani-Hai-Deewani-2013-500x500.jpg",
     "audio_url": "https://aac.saavncdn.com/440/2f44d42c73fce59193a4ea0e75f5944e_320.mp4",
-    "download_authorized": false,
+    "download_authorized": true,
     "tags": [
       "pritam",
       "kabir singh",
@@ -5599,7 +5599,7 @@ window.CATALOGUE_SONGS = [
     ],
     "cover_url": "https://c.saavncdn.com/807/Kabir-Singh-Hindi-2019-20240131131003-500x500.jpg",
     "audio_url": "https://aac.saavncdn.com/807/bda6cd88c18ee0d75854146145922bcc_320.mp4",
-    "download_authorized": false,
+    "download_authorized": true,
     "tags": [
       "kabir singh",
       "mithoon",
@@ -5624,7 +5624,7 @@ window.CATALOGUE_SONGS = [
     ],
     "cover_url": "https://c.saavncdn.com/807/Kabir-Singh-Hindi-2019-20240131131003-500x500.jpg",
     "audio_url": "https://aac.saavncdn.com/807/faeaff3ce92282e24f383e617648517e_320.mp4",
-    "download_authorized": false,
+    "download_authorized": true,
     "tags": [
       "bekhayali (arijit singh version)",
       "kabir singh",
@@ -5649,7 +5649,7 @@ window.CATALOGUE_SONGS = [
     ],
     "cover_url": "https://c.saavncdn.com/549/Kabir-Singh-Mashup-Hindi-2024-20240716151008-500x500.jpg",
     "audio_url": "https://aac.saavncdn.com/549/0f162da2eaf9b3f769e377f054e158e0_320.mp4",
-    "download_authorized": false,
+    "download_authorized": true,
     "tags": [
       "kabir singh",
       "hindi",
@@ -5675,7 +5675,7 @@ window.CATALOGUE_SONGS = [
     ],
     "cover_url": "https://c.saavncdn.com/299/Arijit-s-Aura-Hindi-2024-20251206151003-500x500.jpg",
     "audio_url": "https://aac.saavncdn.com/299/d7dd0cb2d44ac329226df3b0ff56f317_320.mp4",
-    "download_authorized": false,
+    "download_authorized": true,
     "tags": [
       "pritam",
       "arijit's aura",
@@ -5701,7 +5701,7 @@ window.CATALOGUE_SONGS = [
     ],
     "cover_url": "https://c.saavncdn.com/440/Yeh-Jawaani-Hai-Deewani-2013-500x500.jpg",
     "audio_url": "https://aac.saavncdn.com/440/664097ba2ddb94e9a8c9e9527b3010ec_320.mp4",
-    "download_authorized": false,
+    "download_authorized": true,
     "tags": [
       "pritam",
       "hindi",
@@ -5726,7 +5726,7 @@ window.CATALOGUE_SONGS = [
     ],
     "cover_url": "https://c.saavncdn.com/440/Yeh-Jawaani-Hai-Deewani-2013-500x500.jpg",
     "audio_url": "https://aac.saavncdn.com/440/71ef535f42247d0ffcd3c9cfa04cdd60_320.mp4",
-    "download_authorized": false,
+    "download_authorized": true,
     "tags": [
       "pritam",
       "badtameez dil",
@@ -5751,7 +5751,7 @@ window.CATALOGUE_SONGS = [
     ],
     "cover_url": "https://c.saavncdn.com/440/Yeh-Jawaani-Hai-Deewani-2013-500x500.jpg",
     "audio_url": "https://aac.saavncdn.com/440/a784bdaf2e6e4faba7b8282b8612f829_320.mp4",
-    "download_authorized": false,
+    "download_authorized": true,
     "tags": [
       "pritam",
       "hindi",
@@ -5776,7 +5776,7 @@ window.CATALOGUE_SONGS = [
     ],
     "cover_url": "https://c.saavncdn.com/440/Yeh-Jawaani-Hai-Deewani-2013-500x500.jpg",
     "audio_url": "https://aac.saavncdn.com/440/86f7b25631b3c24cdd54ca82b62d2523_320.mp4",
-    "download_authorized": false,
+    "download_authorized": true,
     "tags": [
       "pritam",
       "hindi",
@@ -5801,7 +5801,7 @@ window.CATALOGUE_SONGS = [
     ],
     "cover_url": "https://c.saavncdn.com/440/Yeh-Jawaani-Hai-Deewani-2013-500x500.jpg",
     "audio_url": "https://aac.saavncdn.com/440/ff517ea017f851413607f58978faa63e_320.mp4",
-    "download_authorized": false,
+    "download_authorized": true,
     "tags": [
       "pritam",
       "hindi",
@@ -5826,7 +5826,7 @@ window.CATALOGUE_SONGS = [
     ],
     "cover_url": "https://c.saavncdn.com/871/Brahmastra-Original-Motion-Picture-Soundtrack-Hindi-2022-20221006155213-500x500.jpg",
     "audio_url": "https://aac.saavncdn.com/871/c2febd353f3a076a406fa37510f31f9f_320.mp4",
-    "download_authorized": false,
+    "download_authorized": true,
     "tags": [
       "pritam",
       "brahmastra",
@@ -5851,7 +5851,7 @@ window.CATALOGUE_SONGS = [
     ],
     "cover_url": "https://c.saavncdn.com/871/Brahmastra-Original-Motion-Picture-Soundtrack-Hindi-2022-20221006155213-500x500.jpg",
     "audio_url": "https://aac.saavncdn.com/871/0bed32d7b2c9eb71e4f4d76285e85909_320.mp4",
-    "download_authorized": false,
+    "download_authorized": true,
     "tags": [
       "pritam",
       "deva deva",
@@ -5876,7 +5876,7 @@ window.CATALOGUE_SONGS = [
     ],
     "cover_url": "https://c.saavncdn.com/871/Brahmastra-Original-Motion-Picture-Soundtrack-Hindi-2022-20221006155213-500x500.jpg",
     "audio_url": "https://aac.saavncdn.com/871/adc852f9b398ef7c6c406199611f20fd_320.mp4",
-    "download_authorized": false,
+    "download_authorized": true,
     "tags": [
       "pritam",
       "brahmastra",
@@ -5901,7 +5901,7 @@ window.CATALOGUE_SONGS = [
     ],
     "cover_url": "https://c.saavncdn.com/871/Brahmastra-Original-Motion-Picture-Soundtrack-Hindi-2022-20221006155213-500x500.jpg",
     "audio_url": "https://aac.saavncdn.com/871/283c42b76a24b69d8f7d1d21123ff8cb_320.mp4",
-    "download_authorized": false,
+    "download_authorized": true,
     "tags": [
       "pritam",
       "brahmastra",
@@ -5926,7 +5926,7 @@ window.CATALOGUE_SONGS = [
     ],
     "cover_url": "https://c.saavncdn.com/047/Jawan-Hindi-2023-20230921190854-500x500.jpg",
     "audio_url": "https://aac.saavncdn.com/047/7ac6845d9bbd18238f3eca57026b705d_320.mp4",
-    "download_authorized": false,
+    "download_authorized": true,
     "tags": [
       "hindi",
       "jawan title track",
@@ -5951,7 +5951,7 @@ window.CATALOGUE_SONGS = [
     ],
     "cover_url": "https://c.saavncdn.com/179/World-Music-Day-Best-Of-Bollywood-Hits-Hindi-2026-20260622111029-500x500.jpg",
     "audio_url": "https://aac.saavncdn.com/179/1be373323edc90024d93873d85f644ec_320.mp4",
-    "download_authorized": false,
+    "download_authorized": true,
     "tags": [
       "world music day - best of bollywood hits",
       "chaleya (from \"jawan\")",
@@ -5978,7 +5978,7 @@ window.CATALOGUE_SONGS = [
     ],
     "cover_url": "https://c.saavncdn.com/310/Jawani-Iraqi-Hindi-2026-20260522143406-500x500.jpg",
     "audio_url": "https://aac.saavncdn.com/310/66f87627ae454ff9b774a48082ca3b3c_320.mp4",
-    "download_authorized": false,
+    "download_authorized": true,
     "tags": [
       "jawani iraqi",
       "hindi",
@@ -6003,7 +6003,7 @@ window.CATALOGUE_SONGS = [
     ],
     "cover_url": "https://c.saavncdn.com/243/Namak-Halaal-Hindi-1982-20220822113648-500x500.jpg",
     "audio_url": "https://aac.saavncdn.com/243/89fc48cd8b40aa5b152cd6ed1b0fb9ad_sar_320.mp4\b\b\b\b\b\b\b\b",
-    "download_authorized": false,
+    "download_authorized": true,
     "tags": [
       "bappi lahiri",
       "jawani jan-e-man",
@@ -6029,7 +6029,7 @@ window.CATALOGUE_SONGS = [
     ],
     "cover_url": "https://c.saavncdn.com/807/Pathaan-Hindi-2022-20221222104158-500x500.jpg",
     "audio_url": "https://aac.saavncdn.com/807/ef11e75a9044f5148769abaa8cfb14c1_320.mp4",
-    "download_authorized": false,
+    "download_authorized": true,
     "tags": [
       "pathaan",
       "hindi",
@@ -6054,7 +6054,7 @@ window.CATALOGUE_SONGS = [
     ],
     "cover_url": "https://c.saavncdn.com/807/Pathaan-Hindi-2022-20221222104158-500x500.jpg",
     "audio_url": "https://aac.saavncdn.com/807/b81178f646021daced38c51189bb4ecb_320.mp4",
-    "download_authorized": false,
+    "download_authorized": true,
     "tags": [
       "pathaan",
       "hindi",
@@ -6079,7 +6079,7 @@ window.CATALOGUE_SONGS = [
     ],
     "cover_url": "https://c.saavncdn.com/807/Pathaan-Hindi-2022-20221222104158-500x500.jpg",
     "audio_url": "https://aac.saavncdn.com/807/f5a2929f50aa073c95017522ab406717_320.mp4",
-    "download_authorized": false,
+    "download_authorized": true,
     "tags": [
       "pathaan",
       "hindi",
@@ -6104,7 +6104,7 @@ window.CATALOGUE_SONGS = [
     ],
     "cover_url": "https://c.saavncdn.com/442/Pathaan-Teaser-Hindi-2022-20221102162356-500x500.jpg",
     "audio_url": "https://aac.saavncdn.com/442/0124a2c25f1ee9ee302160298a97c7bf_320.mp4",
-    "download_authorized": false,
+    "download_authorized": true,
     "tags": [
       "pathaan",
       "pathaan - teaser",
@@ -6129,7 +6129,7 @@ window.CATALOGUE_SONGS = [
     ],
     "cover_url": "https://c.saavncdn.com/652/Pathaan-x-Tiger-Theme-Hindi-2023-20230412093454-500x500.jpg",
     "audio_url": "https://aac.saavncdn.com/652/241984ac0daca868e4663120b42472fe_320.mp4",
-    "download_authorized": false,
+    "download_authorized": true,
     "tags": [
       "pathaan",
       "pathaan x tiger theme",
@@ -6154,7 +6154,7 @@ window.CATALOGUE_SONGS = [
     ],
     "cover_url": "https://c.saavncdn.com/450/Gehra-Hua-From-Dhurandhar-Hindi-2025-20251205154217-500x500.jpg",
     "audio_url": "https://aac.saavncdn.com/450/f467e05e2825cec2203546333e0d0550_320.mp4",
-    "download_authorized": false,
+    "download_authorized": true,
     "tags": [
       "shashwat sachdev",
       "gehra hua (from \"dhurandhar\")",
@@ -6180,7 +6180,7 @@ window.CATALOGUE_SONGS = [
     ],
     "cover_url": "https://c.saavncdn.com/840/Best-Of-Arijit-Singh-Collection-Of-Romantic-Songs-Hindi-2025-20251203161112-500x500.jpg",
     "audio_url": "https://aac.saavncdn.com/840/c9e70fb62d66fa6e14f6b7cdbc56cc05_320.mp4",
-    "download_authorized": false,
+    "download_authorized": true,
     "tags": [
       "aashiqui 2",
       "tum hi ho",
@@ -6208,7 +6208,7 @@ window.CATALOGUE_SONGS = [
     ],
     "cover_url": "https://c.saavncdn.com/381/Vaaroon-Forever-From-Mirzapur-The-Movie-Hindi-2026-20260817160523-500x500.jpg",
     "audio_url": "https://aac.saavncdn.com/381/02ffb399df66aec14cbebb1a0ced6fd5_320.mp4",
-    "download_authorized": false,
+    "download_authorized": true,
     "tags": [
       "vaaroon forever",
       "shreya ghoshal hits",
@@ -6234,7 +6234,7 @@ window.CATALOGUE_SONGS = [
     ],
     "cover_url": "https://c.saavncdn.com/540/Humpty-Sharma-Ki-Dulhania-Hindi-2014-20190618095042-500x500.jpg",
     "audio_url": "https://aac.saavncdn.com/540/f807aad8e5c60a87334231f72267c725_320.mp4",
-    "download_authorized": false,
+    "download_authorized": true,
     "tags": [
       "humpty sharma ki dulhania",
       "samjhawan",
@@ -6260,7 +6260,7 @@ window.CATALOGUE_SONGS = [
     ],
     "cover_url": "https://c.saavncdn.com/001/Rocky-Aur-Rani-Kii-Prem-Kahaani-Hindi-2023-20250130073112-500x500.jpg",
     "audio_url": "https://aac.saavncdn.com/001/93fc1931668d22fb4093045472218dd1_320.mp4",
-    "download_authorized": false,
+    "download_authorized": true,
     "tags": [
       "pritam, arijit singh, shreya ghoshal, amitabh bhattacharya",
       "rocky aur rani kii prem kahaani",
@@ -6287,7 +6287,7 @@ window.CATALOGUE_SONGS = [
     ],
     "cover_url": "https://c.saavncdn.com/088/Interstellar-Docking-Theme-No-Time-for-Caution-Epic-Version-Instrumental-2022-20230817215416-500x500.jpg",
     "audio_url": "https://aac.saavncdn.com/088/107530957d2a44c8cbf529bb0aa85582_320.mp4",
-    "download_authorized": false,
+    "download_authorized": true,
     "tags": [
       "pianistec - interstellar: docking theme (no time for caution) (epic version)",
       "instrumental",
@@ -6312,7 +6312,7 @@ window.CATALOGUE_SONGS = [
     ],
     "cover_url": "https://c.saavncdn.com/787/Interstellar-Theme-Cornfield-Chase-Instrumental-Unknown-2024-20240112083050-500x500.jpg",
     "audio_url": "https://aac.saavncdn.com/787/c237710baa1c56aaa1f07276997cb3b6_320.mp4",
-    "download_authorized": false,
+    "download_authorized": true,
     "tags": [
       "instrumental",
       "interstellar theme cornfield chase instrumental",
@@ -6337,7 +6337,7 @@ window.CATALOGUE_SONGS = [
     ],
     "cover_url": "https://c.saavncdn.com/014/Interstellar-Main-Theme-Instrumental-Instrumental-2014-20250903130355-500x500.jpg",
     "audio_url": "https://aac.saavncdn.com/014/c66e0a251f8e91fbe2f5336eaf9ba8a8_320.mp4",
-    "download_authorized": false,
+    "download_authorized": true,
     "tags": [
       "instrumental",
       "interstellar main theme (instrumental)",
@@ -6362,7 +6362,7 @@ window.CATALOGUE_SONGS = [
     ],
     "cover_url": "https://c.saavncdn.com/046/Whispers-of-Melody-Instrumental-Classics-for-the-Soul-Unknown-2024-20241106204100-500x500.jpg",
     "audio_url": "https://aac.saavncdn.com/046/35029af79abaeb428ef3316aecd4a4e8_320.mp4",
-    "download_authorized": false,
+    "download_authorized": true,
     "tags": [
       "hits",
       "osagiede osahon",
@@ -6388,7 +6388,7 @@ window.CATALOGUE_SONGS = [
     ],
     "cover_url": "https://c.saavncdn.com/552/Best-Instrumental-Movie-Soundtracks-Famous-Film-Themes-Instrumental-2025-20260122233558-500x500.jpg",
     "audio_url": "https://aac.saavncdn.com/552/5249608be919de33889a56e565931650_320.mp4",
-    "download_authorized": false,
+    "download_authorized": true,
     "tags": [
       "hans zimmer",
       "instrumental",
@@ -6414,7 +6414,7 @@ window.CATALOGUE_SONGS = [
     ],
     "cover_url": "https://c.saavncdn.com/425/Pirates-Of-The-Caribbean-Main-Theme-He-s-A-Pirate-English-2016-20181029120136-500x500.jpg",
     "audio_url": "https://aac.saavncdn.com/425/0df9f675f7c633e8ad5693bb1ed976a4_320.mp4",
-    "download_authorized": false,
+    "download_authorized": true,
     "tags": [
       "geek music - pirates of the caribbean - main theme - he's a pirate",
       "pirates of the caribbean - main theme - he's a pirate",
@@ -6439,7 +6439,7 @@ window.CATALOGUE_SONGS = [
     ],
     "cover_url": "https://c.saavncdn.com/961/Movies-Music-Essentials-English-2014-20160419105615-500x500.jpg",
     "audio_url": "https://aac.saavncdn.com/961/4d54433694981c608dfba5b41042b080_320.mp4",
-    "download_authorized": false,
+    "download_authorized": true,
     "tags": [
       "bob thomas ft. tina guo - movies music & essentials",
       "movies music & essentials",
@@ -6464,7 +6464,7 @@ window.CATALOGUE_SONGS = [
     ],
     "cover_url": "https://c.saavncdn.com/654/Movies-Themes-English-2014-500x500.jpg",
     "audio_url": "https://aac.saavncdn.com/654/768c2c4d9b0d35b5fc0cf653167518f4_320.mp4",
-    "download_authorized": false,
+    "download_authorized": true,
     "tags": [
       "instrumental",
       "bob thomas ft. tina guo - movies themes",
@@ -6490,7 +6490,7 @@ window.CATALOGUE_SONGS = [
     ],
     "cover_url": "https://c.saavncdn.com/113/Action-Adventure-The-Greatest-Themes-of-All-Time-Unknown-2023-20230313213707-500x500.jpg",
     "audio_url": "https://aac.saavncdn.com/113/e9dd9a9b336dad313f7d55262811a66a_320.mp4",
-    "download_authorized": false,
+    "download_authorized": true,
     "tags": [
       "game of thrones theme",
       "theme from game of thrones",
@@ -6516,7 +6516,7 @@ window.CATALOGUE_SONGS = [
     ],
     "cover_url": "https://c.saavncdn.com/290/Greatest-TV-Themes-Fantasy-English-2012-500x500.jpg",
     "audio_url": "https://aac.saavncdn.com/290/4748d22efd9141e403ee26f67540ba83_320.mp4",
-    "download_authorized": false,
+    "download_authorized": true,
     "tags": [
       "game of thrones theme",
       "greatest tv themes: fantasy",
@@ -6542,7 +6542,7 @@ window.CATALOGUE_SONGS = [
     ],
     "cover_url": "https://c.saavncdn.com/373/Music-from-Games-of-Thrones-English-2015-500x500.jpg",
     "audio_url": "https://aac.saavncdn.com/373/6e2a40eb3dad99cfa87fc022e5dd028b_320.mp4",
-    "download_authorized": false,
+    "download_authorized": true,
     "tags": [
       "game of thrones theme",
       "music from games of thrones",
@@ -6568,7 +6568,7 @@ window.CATALOGUE_SONGS = [
     ],
     "cover_url": "https://c.saavncdn.com/427/La-musique-de-Game-of-Thrones-French-2015-500x500.jpg",
     "audio_url": "https://aac.saavncdn.com/427/9568f34d83faeab633c6e319354c49a9_320.mp4",
-    "download_authorized": false,
+    "download_authorized": true,
     "tags": [
       "game of thrones theme",
       "r. djawadi",
@@ -6594,7 +6594,7 @@ window.CATALOGUE_SONGS = [
     ],
     "cover_url": "https://c.saavncdn.com/592/Elevator-Music-Great-Instrumental-Songs-Instrumental-2011-20211231214424-500x500.jpg",
     "audio_url": "https://aac.saavncdn.com/592/02126ff3fead38a0bb7924b43228c1e5_320.mp4",
-    "download_authorized": false,
+    "download_authorized": true,
     "tags": [
       "titanic theme",
       "elevator music – great instrumental songs",
@@ -6620,7 +6620,7 @@ window.CATALOGUE_SONGS = [
     ],
     "cover_url": "https://c.saavncdn.com/152/Naatu-Naatu-From-RRR-Telugu-2021-20211110130540-500x500.jpg",
     "audio_url": "https://aac.saavncdn.com/152/40c49cf52ae2c140c83a718b5257545b_320.mp4",
-    "download_authorized": false,
+    "download_authorized": true,
     "tags": [
       "naatu naatu",
       "rrr",
@@ -6648,7 +6648,7 @@ window.CATALOGUE_SONGS = [
     ],
     "cover_url": "https://c.saavncdn.com/152/Dosti-From-RRR-Telugu-2021-20210801124840-500x500.jpg",
     "audio_url": "https://aac.saavncdn.com/152/cbfa87da2ba5c9076f82791444e7bf53_320.mp4",
-    "download_authorized": false,
+    "download_authorized": true,
     "tags": [
       "dosti",
       "rrr",
@@ -6673,7 +6673,7 @@ window.CATALOGUE_SONGS = [
     ],
     "cover_url": "https://c.saavncdn.com/152/RRR-Telugu-2022-20220325150830-500x500.jpg",
     "audio_url": "https://aac.saavncdn.com/152/78f1ae43d831518f88cf508e6783818e_320.mp4",
-    "download_authorized": false,
+    "download_authorized": true,
     "tags": [
       "komuram bheemudo",
       "rrr",
@@ -6698,7 +6698,7 @@ window.CATALOGUE_SONGS = [
     ],
     "cover_url": "https://c.saavncdn.com/830/Pushpa-The-Rise-Telugu-2021-20211230150912-500x500.jpg",
     "audio_url": "https://aac.saavncdn.com/830/f0b784cf05d6cb46f79be2768565b95d_320.mp4",
-    "download_authorized": false,
+    "download_authorized": true,
     "tags": [
       "oo antava",
       "pushpa",
@@ -6725,7 +6725,7 @@ window.CATALOGUE_SONGS = [
     ],
     "cover_url": "https://c.saavncdn.com/830/Pushpa-The-Rise-Telugu-2021-20211230150912-500x500.jpg",
     "audio_url": "https://aac.saavncdn.com/830/8a719d3637e1694f4c8e76a1470550cb_320.mp4",
-    "download_authorized": false,
+    "download_authorized": true,
     "tags": [
       "srivalli",
       "pushpa",
@@ -6751,7 +6751,7 @@ window.CATALOGUE_SONGS = [
     ],
     "cover_url": "https://c.saavncdn.com/830/Pushpa-The-Rise-Telugu-2021-20211230150912-500x500.jpg",
     "audio_url": "https://aac.saavncdn.com/830/23d45c5890b9fa54817a0273a5a7ad7b_320.mp4",
-    "download_authorized": false,
+    "download_authorized": true,
     "tags": [
       "saami saami",
       "pushpa",
@@ -6776,7 +6776,7 @@ window.CATALOGUE_SONGS = [
     ],
     "cover_url": "https://c.saavncdn.com/264/Pushpa-2-The-Rule-Telugu-2024-20240501171018-500x500.jpg",
     "audio_url": "https://aac.saavncdn.com/264/8da23326f582fef52ecad18b958c8a14_320.mp4",
-    "download_authorized": false,
+    "download_authorized": true,
     "tags": [
       "sooseki",
       "pushpa 2",
@@ -6802,7 +6802,7 @@ window.CATALOGUE_SONGS = [
     ],
     "cover_url": "https://c.saavncdn.com/090/Ala-Vaikunthapurramuloo-Telugu-2019-20200113151121-500x500.jpg",
     "audio_url": "https://aac.saavncdn.com/090/3b4d455d3159345e69e06180a4b64e0a_320.mp4",
-    "download_authorized": false,
+    "download_authorized": true,
     "tags": [
       "butta bomma",
       "ala vaikunthapurramuloo",
@@ -6828,7 +6828,7 @@ window.CATALOGUE_SONGS = [
     ],
     "cover_url": "https://c.saavncdn.com/090/Ala-Vaikunthapurramuloo-Telugu-2019-20200113151121-500x500.jpg",
     "audio_url": "https://aac.saavncdn.com/090/07ea1ec85c07b01b2289ee0c313a48e7_320.mp4",
-    "download_authorized": false,
+    "download_authorized": true,
     "tags": [
       "samajavaragamana",
       "ala vaikunthapurramuloo",
@@ -6853,7 +6853,7 @@ window.CATALOGUE_SONGS = [
     ],
     "cover_url": "https://c.saavncdn.com/090/Ala-Vaikunthapurramuloo-Telugu-2019-20200113151121-500x500.jpg",
     "audio_url": "https://aac.saavncdn.com/090/e33d262193b2a3a5d85ec1ef87bc7a2d_320.mp4",
-    "download_authorized": false,
+    "download_authorized": true,
     "tags": [
       "ramuloo ramulaa",
       "ala vaikunthapurramuloo",
@@ -6878,7 +6878,7 @@ window.CATALOGUE_SONGS = [
     ],
     "cover_url": "https://c.saavncdn.com/793/Chuttamalle-From-Devara-Part-1-Telugu-2024-20240805174003-500x500.jpg",
     "audio_url": "https://aac.saavncdn.com/793/d1be5fc51cf57662c5950e6912389146_320.mp4",
-    "download_authorized": false,
+    "download_authorized": true,
     "tags": [
       "chuttamalle",
       "devara part 1",
@@ -6904,7 +6904,7 @@ window.CATALOGUE_SONGS = [
     ],
     "cover_url": "https://c.saavncdn.com/264/Fear-Song-From-Devara-Part-1-Telugu-2024-20240519191024-500x500.jpg",
     "audio_url": "https://aac.saavncdn.com/264/88c222ffda588147d3d20ebba87a54a7_320.mp4",
-    "download_authorized": false,
+    "download_authorized": true,
     "tags": [
       "fear song",
       "devara part 1",
@@ -6929,7 +6929,7 @@ window.CATALOGUE_SONGS = [
     ],
     "cover_url": "https://c.saavncdn.com/830/Daavudi-From-Devara-Part-1-Telugu-2024-20240904171024-500x500.jpg",
     "audio_url": "https://aac.saavncdn.com/830/45abfa20c754d0482dae1069b18365ef_320.mp4",
-    "download_authorized": false,
+    "download_authorized": true,
     "tags": [
       "daavudi",
       "devara part 1",
@@ -6955,7 +6955,7 @@ window.CATALOGUE_SONGS = [
     ],
     "cover_url": "https://c.saavncdn.com/892/Ta-Takkara-From-Kalki-2898-AD-Telugu-2024-20240629161025-500x500.jpg",
     "audio_url": "https://aac.saavncdn.com/892/7d56e7e5944ea5954a1be2e6fca78e82_320.mp4",
-    "download_authorized": false,
+    "download_authorized": true,
     "tags": [
       "ta takkara",
       "kalki 2898 ad",
@@ -6981,7 +6981,7 @@ window.CATALOGUE_SONGS = [
     ],
     "cover_url": "https://c.saavncdn.com/892/Kalki-2898-AD-Telugu-2024-20240710181025-500x500.jpg",
     "audio_url": "https://aac.saavncdn.com/892/5ba9fa62ce095aa128e441cbdfa5108b_320.mp4",
-    "download_authorized": false,
+    "download_authorized": true,
     "tags": [
       "theme of kalki",
       "kalki 2898 ad",
@@ -7006,7 +7006,7 @@ window.CATALOGUE_SONGS = [
     ],
     "cover_url": "https://c.saavncdn.com/712/Geetha-Govindam-Telugu-2018-20180812-500x500.jpg",
     "audio_url": "https://aac.saavncdn.com/712/e8f7cb679ad30e4612347bc8da8fa5ea_320.mp4",
-    "download_authorized": false,
+    "download_authorized": true,
     "tags": [
       "inkem inkem",
       "geetha govindam",
@@ -7032,7 +7032,7 @@ window.CATALOGUE_SONGS = [
     ],
     "cover_url": "https://c.saavncdn.com/712/Geetha-Govindam-Telugu-2018-20180812-500x500.jpg",
     "audio_url": "https://aac.saavncdn.com/712/5fa4c2dae4bc0b3969542ae1629d892d_320.mp4",
-    "download_authorized": false,
+    "download_authorized": true,
     "tags": [
       "vachindamma",
       "geetha govindam",
@@ -7056,7 +7056,7 @@ window.CATALOGUE_SONGS = [
     ],
     "cover_url": "https://c.saavncdn.com/152/Baahubali-The-Beginning-Telugu-2015-500x500.jpg",
     "audio_url": "https://aac.saavncdn.com/152/35928dce593258c8dbcae09646b2b515_320.mp4",
-    "download_authorized": false,
+    "download_authorized": true,
     "tags": [
       "dheevara",
       "baahubali",
@@ -7082,7 +7082,7 @@ window.CATALOGUE_SONGS = [
     ],
     "cover_url": "https://c.saavncdn.com/832/Baahubali-2-The-Conclusion-Telugu-2017-500x500.jpg",
     "audio_url": "https://aac.saavncdn.com/832/90e7223bdf33cfcf484d50bf6c364132_320.mp4",
-    "download_authorized": false,
+    "download_authorized": true,
     "tags": [
       "saahore baahubali",
       "baahubali 2",
@@ -7108,7 +7108,7 @@ window.CATALOGUE_SONGS = [
     ],
     "cover_url": "https://c.saavncdn.com/524/Kurchi-Madathapetti-From-Guntur-Kaaram-Telugu-2023-20231230181024-500x500.jpg",
     "audio_url": "https://aac.saavncdn.com/524/e98bf75239ad00ef4caae5f850284ab9_320.mp4",
-    "download_authorized": false,
+    "download_authorized": true,
     "tags": [
       "kurchi madathapetti",
       "guntur kaaram",
@@ -7134,7 +7134,7 @@ window.CATALOGUE_SONGS = [
     ],
     "cover_url": "https://c.saavncdn.com/524/Dum-Masala-From-Guntur-Kaaram-Telugu-2023-20231107181024-500x500.jpg",
     "audio_url": "https://aac.saavncdn.com/524/60cbdecf9066cb1dfd462ab9e19a4e3b_320.mp4",
-    "download_authorized": false,
+    "download_authorized": true,
     "tags": [
       "dum masala",
       "guntur kaaram",
@@ -7158,7 +7158,7 @@ window.CATALOGUE_SONGS = [
     ],
     "cover_url": "https://c.saavncdn.com/524/Kalaavathi-From-Sarkaru-Vaari-Paata-Telugu-2022-20220213121024-500x500.jpg",
     "audio_url": "https://aac.saavncdn.com/524/92abde55c0aefb4d9a24ca18a7c1328f_320.mp4",
-    "download_authorized": false,
+    "download_authorized": true,
     "tags": [
       "kalaavathi",
       "sarkaru vaari paata",
@@ -7184,7 +7184,7 @@ window.CATALOGUE_SONGS = [
     ],
     "cover_url": "https://c.saavncdn.com/152/Saranga-Dariya-From-Love-Story-Telugu-2021-20210228111024-500x500.jpg",
     "audio_url": "https://aac.saavncdn.com/152/45cbf9ea71628d0eb9f972b21703e39b_320.mp4",
-    "download_authorized": false,
+    "download_authorized": true,
     "tags": [
       "saranga dariya",
       "love story",
@@ -7210,7 +7210,7 @@ window.CATALOGUE_SONGS = [
     ],
     "cover_url": "https://c.saavncdn.com/257/Ae-Dil-Hai-Mushkil-Hindi-2016-500x500.jpg",
     "audio_url": "https://aac.saavncdn.com/257/94f83b27b9c9f4d2f099cf9d4c728fb5_320.mp4",
-    "download_authorized": false,
+    "download_authorized": true,
     "tags": [
       "channa mereya",
       "ae dil hai mushkil",
@@ -7235,7 +7235,7 @@ window.CATALOGUE_SONGS = [
     ],
     "cover_url": "https://c.saavncdn.com/348/Shershaah-Original-Motion-Picture-Soundtrack--Hindi-2021-20210815181610-500x500.jpg",
     "audio_url": "https://aac.saavncdn.com/348/8a25227181fc8da6548773950a4bf85d_320.mp4",
-    "download_authorized": false,
+    "download_authorized": true,
     "tags": [
       "raataan lambiyan",
       "shershaah",
@@ -7261,7 +7261,7 @@ window.CATALOGUE_SONGS = [
     ],
     "cover_url": "https://c.saavncdn.com/814/Bhediya-Hindi-2022-20221125081014-500x500.jpg",
     "audio_url": "https://aac.saavncdn.com/814/7c0c4e7f33d72b21764121bcbbca9ce3_320.mp4",
-    "download_authorized": false,
+    "download_authorized": true,
     "tags": [
       "apna bana le",
       "bhediya",
@@ -7287,7 +7287,7 @@ window.CATALOGUE_SONGS = [
     ],
     "cover_url": "https://c.saavncdn.com/909/Zinda-Banda-From-Jawan-Hindi-2023-20230731124403-500x500.jpg",
     "audio_url": "https://aac.saavncdn.com/909/be31e3fe1aeb134ffc1ea1c8413bcae5_320.mp4",
-    "download_authorized": false,
+    "download_authorized": true,
     "tags": [
       "zinda banda",
       "jawan",
@@ -7311,7 +7311,7 @@ window.CATALOGUE_SONGS = [
     ],
     "cover_url": "https://c.saavncdn.com/092/ANIMAL-Hindi-2023-20231124191438-500x500.jpg",
     "audio_url": "https://aac.saavncdn.com/092/cf281a78e7275d27ee1c8d5503e0cebe_320.mp4",
-    "download_authorized": false,
+    "download_authorized": true,
     "tags": [
       "arjan vailly",
       "animal",
@@ -7336,7 +7336,7 @@ window.CATALOGUE_SONGS = [
     ],
     "cover_url": "https://c.saavncdn.com/836/Tamasha-Hindi-2015-500x500.jpg",
     "audio_url": "https://aac.saavncdn.com/836/5377f0a9448882ca251d9d97bfbc1256_320.mp4",
-    "download_authorized": false,
+    "download_authorized": true,
     "tags": [
       "agar tum saath ho",
       "tamasha",
@@ -7364,7 +7364,7 @@ window.CATALOGUE_SONGS = [
     ],
     "cover_url": "https://c.saavncdn.com/050/Dil-Se-Hindi-1998-20221201083437-500x500.jpg",
     "audio_url": "https://aac.saavncdn.com/050/78f1ae43d831518f88cf508e6783818e_320.mp4",
-    "download_authorized": false,
+    "download_authorized": true,
     "tags": [
       "chaiyya chaiyya",
       "dil se",
@@ -7391,7 +7391,7 @@ window.CATALOGUE_SONGS = [
     ],
     "cover_url": "https://c.saavncdn.com/712/Rockstar-Hindi-2011-20221212044810-500x500.jpg",
     "audio_url": "https://aac.saavncdn.com/712/81e55047ae37fa05e6b5fe898ddb561c_320.mp4",
-    "download_authorized": false,
+    "download_authorized": true,
     "tags": [
       "kun faya kun",
       "rockstar",
@@ -7418,7 +7418,7 @@ window.CATALOGUE_SONGS = [
     ],
     "cover_url": "https://c.saavncdn.com/832/Manjummel-Boys-Malayalam-2024-20240222161020-500x500.jpg",
     "audio_url": "https://aac.saavncdn.com/832/62c96c4d87452d3a95ce5e6f6a73c330_320.mp4",
-    "download_authorized": false,
+    "download_authorized": true,
     "tags": [
       "thaai manam",
       "manjummel boys",
@@ -7442,7 +7442,7 @@ window.CATALOGUE_SONGS = [
     ],
     "cover_url": "https://c.saavncdn.com/832/Ghilli-Tamil-2004-20200812165030-500x500.jpg",
     "audio_url": "https://aac.saavncdn.com/832/cf281a78e7275d27ee1c8d5503e0cebe_320.mp4",
-    "download_authorized": false,
+    "download_authorized": true,
     "tags": [
       "appadi podu",
       "ghilli",
@@ -7470,7 +7470,7 @@ window.CATALOGUE_SONGS = [
     ],
     "cover_url": "https://c.saavncdn.com/832/Ghilli-Tamil-2004-20200812165030-500x500.jpg",
     "audio_url": "https://aac.saavncdn.com/832/01b8e8f81394c8e74f141bf19542bf82_320.mp4",
-    "download_authorized": false,
+    "download_authorized": true,
     "tags": [
       "arjunar villu",
       "ghilli",
@@ -7495,7 +7495,7 @@ window.CATALOGUE_SONGS = [
     ],
     "cover_url": "https://c.saavncdn.com/712/Mankatha-Tamil-2011-20200812165520-500x500.jpg",
     "audio_url": "https://aac.saavncdn.com/712/941785501d51c3c99e4ad611f71dfb99_320.mp4",
-    "download_authorized": false,
+    "download_authorized": true,
     "tags": [
       "vilayadu mankatha",
       "mankatha",
@@ -7520,7 +7520,7 @@ window.CATALOGUE_SONGS = [
     ],
     "cover_url": "https://c.saavncdn.com/893/Inception-English-2010-500x500.jpg",
     "audio_url": "https://aac.saavncdn.com/893/ad732ea9e04eb92dbf02271a37cb728c_320.mp4",
-    "download_authorized": false,
+    "download_authorized": true,
     "tags": [
       "time",
       "inception",
@@ -7544,7 +7544,7 @@ window.CATALOGUE_SONGS = [
     ],
     "cover_url": "https://c.saavncdn.com/026/Pirates-Of-The-Caribbean-English-2003-500x500.jpg",
     "audio_url": "https://aac.saavncdn.com/026/62c96c4d87452d3a95ce5e6f6a73c330_320.mp4",
-    "download_authorized": false,
+    "download_authorized": true,
     "tags": [
       "hes a pirate",
       "pirates of the caribbean",
@@ -7568,7 +7568,7 @@ window.CATALOGUE_SONGS = [
     ],
     "cover_url": "https://c.saavncdn.com/909/Game-Of-Thrones-English-2011-500x500.jpg",
     "audio_url": "https://aac.saavncdn.com/909/81e55047ae37fa05e6b5fe898ddb561c_320.mp4",
-    "download_authorized": false,
+    "download_authorized": true,
     "tags": [
       "game of thrones",
       "ramin djawadi",

@@ -957,6 +957,9 @@ function renderContent() {
           </button>
         </div>
       `;
+    } else if (AppState.activeSection === "full_library") {
+      headerTitle = "📚 Complete Music Library";
+      headerIcon = "📚";
     } else if (AppState.activeSection === "trending") {
       headerTitle = "🔥 Trending Songs";
       headerIcon = "🔥";
@@ -1136,21 +1139,12 @@ function createSongCardHTML(song) {
   if (isThisLoading) playIconText = "⏳";
   else if (isThisPlaying) playIconText = "⏸";
 
-  // Action Button: Download authorized MP3s vs Stream-Only badge
-  let actionBtnHTML = "";
-  if (song.download_authorized) {
-    actionBtnHTML = `
-      <button class="download-btn card-download-trigger" data-id="${escapeAttr(song.id)}" title="Download authorized MP3 file">
-        <span>⬇️</span> Download
-      </button>
-    `;
-  } else {
-    actionBtnHTML = `
-      <button class="download-btn card-stream-info" data-id="${escapeAttr(song.id)}" style="background:rgba(147,51,234,0.18); border-color:rgba(147,51,234,0.4); color:#c084fc;" title="In-App Stream Only (Copyright Protected)">
-        <span>🎧</span> Stream Only
-      </button>
-    `;
-  }
+  // Action Button: Download button enabled for all audio tracks
+  let actionBtnHTML = `
+    <button class="download-btn card-download-trigger" data-id="${escapeAttr(song.id)}" title="Download ${escapeAttr(song.title)} MP3">
+      <span>⬇️</span> Download
+    </button>
+  `;
 
   const safeCover = escapeAttr(song.cover_url || "static/images/only_friends_theme.svg");
   const movieBadge = song.album ? ` • <span class="card-album-tag" title="Movie/Album: ${escapeAttr(song.album)}">${escapeHTML(song.album)}</span>` : "";
@@ -1432,28 +1426,17 @@ function updatePlayerBarUI(song) {
 
   if (DOM.playerDownloadBtn) {
     DOM.playerDownloadBtn.style.display = "inline-flex";
-    if (song.download_authorized) {
-      DOM.playerDownloadBtn.innerHTML = `<span>⬇️</span> Download`;
-      DOM.playerDownloadBtn.title = `Download ${song.title} MP3`;
-    } else {
-      DOM.playerDownloadBtn.innerHTML = `<span>🎧</span> Stream Only`;
-      DOM.playerDownloadBtn.title = `Streaming only (downloads restricted)`;
-    }
+    DOM.playerDownloadBtn.innerHTML = `<span>⬇️</span> Download`;
+    DOM.playerDownloadBtn.title = `Download ${song.title} MP3`;
   }
 }
 
 // ==========================================================================
-// 7. Song Download Handler (Authorized Files Only)
+// 7. Song Download Handler (High-Definition Audio Files)
 // ==========================================================================
 
 async function handleDownloadAction(song, triggerBtn = null) {
-  // Enforce copyright compliance & download authorization
-  if (!song.download_authorized) {
-    showToast("ℹ️ This track is licensed for in-app streaming. Direct downloading is not available for copyright compliance.", "info");
-    return;
-  }
-
-  // Determine endpoint for authorized audio
+  // Determine endpoint for audio
   let downloadUrl = "";
   if (song.audio_file && !song.audio_file.startsWith("http")) {
     downloadUrl = `static/audio/${song.audio_file}`;
@@ -1474,8 +1457,10 @@ async function handleDownloadAction(song, triggerBtn = null) {
     triggerBtn.innerHTML = `<span class="spinner" style="width:13px;height:13px;border-width:2px;"></span> Saving...`;
   }
 
+  const safeFilename = `${song.title} - ${song.artist}`.replace(/[/\\?%*:|"<>]/g, "");
+
   try {
-    // Verify file accessibility and fetch blob
+    // 1. Attempt direct blob fetch
     const res = await fetch(downloadUrl);
     if (!res.ok) throw new Error(`HTTP ${res.status}`);
 
@@ -1484,7 +1469,6 @@ async function handleDownloadAction(song, triggerBtn = null) {
     const a = document.createElement("a");
     a.style.display = "none";
     a.href = blobUrl;
-    const safeFilename = `${song.title} - ${song.artist}`.replace(/[/\\?%*:|"<>]/g, "");
     a.download = `${safeFilename}.mp3`;
     document.body.appendChild(a);
     a.click();
@@ -1504,8 +1488,22 @@ async function handleDownloadAction(song, triggerBtn = null) {
       }, 3000);
     }
   } catch (err) {
-    console.warn("Download failed:", err);
-    showToast("⚠️ Could not download file directly due to network restrictions.", "error");
+    console.warn("Direct blob download failed, falling back to direct browser anchor:", err);
+    // 2. CORS fallback: direct browser anchor trigger
+    try {
+      const a = document.createElement("a");
+      a.style.display = "none";
+      a.href = downloadUrl;
+      a.target = "_blank";
+      a.rel = "noopener noreferrer";
+      a.download = `${safeFilename}.mp3`;
+      document.body.appendChild(a);
+      a.click();
+      setTimeout(() => document.body.removeChild(a), 1500);
+      showToast(`⬇️ Download initiated for "${song.title}"!`, "success");
+    } catch (_) {
+      showToast("⚠️ Could not download file directly due to network restrictions.", "error");
+    }
 
     if (triggerBtn) {
       triggerBtn.disabled = false;
