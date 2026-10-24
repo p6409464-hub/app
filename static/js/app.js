@@ -866,7 +866,7 @@ function renderContent() {
         if (activeLang === "only_friends") {
           return s.category === "Only Friends OST" || (s._normTags && s._normTags.includes("only friends"));
         }
-        return sLang === activeLang || (s._normTags && s._normTags.includes(activeLang));
+        return sLang === activeLang || (s._normTags && s._normTags.includes(activeLang)) || sLang === "all" || !s.language;
       });
 
       if (displayList.length > 0 && langFiltered.length === 0) {
@@ -1174,7 +1174,7 @@ function renderContent() {
   sectionsDef.forEach(sec => {
     const secSongs = filtered.filter(sec.filter);
     if (secSongs.length > 0) {
-      const topSongs = secSongs.slice(0, 8);
+      const topSongs = secSongs.slice(0, 12);
       topSongs.forEach(s => renderedPool.push(s));
 
       fullHTML += `
@@ -1196,6 +1196,19 @@ function renderContent() {
       `;
     }
   });
+
+  fullHTML += `
+    <div style="text-align:center; padding: 40px 20px; margin: 36px 0 20px 0; background: linear-gradient(135deg, rgba(88,28,135,0.3) 0%, rgba(30,27,75,0.45) 100%); border: 1px solid rgba(168,85,247,0.35); border-radius: 20px; box-shadow: 0 10px 30px rgba(0,0,0,0.5);">
+      <div style="font-size:2.4rem; margin-bottom:10px;">📚</div>
+      <h3 style="color:#fff; font-size:1.35rem; font-weight:700; margin-bottom:8px;">Browse All ${AppState.masterSongs.length} Songs in Library</h3>
+      <p style="color:var(--text-muted); font-size:0.92rem; max-width:600px; margin:0 auto 20px auto;">
+        Explore the full collection across Tamil, Telugu, Hindi, Malayalam, English, and Instrumental blockbusters with direct playback &amp; downloads.
+      </p>
+      <button id="homeViewAllLibraryBtn" class="btn btn-primary" style="padding:12px 36px; font-size:1rem; font-weight:700; border-radius:30px; box-shadow:0 6px 20px rgba(168,85,247,0.45); cursor:pointer;">
+        <span>📚</span> Explore All Songs (${AppState.masterSongs.length})
+      </button>
+    </div>
+  `;
 
   DOM.contentContainer.innerHTML = fullHTML;
   attachCardListeners(renderedPool);
@@ -1221,6 +1234,17 @@ function attachPaginationListeners() {
 }
 
 function attachSectionExploreListeners() {
+  const homeViewAllBtn = document.getElementById("homeViewAllLibraryBtn");
+  if (homeViewAllBtn) {
+    homeViewAllBtn.addEventListener("click", () => {
+      AppState.activeSection = "full_library";
+      AppState.currentPage = 1;
+      updateActivePills();
+      renderContent();
+      window.scrollTo({ top: 0, behavior: "smooth" });
+    });
+  }
+
   document.querySelectorAll(".section-view-all-link").forEach(btn => {
     btn.addEventListener("click", () => {
       const lang = btn.dataset.lang;
