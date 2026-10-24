@@ -6,7 +6,7 @@
   <meta name="referrer" content="no-referrer" />
   <title>Pranesh Music Hub - Modern Dark Music Experience</title>
   <meta name="description" content="Stream and directly download Tamil, English, Malayalam, Instrumental, and Only Friends OST tracks in a modern, ad-free dark theme." />
-  <link rel="stylesheet" href="static/css/style.css" />
+  <link rel="stylesheet" href="static/css/style.css?v=2.7.0" />
   <!-- Google Fonts: Inter -->
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
@@ -176,7 +176,7 @@
       </div>
     </div>
 
-    <!-- Right: Volume & Download -->
+    <!-- Right: Volume, Download & Playlist Queue -->
     <div class="player-extra-actions">
       <div class="volume-wrapper">
         <button id="volumeBtn" class="player-action-btn" title="Mute / Unmute">
@@ -188,8 +188,34 @@
       <button id="playerDownloadBtn" class="download-btn" title="Download Authorized MP3">
         <span>⬇️</span> Download
       </button>
+
+      <button id="togglePlaylistBtn" class="playlist-toggle-btn" title="View Up Next &amp; Related Songs Playlist">
+        <span>📋</span> <span class="hide-mobile">Playlist</span> (<span id="playlistBadge">0</span>)
+      </button>
     </div>
   </footer>
+
+  <!-- ========================================================================
+       Up Next & Related Songs Playlist Drawer (Slide-Up)
+       ======================================================================== -->
+  <aside id="playlistDrawer" class="playlist-drawer" aria-label="Up Next Playlist" style="display: none;">
+    <div class="playlist-drawer-header">
+      <div class="playlist-header-left">
+        <span class="playlist-header-icon">🎶</span>
+        <div>
+          <h3 class="playlist-header-title">Up Next &amp; Related Songs</h3>
+          <p id="playlistStatusText" class="playlist-header-subtitle">Auto-playing next related tracks</p>
+        </div>
+      </div>
+      <div class="playlist-header-right">
+        <button id="shufflePlaylistBtn" class="playlist-action-btn" title="Shuffle Playlist Queue">🔀 Shuffle</button>
+        <button id="closePlaylistBtn" class="playlist-close-btn" title="Close Playlist" aria-label="Close">✕</button>
+      </div>
+    </div>
+    <div id="playlistItems" class="playlist-items-container">
+      <!-- Dynamic list of playlist items -->
+    </div>
+  </aside>
 
   <!-- ========================================================================
        Toast Notification Hub
@@ -197,7 +223,7 @@
   <div id="toastContainer" class="toast-container"></div>
 
   <!-- JavaScript Application Logic -->
-  <script src="static/js/songs_data.js?v=2.6.0"></script>
-  <script src="static/js/app.js?v=2.6.0"></script>
+  <script src="static/js/songs_data.js?v=2.7.0"></script>
+  <script src="static/js/app.js?v=2.7.0"></script>
 </body>
 </html>
