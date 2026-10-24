@@ -159,7 +159,8 @@ const DOM = {
   closePlaylistBtn: null,
   shufflePlaylistBtn: null,
   playlistItems: null,
-  playlistStatusText: null
+  playlistStatusText: null,
+  playerSpotifyBtn: null
 };
 
 function refreshDOMElements() {
@@ -198,6 +199,7 @@ function refreshDOMElements() {
   DOM.shufflePlaylistBtn = document.getElementById("shufflePlaylistBtn");
   DOM.playlistItems = document.getElementById("playlistItems");
   DOM.playlistStatusText = document.getElementById("playlistStatusText");
+  DOM.playerSpotifyBtn = document.getElementById("playerSpotifyBtn");
 }
 
 // Initial binding attempt
@@ -465,6 +467,20 @@ function setupEventListeners() {
     });
   }
 
+  if (DOM.playerSpotifyBtn) {
+    DOM.playerSpotifyBtn.addEventListener("click", () => {
+      if (AppState.currentSong) {
+        openSpotifySearch(AppState.currentSong.title, AppState.currentSong.artist);
+      } else {
+        AppState.activeSection = "spotify";
+        AppState.currentPage = 1;
+        updateActivePills();
+        renderContent();
+        window.scrollTo({ top: 0, behavior: "smooth" });
+      }
+    });
+  }
+
   // Hero Play Button
   const heroPlayBtn = document.getElementById("heroPlayBtn");
   if (heroPlayBtn) {
@@ -686,86 +702,14 @@ function executeSearch(rawQuery) {
   // Update active queue for uninterrupted playback
   AppState.queue = localMatches.length > 0 ? [...localMatches] : [...AppState.masterSongs];
 
-  // 0ms instant local rendering
+  // 0ms instant local rendering from comprehensive 4,000+ full-song catalogue
   renderContent();
 
-  // If a custom backend is configured, query asynchronously with sequence protection
+  // If a custom full-audio backend API is configured, query asynchronously for live saavn tracks
   if (API_BASE) {
     AppState.searchDebounceTimer = setTimeout(() => {
       fetchBackendSearchResults(trimmed, thisRequestId);
     }, 350);
-  } else {
-    // Dynamic online search for any songs across languages on static hosting
-    AppState.searchDebounceTimer = setTimeout(() => {
-      fetchOnlineGlobalSearchResults(trimmed, thisRequestId);
-    }, 300);
-  }
-}
-
-// Global live online music search (Apple Music / iTunes CORS API) for tracks across languages
-async function fetchOnlineGlobalSearchResults(query, requestId) {
-  if (!query || typeof fetch === "undefined") return;
-
-  const abortController = new AbortController();
-  AppState.activeSearchAbortController = abortController;
-
-  try {
-    const timeoutId = setTimeout(() => abortController.abort(), 4500);
-    const searchUrl = `https://itunes.apple.com/search?term=${encodeURIComponent(query)}&entity=song&limit=25`;
-    const res = await fetch(searchUrl, { signal: abortController.signal });
-    clearTimeout(timeoutId);
-
-    if (requestId !== AppState.searchRequestId) return;
-
-    if (res.ok) {
-      const data = await res.json();
-      if (requestId !== AppState.searchRequestId) return;
-
-      if (Array.isArray(data.results)) {
-        const seenIds = new Set(AppState.searchResults.map(s => s.id));
-        const newFound = [];
-        for (const item of data.results) {
-          const songId = `online_${item.trackId}`;
-          if (!seenIds.has(songId) && item.previewUrl) {
-            seenIds.add(songId);
-            const durationSec = Math.round((item.trackTimeMillis || 30000) / 1000);
-            newFound.push(prepareSongSearchMetadata({
-              id: songId,
-              title: item.trackName || "Unknown Title",
-              artist: item.artistName || "Unknown Artist",
-              album: item.collectionName || "Single",
-              duration: durationSec,
-              duration_str: formatTime(durationSec),
-              language: (item.primaryGenreName && ["Tamil", "Telugu", "Hindi", "Malayalam"].includes(item.primaryGenreName)) ? item.primaryGenreName : "All",
-              category: item.primaryGenreName || "Online Music",
-              sections: ["trending"],
-              cover_url: (item.artworkUrl100 || "").replace("100x100bb", "600x600bb"),
-              audio_url: item.previewUrl,
-              download_authorized: true,
-              tags: [item.trackName?.toLowerCase(), item.artistName?.toLowerCase(), item.collectionName?.toLowerCase(), "online"].filter(Boolean)
-            }));
-          }
-        }
-
-        if (newFound.length > 0) {
-          AppState.searchResults = [...AppState.searchResults, ...newFound];
-          if (AppState.currentSong) {
-            AppState.queue = buildRelatedQueue(AppState.currentSong);
-            renderPlaylistDrawer();
-          } else {
-            AppState.queue = [...AppState.searchResults];
-          }
-          renderContent();
-        }
-      }
-    }
-  } catch (err) {
-    if (err.name === "AbortError") return;
-    console.warn(`[MusicHub] Online live search notice: ${err.message}`);
-  } finally {
-    if (AppState.activeSearchAbortController === abortController) {
-      AppState.activeSearchAbortController = null;
-    }
   }
 }
 
@@ -1041,6 +985,76 @@ function renderContent() {
 
   if (DOM.emptyState) DOM.emptyState.style.display = "none";
 
+  // Dedicated Spotify Hub View
+  if (AppState.activeSection === "spotify") {
+    DOM.contentContainer.innerHTML = `
+      <section class="music-section">
+        <div class="section-header" style="flex-direction:column; align-items:flex-start; gap:6px;">
+          <div class="section-title-wrap" style="width:100%; display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:10px;">
+            <div style="display:flex; align-items:center; gap:10px;">
+              <span style="font-size:1.8rem;">🟢</span>
+              <div>
+                <h2 class="section-title" style="margin:0;">Spotify Player &amp; Playlists Hub</h2>
+                <p style="color:var(--text-muted); font-size:0.86rem; margin:2px 0 0 0;">Stream official Spotify playlists and any song directly inside Pranesh Music Hub</p>
+              </div>
+            </div>
+            <span class="section-badge" style="background:rgba(30,215,96,0.18); border-color:rgba(30,215,96,0.4); color:#4ade80;">Spotify Official Embed API</span>
+          </div>
+        </div>
+
+        <div class="spotify-input-box">
+          <input type="text" id="spotifyPageLinkInput" class="spotify-link-input" placeholder="Paste any Spotify Track, Album, or Playlist URL..." />
+          <button id="spotifyPageLoadBtn" class="btn btn-primary" style="background:#1ed760; color:#000; font-weight:700;">
+            ▶ Load &amp; Play
+          </button>
+        </div>
+
+        <div class="spotify-embed-container">
+          <iframe id="spotifyPageIframe" style="border-radius:16px; box-shadow:0 12px 36px rgba(0,0,0,0.6);" src="https://open.spotify.com/embed/playlist/37i9dQZF1DX4s3V2rT5alW?utm_source=generator&theme=0" width="100%" height="380" frameBorder="0" allowfullscreen="" allow="autoplay; clipboard-write; encrypted-media; fullscreen; picture-in-picture" loading="lazy"></iframe>
+        </div>
+
+        <div style="margin-top:24px;">
+          <h3 style="color:#fff; font-size:1.1rem; margin-bottom:12px; font-weight:700;">Featured Spotify Playlists:</h3>
+          <div class="spotify-playlist-grid">
+            <div class="spotify-card active" data-uri="playlist/37i9dQZF1DX4s3V2rT5alW">
+              <span class="spotify-card-icon">🌺</span>
+              <h4>Hot Hits Tamil</h4>
+              <p>Top Kollywood chartbusters</p>
+            </div>
+            <div class="spotify-card" data-uri="playlist/37i9dQZF1DX14CbVHtlw2r">
+              <span class="spotify-card-icon">💖</span>
+              <h4>Tamil Romance</h4>
+              <p>Romantic melodies by Rahman, Yuvan, Harris</p>
+            </div>
+            <div class="spotify-card" data-uri="playlist/37i9dQZF1DX6XceP0o0G9p">
+              <span class="spotify-card-icon">🔥</span>
+              <h4>Kollywood Chill</h4>
+              <p>Acoustic and soothing Tamil vibes</p>
+            </div>
+            <div class="spotify-card" data-uri="playlist/37i9dQZF1DWVKDFnCqcskw">
+              <span class="spotify-card-icon">⚡</span>
+              <h4>Tollywood Hits</h4>
+              <p>High-energy Telugu bangers</p>
+            </div>
+            <div class="spotify-card" data-uri="playlist/37i9dQZF1DX0XUfTFmNBRM">
+              <span class="spotify-card-icon">🪔</span>
+              <h4>Bollywood Butter</h4>
+              <p>Biggest Hindi &amp; Bollywood hits</p>
+            </div>
+            <div class="spotify-card" data-uri="playlist/37i9dQZF1DXcBWIGoYBM5M">
+              <span class="spotify-card-icon">🌍</span>
+              <h4>Today's Top Hits</h4>
+              <p>Worldwide global trending hits</p>
+            </div>
+          </div>
+        </div>
+      </section>
+    `;
+
+    attachSpotifyPageListeners();
+    return;
+  }
+
   // Dedicated View for Favourites / History / Single Language
   if (AppState.activeSection !== "all" || AppState.activeLanguage !== "all") {
     let headerTitle = "Music Collection";
@@ -1264,6 +1278,65 @@ function attachSectionExploreListeners() {
   });
 }
 
+function openSpotifySearch(title, artist) {
+  const query = `${title || ""} ${artist || ""}`.trim();
+  const spotifyUrl = `https://open.spotify.com/search/${encodeURIComponent(query)}`;
+  if (typeof window !== "undefined") {
+    window.open(spotifyUrl, "_blank", "noopener,noreferrer");
+  }
+  showToast(`🟢 Opening "${title}" on Spotify...`, "info");
+}
+
+function attachSpotifyPageListeners() {
+  const iframe = document.getElementById("spotifyPageIframe");
+  const linkInput = document.getElementById("spotifyPageLinkInput");
+  const loadBtn = document.getElementById("spotifyPageLoadBtn");
+
+  const loadFromInput = () => {
+    if (!linkInput || !iframe) return;
+    const val = linkInput.value.trim();
+    if (!val) return;
+    let embedSrc = "";
+    if (val.includes("open.spotify.com/")) {
+      const match = val.match(/open\.spotify\.com\/(track|album|playlist|artist)\/([a-zA-Z0-9]+)/);
+      if (match) {
+        embedSrc = `https://open.spotify.com/embed/${match[1]}/${match[2]}?utm_source=generator&theme=0`;
+      }
+    } else if (val.includes("spotify:")) {
+      const parts = val.split(":");
+      if (parts.length >= 3) {
+        embedSrc = `https://open.spotify.com/embed/${parts[1]}/${parts[2]}?utm_source=generator&theme=0`;
+      }
+    }
+
+    if (embedSrc) {
+      iframe.src = embedSrc;
+      showToast("🟢 Loaded Spotify Player!", "success");
+    } else {
+      showToast("⚠️ Invalid Spotify URL. Paste a link like open.spotify.com/track/...", "error");
+    }
+  };
+
+  if (loadBtn) loadBtn.addEventListener("click", loadFromInput);
+  if (linkInput) {
+    linkInput.addEventListener("keydown", (e) => {
+      if (e.key === "Enter") loadFromInput();
+    });
+  }
+
+  document.querySelectorAll(".spotify-card").forEach(card => {
+    card.addEventListener("click", () => {
+      document.querySelectorAll(".spotify-card").forEach(c => c.classList.remove("active"));
+      card.classList.add("active");
+      const uri = card.dataset.uri;
+      if (uri && iframe) {
+        iframe.src = `https://open.spotify.com/embed/${uri}?utm_source=generator&theme=0`;
+        showToast(`🟢 Loading ${card.querySelector("h4")?.textContent || "Playlist"}...`, "info");
+      }
+    });
+  });
+}
+
 // Generate accessible HTML for an individual song card
 function createSongCardHTML(song) {
   const isThisPlaying = AppState.currentSong && AppState.currentSong.id === song.id && AppState.isPlaying;
@@ -1304,8 +1377,11 @@ function createSongCardHTML(song) {
         <button class="fav-btn ${isFav ? 'favorited' : ''}" data-id="${escapeAttr(song.id)}" title="${isFav ? 'Remove from Favourites' : 'Add to Favourites'}" aria-label="Favourite">
           ${isFav ? '❤️' : '🤍'}
         </button>
-        <div class="card-action-right">
+        <div class="card-action-right" style="display:flex; align-items:center; gap:6px;">
           ${actionBtnHTML}
+          <button class="spotify-btn-card card-spotify-trigger" data-title="${escapeAttr(song.title)}" data-artist="${escapeAttr(song.artist)}" title="Listen on Spotify" aria-label="Listen on Spotify">
+            <span>🟢</span>
+          </button>
         </div>
       </div>
     </div>
@@ -1370,6 +1446,14 @@ function attachCardListeners(pool = []) {
       e.stopPropagation();
       const song = getSongById(btn.dataset.id);
       if (song) handleDownloadAction(song, btn);
+    });
+  });
+
+  // Spotify button triggers on song card
+  document.querySelectorAll(".card-spotify-trigger").forEach(btn => {
+    btn.addEventListener("click", (e) => {
+      e.stopPropagation();
+      openSpotifySearch(btn.dataset.title, btn.dataset.artist);
     });
   });
 

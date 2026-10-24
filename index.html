@@ -6,7 +6,7 @@
   <meta name="referrer" content="no-referrer" />
   <title>Pranesh Music Hub - Modern Dark Music Experience</title>
   <meta name="description" content="Stream and directly download Tamil, English, Malayalam, Instrumental, and Only Friends OST tracks in a modern, ad-free dark theme." />
-  <link rel="stylesheet" href="static/css/style.css?v=3.0.0" />
+  <link rel="stylesheet" href="static/css/style.css?v=3.1.0" />
   <!-- Google Fonts: Inter -->
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
@@ -116,7 +116,8 @@
       <div class="filter-row">
         <span class="filter-label">Browse:</span>
         <button class="chip section-pill active" data-section="all">All Sections</button>
-        <button class="chip section-pill" data-section="full_library">📚 All Songs (2,100+)</button>
+        <button class="chip section-pill" data-section="full_library">📚 All Songs (4,000+)</button>
+        <button class="chip section-pill" data-section="spotify">🟢 Spotify Hub</button>
         <button class="chip section-pill" data-section="trending">🔥 Trending Songs</button>
         <button class="chip section-pill" data-section="recent">🆕 Recently Added</button>
       </div>
@@ -192,6 +193,10 @@
       <button id="togglePlaylistBtn" class="playlist-toggle-btn" title="View Up Next &amp; Related Songs Playlist">
         <span>📋</span> <span class="hide-mobile">Playlist</span> (<span id="playlistBadge">0</span>)
       </button>
+
+      <button id="playerSpotifyBtn" class="spotify-pill-btn" title="Open Spotify Hub" style="display:flex; align-items:center; gap:5px; background:rgba(30,215,96,0.15); border:1px solid rgba(30,215,96,0.4); color:#4ade80; border-radius:8px; padding:6px 12px; font-size:0.82rem; font-weight:700; cursor:pointer;">
+        <span>🟢</span> <span class="hide-mobile">Spotify</span>
+      </button>
     </div>
   </footer>
 
@@ -223,7 +228,7 @@
   <div id="toastContainer" class="toast-container"></div>
 
   <!-- JavaScript Application Logic -->
-  <script src="static/js/songs_data.js?v=3.0.0"></script>
-  <script src="static/js/app.js?v=3.0.0"></script>
+  <script src="static/js/songs_data.js?v=3.1.0"></script>
+  <script src="static/js/app.js?v=3.1.0"></script>
 </body>
 </html>

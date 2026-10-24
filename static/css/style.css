@@ -949,6 +949,108 @@ body {
   color: #fff;
 }
 
+/* Spotify Button in Player Bar */
+.spotify-pill-btn {
+  transition: all 0.25s ease;
+}
+.spotify-pill-btn:hover {
+  background: #1ed760 !important;
+  color: #000 !important;
+  border-color: #1ed760 !important;
+  transform: translateY(-1px);
+  box-shadow: 0 4px 14px rgba(30, 215, 96, 0.45);
+}
+
+/* Spotify Button on Song Cards */
+.spotify-btn-card {
+  background: rgba(30, 215, 96, 0.12);
+  border: 1px solid rgba(30, 215, 96, 0.3);
+  color: #4ade80;
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  font-size: 0.85rem;
+}
+.spotify-btn-card:hover {
+  background: #1ed760;
+  border-color: #1ed760;
+  transform: scale(1.1);
+  box-shadow: 0 0 10px rgba(30, 215, 96, 0.5);
+}
+
+/* Spotify Hub Page Layout */
+.spotify-input-box {
+  display: flex;
+  gap: 12px;
+  margin: 16px 0 24px 0;
+  flex-wrap: wrap;
+}
+.spotify-link-input {
+  flex: 1;
+  min-width: 260px;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(30, 215, 96, 0.3);
+  border-radius: 12px;
+  padding: 12px 18px;
+  color: #fff;
+  font-size: 0.92rem;
+  outline: none;
+  transition: border-color 0.2s ease;
+}
+.spotify-link-input:focus {
+  border-color: #1ed760;
+  box-shadow: 0 0 12px rgba(30, 215, 96, 0.25);
+}
+.spotify-embed-container {
+  width: 100%;
+  max-width: 900px;
+  margin: 0 auto 30px auto;
+}
+.spotify-playlist-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+  gap: 16px;
+  margin-top: 14px;
+}
+.spotify-card {
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 14px;
+  padding: 16px;
+  cursor: pointer;
+  transition: all 0.25s ease;
+  display: flex;
+  flex-direction: column;
+}
+.spotify-card:hover,
+.spotify-card.active {
+  background: rgba(30, 215, 96, 0.1);
+  border-color: rgba(30, 215, 96, 0.5);
+  transform: translateY(-3px);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4);
+}
+.spotify-card-icon {
+  font-size: 1.8rem;
+  margin-bottom: 8px;
+}
+.spotify-card h4 {
+  font-size: 1rem;
+  font-weight: 700;
+  color: #fff;
+  margin: 0 0 4px 0;
+}
+.spotify-card p {
+  font-size: 0.78rem;
+  color: var(--text-muted);
+  margin: 0;
+  line-height: 1.35;
+}
+
 /* ==========================================================================
    Up Next & Related Songs Playlist Drawer (Slide-Up)
    ========================================================================== */
