@@ -7194,5 +7194,387 @@ window.CATALOGUE_SONGS = [
       "naga chaitanya",
       "folk"
     ]
+  },
+  {
+    "id": "hin_bb_03",
+    "title": "Channa Mereya",
+    "artist": "Arijit Singh, Pritam",
+    "album": "Ae Dil Hai Mushkil",
+    "duration": 289,
+    "duration_str": "4:49",
+    "language": "Hindi",
+    "category": "Hindi Songs",
+    "sections": [
+      "recent",
+      "hindi"
+    ],
+    "cover_url": "https://c.saavncdn.com/257/Ae-Dil-Hai-Mushkil-Hindi-2016-500x500.jpg",
+    "audio_url": "https://aac.saavncdn.com/257/94f83b27b9c9f4d2f099cf9d4c728fb5_320.mp4",
+    "download_authorized": false,
+    "tags": [
+      "channa mereya",
+      "ae dil hai mushkil",
+      "ranbir kapoor",
+      "arijit singh",
+      "pritam",
+      "hindi"
+    ]
+  },
+  {
+    "id": "hin_bb_04",
+    "title": "Raataan Lambiyan",
+    "artist": "Jubin Nautiyal, Asees Kaur, Tanishk Bagchi",
+    "album": "Shershaah",
+    "duration": 230,
+    "duration_str": "3:50",
+    "language": "Hindi",
+    "category": "Hindi Songs",
+    "sections": [
+      "trending",
+      "hindi"
+    ],
+    "cover_url": "https://c.saavncdn.com/348/Shershaah-Original-Motion-Picture-Soundtrack--Hindi-2021-20210815181610-500x500.jpg",
+    "audio_url": "https://aac.saavncdn.com/348/8a25227181fc8da6548773950a4bf85d_320.mp4",
+    "download_authorized": false,
+    "tags": [
+      "raataan lambiyan",
+      "shershaah",
+      "sidharth malhotra",
+      "kiara advani",
+      "jubin nautiyal",
+      "asees kaur",
+      "hindi"
+    ]
+  },
+  {
+    "id": "hin_bb_05",
+    "title": "Apna Bana Le",
+    "artist": "Arijit Singh, Sachin-Jigar",
+    "album": "Bhediya",
+    "duration": 261,
+    "duration_str": "4:21",
+    "language": "Hindi",
+    "category": "Hindi Songs",
+    "sections": [
+      "trending",
+      "hindi"
+    ],
+    "cover_url": "https://c.saavncdn.com/814/Bhediya-Hindi-2022-20221125081014-500x500.jpg",
+    "audio_url": "https://aac.saavncdn.com/814/7c0c4e7f33d72b21764121bcbbca9ce3_320.mp4",
+    "download_authorized": false,
+    "tags": [
+      "apna bana le",
+      "bhediya",
+      "varun dhawan",
+      "kriti sanon",
+      "arijit singh",
+      "sachin jigar",
+      "hindi"
+    ]
+  },
+  {
+    "id": "hin_bb_07",
+    "title": "Zinda Banda",
+    "artist": "Anirudh Ravichander",
+    "album": "Jawan",
+    "duration": 264,
+    "duration_str": "4:24",
+    "language": "Hindi",
+    "category": "Hindi Songs",
+    "sections": [
+      "recent",
+      "hindi"
+    ],
+    "cover_url": "https://c.saavncdn.com/909/Zinda-Banda-From-Jawan-Hindi-2023-20230731124403-500x500.jpg",
+    "audio_url": "https://aac.saavncdn.com/909/be31e3fe1aeb134ffc1ea1c8413bcae5_320.mp4",
+    "download_authorized": false,
+    "tags": [
+      "zinda banda",
+      "jawan",
+      "shah rukh khan",
+      "anirudh",
+      "hindi"
+    ]
+  },
+  {
+    "id": "hin_bb_09",
+    "title": "Arjan Vailly",
+    "artist": "Bhupinder Babbal, Manan Bhardwaj",
+    "album": "Animal",
+    "duration": 182,
+    "duration_str": "3:02",
+    "language": "Hindi",
+    "category": "Hindi Songs",
+    "sections": [
+      "trending",
+      "hindi"
+    ],
+    "cover_url": "https://c.saavncdn.com/092/ANIMAL-Hindi-2023-20231124191438-500x500.jpg",
+    "audio_url": "https://aac.saavncdn.com/092/cf281a78e7275d27ee1c8d5503e0cebe_320.mp4",
+    "download_authorized": false,
+    "tags": [
+      "arjan vailly",
+      "animal",
+      "ranbir kapoor",
+      "bobby deol",
+      "bhupinder babbal",
+      "hindi"
+    ]
+  },
+  {
+    "id": "hin_bb_11",
+    "title": "Agar Tum Saath Ho",
+    "artist": "Alka Yagnik, Arijit Singh, A.R. Rahman",
+    "album": "Tamasha",
+    "duration": 341,
+    "duration_str": "5:41",
+    "language": "Hindi",
+    "category": "Hindi Songs",
+    "sections": [
+      "trending",
+      "hindi"
+    ],
+    "cover_url": "https://c.saavncdn.com/836/Tamasha-Hindi-2015-500x500.jpg",
+    "audio_url": "https://aac.saavncdn.com/836/5377f0a9448882ca251d9d97bfbc1256_320.mp4",
+    "download_authorized": false,
+    "tags": [
+      "agar tum saath ho",
+      "tamasha",
+      "ranbir kapoor",
+      "deepika padukone",
+      "ar rahman",
+      "a.r. rahman",
+      "arijit singh",
+      "alka yagnik",
+      "hindi"
+    ]
+  },
+  {
+    "id": "hin_bb_12",
+    "title": "Chaiyya Chaiyya",
+    "artist": "Sukhwinder Singh, Sapna Awasthi, A.R. Rahman",
+    "album": "Dil Se..",
+    "duration": 395,
+    "duration_str": "6:35",
+    "language": "Hindi",
+    "category": "Hindi Songs",
+    "sections": [
+      "recent",
+      "hindi"
+    ],
+    "cover_url": "https://c.saavncdn.com/050/Dil-Se-Hindi-1998-20221201083437-500x500.jpg",
+    "audio_url": "https://aac.saavncdn.com/050/78f1ae43d831518f88cf508e6783818e_320.mp4",
+    "download_authorized": false,
+    "tags": [
+      "chaiyya chaiyya",
+      "dil se",
+      "shah rukh khan",
+      "malaika arora",
+      "ar rahman",
+      "a.r. rahman",
+      "sukhwinder singh",
+      "hindi"
+    ]
+  },
+  {
+    "id": "hin_bb_13",
+    "title": "Kun Faya Kun",
+    "artist": "A.R. Rahman, Mohit Chauhan, Javed Ali",
+    "album": "Rockstar",
+    "duration": 473,
+    "duration_str": "7:53",
+    "language": "Hindi",
+    "category": "Hindi Songs",
+    "sections": [
+      "trending",
+      "hindi"
+    ],
+    "cover_url": "https://c.saavncdn.com/712/Rockstar-Hindi-2011-20221212044810-500x500.jpg",
+    "audio_url": "https://aac.saavncdn.com/712/81e55047ae37fa05e6b5fe898ddb561c_320.mp4",
+    "download_authorized": false,
+    "tags": [
+      "kun faya kun",
+      "rockstar",
+      "ranbir kapoor",
+      "ar rahman",
+      "a.r. rahman",
+      "mohit chauhan",
+      "sufi",
+      "hindi"
+    ]
+  },
+  {
+    "id": "mal_bb_05",
+    "title": "Thaai Manam",
+    "artist": "Ilaiyaraaja, Sushin Shyam",
+    "album": "Manjummel Boys",
+    "duration": 240,
+    "duration_str": "4:00",
+    "language": "Malayalam",
+    "category": "Malayalam Songs",
+    "sections": [
+      "recent",
+      "malayalam"
+    ],
+    "cover_url": "https://c.saavncdn.com/832/Manjummel-Boys-Malayalam-2024-20240222161020-500x500.jpg",
+    "audio_url": "https://aac.saavncdn.com/832/62c96c4d87452d3a95ce5e6f6a73c330_320.mp4",
+    "download_authorized": false,
+    "tags": [
+      "thaai manam",
+      "manjummel boys",
+      "sushin shyam",
+      "ilaiyaraaja",
+      "malayalam"
+    ]
+  },
+  {
+    "id": "tam_bb_01",
+    "title": "Appadi Podu",
+    "artist": "KK, Anuradha Sriram, Vidyasagar",
+    "album": "Ghilli",
+    "duration": 352,
+    "duration_str": "5:52",
+    "language": "Tamil",
+    "category": "Tamil Songs",
+    "sections": [
+      "trending",
+      "tamil"
+    ],
+    "cover_url": "https://c.saavncdn.com/832/Ghilli-Tamil-2004-20200812165030-500x500.jpg",
+    "audio_url": "https://aac.saavncdn.com/832/cf281a78e7275d27ee1c8d5503e0cebe_320.mp4",
+    "download_authorized": false,
+    "tags": [
+      "appadi podu",
+      "ghilli",
+      "thalapathy",
+      "vijay",
+      "trisha",
+      "vidyasagar",
+      "kk",
+      "tamil",
+      "trending"
+    ]
+  },
+  {
+    "id": "tam_bb_02",
+    "title": "Arjunar Villu",
+    "artist": "Sukhwinder Singh, Manikka Vinayagam, Vidyasagar",
+    "album": "Ghilli",
+    "duration": 268,
+    "duration_str": "4:28",
+    "language": "Tamil",
+    "category": "Tamil Songs",
+    "sections": [
+      "recent",
+      "tamil"
+    ],
+    "cover_url": "https://c.saavncdn.com/832/Ghilli-Tamil-2004-20200812165030-500x500.jpg",
+    "audio_url": "https://aac.saavncdn.com/832/01b8e8f81394c8e74f141bf19542bf82_320.mp4",
+    "download_authorized": false,
+    "tags": [
+      "arjunar villu",
+      "ghilli",
+      "vijay",
+      "vidyasagar",
+      "kabbadi",
+      "tamil"
+    ]
+  },
+  {
+    "id": "tam_bb_03",
+    "title": "Vilayadu Mankatha",
+    "artist": "Yuvan Shankar Raja, Anitha, Premgi Amaren",
+    "album": "Mankatha",
+    "duration": 361,
+    "duration_str": "6:01",
+    "language": "Tamil",
+    "category": "Tamil Songs",
+    "sections": [
+      "trending",
+      "tamil"
+    ],
+    "cover_url": "https://c.saavncdn.com/712/Mankatha-Tamil-2011-20200812165520-500x500.jpg",
+    "audio_url": "https://aac.saavncdn.com/712/941785501d51c3c99e4ad611f71dfb99_320.mp4",
+    "download_authorized": false,
+    "tags": [
+      "vilayadu mankatha",
+      "mankatha",
+      "ajith kumar",
+      "thala",
+      "yuvan shankar raja",
+      "tamil"
+    ]
+  },
+  {
+    "id": "inst_bb_02",
+    "title": "Inception - Time",
+    "artist": "Hans Zimmer",
+    "album": "Inception (Original Motion Picture Soundtrack)",
+    "duration": 275,
+    "duration_str": "4:35",
+    "language": "Instrumental",
+    "category": "Instrumental Music",
+    "sections": [
+      "recent",
+      "instrumental"
+    ],
+    "cover_url": "https://c.saavncdn.com/893/Inception-English-2010-500x500.jpg",
+    "audio_url": "https://aac.saavncdn.com/893/ad732ea9e04eb92dbf02271a37cb728c_320.mp4",
+    "download_authorized": false,
+    "tags": [
+      "time",
+      "inception",
+      "hans zimmer",
+      "orchestra",
+      "instrumental"
+    ]
+  },
+  {
+    "id": "inst_bb_03",
+    "title": "He's a Pirate",
+    "artist": "Klaus Badelt, Hans Zimmer",
+    "album": "Pirates of the Caribbean: The Curse of the Black Pearl",
+    "duration": 90,
+    "duration_str": "1:30",
+    "language": "Instrumental",
+    "category": "Instrumental Music",
+    "sections": [
+      "trending",
+      "instrumental"
+    ],
+    "cover_url": "https://c.saavncdn.com/026/Pirates-Of-The-Caribbean-English-2003-500x500.jpg",
+    "audio_url": "https://aac.saavncdn.com/026/62c96c4d87452d3a95ce5e6f6a73c330_320.mp4",
+    "download_authorized": false,
+    "tags": [
+      "hes a pirate",
+      "pirates of the caribbean",
+      "hans zimmer",
+      "jack sparrow",
+      "instrumental"
+    ]
+  },
+  {
+    "id": "inst_bb_04",
+    "title": "Game of Thrones Main Theme",
+    "artist": "Ramin Djawadi",
+    "album": "Game of Thrones: Season 1 Soundtrack",
+    "duration": 106,
+    "duration_str": "1:46",
+    "language": "Instrumental",
+    "category": "Instrumental Music",
+    "sections": [
+      "trending",
+      "instrumental"
+    ],
+    "cover_url": "https://c.saavncdn.com/909/Game-Of-Thrones-English-2011-500x500.jpg",
+    "audio_url": "https://aac.saavncdn.com/909/81e55047ae37fa05e6b5fe898ddb561c_320.mp4",
+    "download_authorized": false,
+    "tags": [
+      "game of thrones",
+      "ramin djawadi",
+      "cello",
+      "epic",
+      "instrumental"
+    ]
   }
 ];
