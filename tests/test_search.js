@@ -120,7 +120,11 @@ const appJsCode = fs.readFileSync(appJsPath, "utf-8");
 vm.runInThisContext(appJsCode);
 
 // Initialize the app
-global.initApp();
+if (typeof global.initApp === "function") {
+  global.initApp();
+} else if (typeof global.initializeApp === "function") {
+  global.initializeApp();
+}
 
 console.log("\n==================================================");
 console.log("RUNNING PRANESH MUSIC HUB SEARCH TEST SUITE");
@@ -288,6 +292,23 @@ const allSlice = AppState.masterSongs.slice(0, AppState.currentPage * AppState.p
 assert.strictEqual(allSlice.length, fullTotal, "Show all must display all items");
 console.log(`[PASS] Pagination correctly controls DOM slicing (24 -> 48 -> ${fullTotal}).`);
 
+// Test 11: Fallback Property Names (song.name vs song.title, song.movie vs song.album)
+console.log("\nTest 11: Verifying fallback property names (song.name, song.movie, song.singer)...");
+const testItem = prepareSongSearchMetadata({
+  id: "test_fb_1",
+  name: "Fallback Song Title",
+  singer: "Fallback Singer",
+  movie: "Fallback Cinema Movie",
+  lang: "Tamil"
+});
+assert.strictEqual(testItem.title, "Fallback Song Title", "song.name should map to title");
+assert.strictEqual(testItem.artist, "Fallback Singer", "song.singer should map to artist");
+assert.strictEqual(testItem.album, "Fallback Cinema Movie", "song.movie should map to album");
+assert(matchSongQuery(testItem, "fallback"), "Should match 'fallback'");
+assert(matchSongQuery(testItem, "cinema movie"), "Should match 'cinema movie'");
+assert(matchSongQuery(testItem, "singer"), "Should match 'singer'");
+console.log("[PASS] Fallback property names (name, singer, movie) correctly handled.");
+
 console.log("\n==================================================");
-console.log("ALL 10 SEARCH & CATALOGUE TESTS PASSED SUCCESSFULLY!");
+console.log("ALL 11 SEARCH & CATALOGUE TESTS PASSED SUCCESSFULLY!");
 console.log("==================================================\n");

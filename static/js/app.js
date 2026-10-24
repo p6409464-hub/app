@@ -55,9 +55,20 @@ const DEFAULT_STATIC_SONGS = [
   { id: "inst_3", title: "SoundHelix Symphony", artist: "Open Music Archive", album: "Algorithmic Harmony", duration: 372, duration_str: "6:12", language: "Instrumental", category: "Instrumental Music", sections: ["recent", "instrumental"], cover_url: "static/images/soundhelix_ambient.svg", audio_file: "soundhelix_ambient.mp3", download_authorized: true, tags: ["instrumental", "soundhelix", "electronic"] }
 ];
 
-// Optional custom backend endpoint (supports query param ?api=... or localStorage)
-const urlParams = new URLSearchParams(window.location.search);
-const configuredApi = urlParams.get("api") || localStorage.getItem("pranesh_api_url") || "";
+// Clean up any stale ephemeral Cloudflare tunnels from localStorage
+try {
+  const storedApi = localStorage.getItem("pranesh_api_url");
+  if (storedApi && (storedApi.includes("trycloudflare.com") || storedApi.includes("loca.lt") || storedApi.includes("ngrok"))) {
+    localStorage.removeItem("pranesh_api_url");
+  }
+} catch (_) {}
+
+// Optional custom backend endpoint (supports query param ?api=... or localhost)
+const urlParams = (typeof window !== "undefined" && window.location) ? new URLSearchParams(window.location.search) : new URLSearchParams();
+let configuredApi = urlParams.get("api") || "";
+if (!configuredApi && typeof window !== "undefined" && window.location && (window.location.hostname === "localhost" || window.location.hostname === "127.0.0.1")) {
+  configuredApi = localStorage.getItem("pranesh_api_url") || "";
+}
 const API_BASE = configuredApi ? configuredApi.replace(/\/+$/, "") : "";
 
 const AppState = {
@@ -113,45 +124,102 @@ document.addEventListener("click", unlockMobileAudio, { passive: true, once: tru
 
 // DOM Elements
 const DOM = {
-  searchInput: document.getElementById("searchInput"),
-  clearSearchBtn: document.getElementById("clearSearchBtn"),
-  langChips: document.querySelectorAll(".lang-chip"),
-  sectionPills: document.querySelectorAll(".section-pill"),
-  contentContainer: document.getElementById("contentContainer"),
-  emptyState: document.getElementById("emptyState"),
-  emptySearchQuery: document.getElementById("emptySearchQuery"),
-  resetSearchBtn: document.getElementById("resetSearchBtn"),
-  playerBar: document.getElementById("playerBar"),
-  playerThumb: document.getElementById("playerThumb"),
-  playerTitle: document.getElementById("playerTitle"),
-  playerArtist: document.getElementById("playerArtist"),
-  playerFavBtn: document.getElementById("playerFavBtn"),
-  playerDownloadBtn: document.getElementById("playerDownloadBtn"),
-  playPauseBtn: document.getElementById("playPauseBtn"),
-  playPauseIcon: document.getElementById("playPauseIcon"),
-  prevBtn: document.getElementById("prevBtn"),
-  nextBtn: document.getElementById("nextBtn"),
-  shuffleBtn: document.getElementById("shuffleBtn"),
-  repeatBtn: document.getElementById("repeatBtn"),
-  currentTimeEl: document.getElementById("currentTime"),
-  durationTimeEl: document.getElementById("durationTime"),
-  seekbar: document.getElementById("seekbar"),
-  volumeBtn: document.getElementById("volumeBtn"),
-  volumeIcon: document.getElementById("volumeIcon"),
-  volumeSlider: document.getElementById("volumeSlider"),
-  toastContainer: document.getElementById("toastContainer")
+  searchInput: null,
+  clearSearchBtn: null,
+  langChips: [],
+  sectionPills: [],
+  contentContainer: null,
+  emptyState: null,
+  emptySearchQuery: null,
+  resetSearchBtn: null,
+  playerBar: null,
+  playerThumb: null,
+  playerTitle: null,
+  playerArtist: null,
+  playerFavBtn: null,
+  playerDownloadBtn: null,
+  playPauseBtn: null,
+  playPauseIcon: null,
+  prevBtn: null,
+  nextBtn: null,
+  shuffleBtn: null,
+  repeatBtn: null,
+  currentTimeEl: null,
+  durationTimeEl: null,
+  seekbar: null,
+  volumeBtn: null,
+  volumeIcon: null,
+  volumeSlider: null,
+  toastContainer: null
 };
+
+function refreshDOMElements() {
+  if (typeof document === "undefined") return;
+  DOM.searchInput = document.getElementById("searchInput");
+  DOM.clearSearchBtn = document.getElementById("clearSearchBtn");
+  DOM.langChips = document.querySelectorAll(".lang-chip");
+  DOM.sectionPills = document.querySelectorAll(".section-pill");
+  DOM.contentContainer = document.getElementById("contentContainer");
+  DOM.emptyState = document.getElementById("emptyState");
+  DOM.emptySearchQuery = document.getElementById("emptySearchQuery");
+  DOM.resetSearchBtn = document.getElementById("resetSearchBtn");
+  DOM.playerBar = document.getElementById("playerBar");
+  DOM.playerThumb = document.getElementById("playerThumb");
+  DOM.playerTitle = document.getElementById("playerTitle");
+  DOM.playerArtist = document.getElementById("playerArtist");
+  DOM.playerFavBtn = document.getElementById("playerFavBtn");
+  DOM.playerDownloadBtn = document.getElementById("playerDownloadBtn");
+  DOM.playPauseBtn = document.getElementById("playPauseBtn");
+  DOM.playPauseIcon = document.getElementById("playPauseIcon");
+  DOM.prevBtn = document.getElementById("prevBtn");
+  DOM.nextBtn = document.getElementById("nextBtn");
+  DOM.shuffleBtn = document.getElementById("shuffleBtn");
+  DOM.repeatBtn = document.getElementById("repeatBtn");
+  DOM.currentTimeEl = document.getElementById("currentTime");
+  DOM.durationTimeEl = document.getElementById("durationTime");
+  DOM.seekbar = document.getElementById("seekbar");
+  DOM.volumeBtn = document.getElementById("volumeBtn");
+  DOM.volumeIcon = document.getElementById("volumeIcon");
+  DOM.volumeSlider = document.getElementById("volumeSlider");
+  DOM.toastContainer = document.getElementById("toastContainer");
+}
+
+// Initial binding attempt
+refreshDOMElements();
 
 // ==========================================================================
 // 2. Initialization & Event Listeners
 // ==========================================================================
 
-document.addEventListener("DOMContentLoaded", () => {
+let appInitialized = false;
+let listenersAttached = false;
+
+function initializeApp() {
+  if (appInitialized) return;
+  appInitialized = true;
+  refreshDOMElements();
   setupEventListeners();
   loadCatalogue();
-});
+}
+
+// Expose for testing or explicit invocation
+if (typeof window !== "undefined") {
+  window.initializeApp = initializeApp;
+}
+
+// Execute immediately if DOM is ready; otherwise listen for DOMContentLoaded
+if (typeof document !== "undefined") {
+  if (document.readyState === "loading") {
+    document.addEventListener("DOMContentLoaded", initializeApp);
+  } else {
+    initializeApp();
+  }
+}
 
 function setupEventListeners() {
+  if (listenersAttached) return;
+  listenersAttached = true;
+  refreshDOMElements();
   // Live Instant Search Bar with 0ms deterministic local response
   if (DOM.searchInput) {
     DOM.searchInput.addEventListener("input", (e) => {
@@ -386,23 +454,38 @@ function normalizeSearchText(str) {
     .normalize("NFD")
     .replace(/[\u0300-\u036f]/g, "") // remove accents/diacritics
     .toLowerCase()
-    .replace(/['’`"“”«»\-_.,/#!$%^&*;:{}=\-_~()\[\]]/g, "") // remove punctuation
+    .replace(/['’`"“”«»]/g, "") // remove quotes/apostrophes so "let's" == "lets"
+    .replace(/[-_.,/#!$%^&*;:{}=~()\[\]]/g, " ") // replace word separators with space to avoid word fusion
     .replace(/\s+/g, " ") // collapse whitespace
     .trim();
 }
 
 function prepareSongSearchMetadata(song) {
-  const normTitle = normalizeSearchText(song.title);
-  const normArtist = normalizeSearchText(song.artist);
-  const normAlbum = normalizeSearchText(song.album);
-  const normLang = normalizeSearchText(song.language);
-  const normCategory = normalizeSearchText(song.category);
-  const normTags = Array.isArray(song.tags) ? song.tags.map(t => normalizeSearchText(t)) : [];
+  const title = song.title || song.name || "";
+  const artist = song.artist || song.singer || song.artists || "";
+  const album = song.album || song.movie || "";
+  const lang = song.language || song.lang || "";
+  const category = song.category || song.genre || "";
+  const rawTags = song.tags || [];
+  const normTags = Array.isArray(rawTags) 
+    ? rawTags.map(t => normalizeSearchText(t)) 
+    : (typeof rawTags === "string" ? [normalizeSearchText(rawTags)] : []);
+
+  const normTitle = normalizeSearchText(title);
+  const normArtist = normalizeSearchText(artist);
+  const normAlbum = normalizeSearchText(album);
+  const normLang = normalizeSearchText(lang);
+  const normCategory = normalizeSearchText(category);
 
   const searchCorpus = [normTitle, normArtist, normAlbum, normLang, normCategory, ...normTags].join(" ");
 
   return {
     ...song,
+    title: title,
+    artist: artist,
+    album: album,
+    language: lang,
+    category: category,
     _normTitle: normTitle,
     _normArtist: normArtist,
     _normAlbum: normAlbum,
@@ -418,11 +501,11 @@ function matchSongQuery(song, normalizedQuery) {
   if (!song) return false;
 
   const corpus = song._searchCorpus || normalizeSearchText([
-    song.title,
-    song.artist,
-    song.album,
-    song.language,
-    song.category,
+    song.title || song.name || "",
+    song.artist || song.singer || "",
+    song.album || song.movie || "",
+    song.language || song.lang || "",
+    song.category || song.genre || "",
     ...(song.tags || [])
   ].join(" "));
 
@@ -443,9 +526,13 @@ function matchSongQuery(song, normalizedQuery) {
 // ==========================================================================
 
 function loadCatalogue() {
-  // Combine window.CATALOGUE_SONGS (250+ tracks) with DEFAULT_STATIC_SONGS
-  const sourceList = (window.CATALOGUE_SONGS && Array.isArray(window.CATALOGUE_SONGS) && window.CATALOGUE_SONGS.length > 0)
-    ? [...DEFAULT_STATIC_SONGS, ...window.CATALOGUE_SONGS]
+  const rawCatalogue = (typeof window !== "undefined" && window.CATALOGUE_SONGS && Array.isArray(window.CATALOGUE_SONGS) && window.CATALOGUE_SONGS.length > 0)
+    ? window.CATALOGUE_SONGS
+    : [];
+
+  // Combine window.CATALOGUE_SONGS (280+ tracks) with DEFAULT_STATIC_SONGS
+  const sourceList = rawCatalogue.length > 0
+    ? [...DEFAULT_STATIC_SONGS, ...rawCatalogue]
     : DEFAULT_STATIC_SONGS;
 
   const seenIds = new Set();
@@ -453,9 +540,10 @@ function loadCatalogue() {
   const deduped = [];
 
   for (const s of sourceList) {
-    if (!s || !s.id || !s.title) continue;
+    if (!s || !s.id || !(s.title || s.name)) continue;
 
-    const normTitle = normalizeSearchText(s.title);
+    const title = s.title || s.name || "";
+    const normTitle = normalizeSearchText(title);
     if (seenIds.has(s.id) || seenTitles.has(normTitle)) continue;
 
     seenIds.add(s.id);
@@ -466,6 +554,8 @@ function loadCatalogue() {
 
     const prepared = prepareSongSearchMetadata({
       ...s,
+      title: title,
+      album: s.album || s.movie || "",
       cover_url: cover,
       download_authorized: Boolean(s.download_authorized)
     });
@@ -477,6 +567,10 @@ function loadCatalogue() {
   AppState.masterSongs = Object.freeze([...deduped]);
   AppState.songs = [...deduped];
   AppState.queue = [...deduped];
+
+  // Production log
+  console.log(`[MusicHub] Catalogue loaded with ${AppState.masterSongs.length} tracks.`);
+
   renderContent();
 }
 
@@ -543,6 +637,8 @@ async function fetchBackendSearchResults(query, requestId) {
   try {
     const timeoutId = setTimeout(() => abortController.abort(), 4000);
     const url = `${API_BASE}/api/search?query=${encodeURIComponent(query)}&language=${encodeURIComponent(AppState.activeLanguage)}`;
+    // Temporary diagnostic log (Step 8)
+    console.log(`[MusicHub Diagnostic] Querying online backend API: ${url}`);
     const res = await fetch(url, { signal: abortController.signal });
     clearTimeout(timeoutId);
 
@@ -571,6 +667,8 @@ async function fetchBackendSearchResults(query, requestId) {
         }
 
         if (newFound.length > 0) {
+          // Temporary diagnostic log (Step 8)
+          console.log(`[MusicHub Diagnostic] Online backend returned ${newFound.length} tracks for "${query}"`);
           AppState.searchResults = [...AppState.searchResults, ...newFound];
           AppState.queue = [...AppState.searchResults];
           renderContent();
@@ -583,7 +681,8 @@ async function fetchBackendSearchResults(query, requestId) {
     if (err.name === "AbortError") return; // Normal abort on new input
     if (requestId !== AppState.searchRequestId) return;
 
-    console.warn("[Search] Backend search notice:", err.message);
+    // Temporary diagnostic log (Step 8)
+    console.warn(`[MusicHub Diagnostic] Online search notice: ${err.message}`);
     AppState.searchError = {
       query: query,
       message: "Online search request could not be completed."
