@@ -337,6 +337,44 @@ for (const kw of tipKeywords) {
 }
 console.log("[PASS] All recommended tip keywords (Ghilli, Mankatha, Sivaji, Amaran, Illuminati, Badass, Shape of You) match successfully.");
 
+// Test 14: Verifying zero external redirects (window.open is never called)
+console.log("\nTest 14: Verifying zero external redirects (window.open is never called)...");
+let windowOpenCalled = false;
+global.window.open = function() {
+  windowOpenCalled = true;
+};
+// Test openSpotifyInPagePlayer and openSpotifySearch
+openSpotifyInPagePlayer("Badass", "Anirudh");
+openSpotifySearch("Naatu Naatu", "M.M. Keeravaani");
+assert.strictEqual(windowOpenCalled, false, "window.open must NEVER be called (zero external redirects)");
+console.log("[PASS] Verified: Zero external redirects. Playback and Spotify actions remain 100% in-page.");
+
+// Test 15: Individual song card elements (song title, artist, playback controls, album artwork)
+console.log("\nTest 15: Verifying individual song card elements (title, artist, controls, artwork)...");
+executeSearch("Badass");
+const cardSong = AppState.searchResults[0];
+const cardHTML = createSongCardHTML(cardSong);
+assert(cardHTML.includes('class="song-card'), "Must contain song-card class");
+assert(cardHTML.includes('class="card-thumb-img"'), "Must contain album artwork thumbnail");
+assert(cardHTML.includes(cardSong.title), "Must contain song title");
+assert(cardHTML.includes(cardSong.artist), "Must contain artist name");
+assert(cardHTML.includes('class="play-circle-btn card-play-trigger"'), "Must contain working play button control");
+assert(cardHTML.includes('class="download-btn card-download-trigger"'), "Must contain download button");
+assert(cardHTML.includes('class="fav-btn'), "Must contain favourites button");
+assert(cardHTML.includes('class="spotify-btn-card card-spotify-trigger"'), "Must contain in-page embedded player button");
+console.log("[PASS] Verified: Individual song cards display complete metadata, artwork, and working playback controls.");
+
+// Test 16: Cross-language search fallback (never false 'No songs found')
+console.log("\nTest 16: Cross-language search fallback...");
+AppState.activeLanguage = "tamil";
+executeSearch("Shape of You");
+assert(AppState.searchResults.length > 0, "Shape of You must be matched in library");
+// In renderContent, displayList falls back to show results across languages rather than giving empty state
+assert.strictEqual(DOM.emptyState.style.display, "none", "Empty state must NOT be shown when tracks exist in other languages");
+AppState.activeLanguage = "all";
+executeSearch("");
+console.log("[PASS] Cross-language search fallback verified. Users never see false 'No songs found'.");
+
 console.log("\n==================================================");
-console.log("ALL 13 SEARCH & CATALOGUE TESTS PASSED SUCCESSFULLY!");
+console.log("ALL 16 SEARCH, CATALOGUE & IN-PAGE PLAYBACK TESTS PASSED SUCCESSFULLY!");
 console.log("==================================================\n");

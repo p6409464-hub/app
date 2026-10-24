@@ -160,7 +160,12 @@ const DOM = {
   shufflePlaylistBtn: null,
   playlistItems: null,
   playlistStatusText: null,
-  playerSpotifyBtn: null
+  playerSpotifyBtn: null,
+  spotifyModal: null,
+  closeSpotifyModalBtn: null,
+  spotifyModalIframe: null,
+  spotifyModalLinkInput: null,
+  spotifyModalLoadBtn: null
 };
 
 function refreshDOMElements() {
@@ -200,6 +205,11 @@ function refreshDOMElements() {
   DOM.playlistItems = document.getElementById("playlistItems");
   DOM.playlistStatusText = document.getElementById("playlistStatusText");
   DOM.playerSpotifyBtn = document.getElementById("playerSpotifyBtn");
+  DOM.spotifyModal = document.getElementById("spotifyModal");
+  DOM.closeSpotifyModalBtn = document.getElementById("closeSpotifyModalBtn");
+  DOM.spotifyModalIframe = document.getElementById("spotifyModalIframe");
+  DOM.spotifyModalLinkInput = document.getElementById("spotifyModalLinkInput");
+  DOM.spotifyModalLoadBtn = document.getElementById("spotifyModalLoadBtn");
 }
 
 // Initial binding attempt
@@ -469,17 +479,25 @@ function setupEventListeners() {
 
   if (DOM.playerSpotifyBtn) {
     DOM.playerSpotifyBtn.addEventListener("click", () => {
-      if (AppState.currentSong) {
-        openSpotifySearch(AppState.currentSong.title, AppState.currentSong.artist);
-      } else {
-        AppState.activeSection = "spotify";
-        AppState.currentPage = 1;
-        updateActivePills();
-        renderContent();
-        window.scrollTo({ top: 0, behavior: "smooth" });
-      }
+      openSpotifyInPagePlayer(AppState.currentSong?.title, AppState.currentSong?.artist);
     });
   }
+
+  // In-Page Spotify Embed Modal Listeners (Zero External Redirects)
+  if (DOM.closeSpotifyModalBtn) {
+    DOM.closeSpotifyModalBtn.addEventListener("click", closeSpotifyModal);
+  }
+  if (DOM.spotifyModal) {
+    DOM.spotifyModal.addEventListener("click", (e) => {
+      if (e.target === DOM.spotifyModal) closeSpotifyModal();
+    });
+  }
+  if (typeof document !== "undefined") {
+    document.addEventListener("keydown", (e) => {
+      if (e.key === "Escape") closeSpotifyModal();
+    });
+  }
+  attachSpotifyModalControls();
 
   // Hero Play Button
   const heroPlayBtn = document.getElementById("heroPlayBtn");
@@ -622,18 +640,22 @@ function loadCatalogue() {
     : DEFAULT_STATIC_SONGS;
 
   const seenIds = new Set();
-  const seenTitles = new Set();
+  const seenKeys = new Set();
   const deduped = [];
 
   for (const s of sourceList) {
     if (!s || !s.id || !(s.title || s.name)) continue;
 
     const title = s.title || s.name || "";
+    const artist = s.artist || s.singer || "";
     const normTitle = normalizeSearchText(title);
-    if (seenIds.has(s.id) || seenTitles.has(normTitle)) continue;
+    const normArtist = normalizeSearchText(artist);
+    const trackKey = `${normTitle}::${normArtist}`;
+
+    if (seenIds.has(s.id) || seenKeys.has(trackKey)) continue;
 
     seenIds.add(s.id);
-    seenTitles.add(normTitle);
+    seenKeys.add(trackKey);
 
     let cover = s.cover_url || "static/images/only_friends_theme.svg";
     if (cover.startsWith("/")) cover = cover.substring(1);
@@ -769,11 +791,14 @@ async function fetchBackendSearchResults(query, requestId) {
 
     // Temporary diagnostic log (Step 8)
     console.warn(`[MusicHub Diagnostic] Online search notice: ${err.message}`);
-    AppState.searchError = {
-      query: query,
-      message: "Online search request could not be completed."
-    };
-    renderContent();
+    // Only flag a search error if we have 0 local matches from the catalogue
+    if (AppState.searchResults.length === 0) {
+      AppState.searchError = {
+        query: query,
+        message: "Online search request could not be completed."
+      };
+      renderContent();
+    }
   } finally {
     if (AppState.activeSearchAbortController === abortController) {
       AppState.activeSearchAbortController = null;
@@ -802,7 +827,7 @@ function renderContent() {
     let displayList = [...AppState.searchResults];
 
     // Language Filter Handling during Search
-    let languageFilteredOut = false;
+    let languageFilteredNoticeHTML = "";
     if (AppState.activeLanguage !== "all") {
       const activeLang = AppState.activeLanguage.toLowerCase();
       const langFiltered = displayList.filter(s => {
@@ -813,10 +838,22 @@ function renderContent() {
         return sLang === activeLang || (s._normTags && s._normTags.includes(activeLang)) || sLang === "all" || !s.language;
       });
 
-      if (displayList.length > 0 && langFiltered.length === 0) {
-        languageFilteredOut = true;
+      if (langFiltered.length > 0) {
+        displayList = langFiltered;
+      } else if (displayList.length > 0) {
+        // If current language chip would filter out all matches, automatically display all matching tracks
+        // across languages with a clear notice. This permanently eliminates "No songs found" when searching!
+        languageFilteredNoticeHTML = `
+          <div class="search-language-notice" style="display:flex; align-items:center; justify-content:space-between; gap:12px; flex-wrap:wrap; background:rgba(168,85,247,0.14); border:1px solid rgba(168,85,247,0.35); border-radius:12px; padding:10px 16px; margin-bottom:18px; font-size:0.86rem; color:#e9d5ff;">
+            <div>
+              <span>🌐</span> No ${capitalize(AppState.activeLanguage)} songs matched "<strong>${escapeHTML(AppState.searchQuery)}</strong>", but found <strong>${displayList.length}</strong> matching track(s) in other languages:
+            </div>
+            <button id="searchResetLangFilterBtn" class="btn btn-pill" style="padding:4px 12px; font-size:0.78rem; background:rgba(168,85,247,0.3); border:1px solid rgba(168,85,247,0.5); color:#fff; cursor:pointer;">
+              Show All Languages
+            </button>
+          </div>
+        `;
       }
-      displayList = langFiltered;
     }
 
     // Error Banner (if API search failed, allows user retry)
@@ -846,34 +883,6 @@ function renderContent() {
     };
 
     if (displayList.length === 0) {
-      if (DOM.emptyState) DOM.emptyState.style.display = "none";
-      if (languageFilteredOut) {
-        DOM.contentContainer.innerHTML = `
-          ${errorBannerHTML}
-          <div style="text-align:center; padding: 48px 20px; background:rgba(30,27,75,0.4); border:1px solid rgba(139,92,246,0.25); border-radius:16px; margin:20px 0;">
-            <div style="font-size:2.5rem; margin-bottom:12px;">🌐</div>
-            <h3 style="color:#fff; font-size:1.2rem; margin-bottom:8px;">No ${capitalize(AppState.activeLanguage)} songs matched "${escapeHTML(AppState.searchQuery)}"</h3>
-            <p style="color:var(--text-muted); font-size:0.92rem; max-width:480px; margin:0 auto 20px auto;">
-              Found <strong>${AppState.searchResults.length}</strong> matching track(s) in other languages.
-            </p>
-            <button id="searchShowAllLanguagesBtn" class="btn btn-primary" style="padding:10px 24px;">
-              <span>🌐</span> Show Results in All Languages (${AppState.searchResults.length})
-            </button>
-          </div>
-        `;
-        const showAllBtn = document.getElementById("searchShowAllLanguagesBtn");
-        if (showAllBtn) {
-          showAllBtn.addEventListener("click", () => {
-            AppState.activeLanguage = "all";
-            updateActivePills();
-            renderContent();
-          });
-        }
-        attachRetryListener();
-        return;
-      }
-
-      // No songs matched across any language
       DOM.contentContainer.innerHTML = errorBannerHTML;
       attachRetryListener();
       if (DOM.emptyState) {
@@ -915,6 +924,7 @@ function renderContent() {
 
     DOM.contentContainer.innerHTML = `
       ${errorBannerHTML}
+      ${languageFilteredNoticeHTML}
       <section class="music-section">
         <div class="section-header">
           <div class="section-title-wrap">
@@ -932,6 +942,14 @@ function renderContent() {
 
     attachCardListeners(visibleList);
     attachRetryListener();
+    const resetLangBtn = document.getElementById("searchResetLangFilterBtn");
+    if (resetLangBtn) {
+      resetLangBtn.addEventListener("click", () => {
+        AppState.activeLanguage = "all";
+        updateActivePills();
+        renderContent();
+      });
+    }
     attachPaginationListeners();
     updatePlayingCardHighlight();
     return;
@@ -1278,13 +1296,98 @@ function attachSectionExploreListeners() {
   });
 }
 
-function openSpotifySearch(title, artist) {
-  const query = `${title || ""} ${artist || ""}`.trim();
-  const spotifyUrl = `https://open.spotify.com/search/${encodeURIComponent(query)}`;
-  if (typeof window !== "undefined") {
-    window.open(spotifyUrl, "_blank", "noopener,noreferrer");
+function openSpotifyInPagePlayer(title = "", artist = "") {
+  // Guarantee 100% in-page playback with ZERO external window.open redirects
+  const modal = DOM.spotifyModal || document.getElementById("spotifyModal");
+  if (modal) {
+    modal.style.display = "flex";
+    if (typeof document !== "undefined" && document.body) {
+      document.body.style.overflow = "hidden";
+    }
+    const modalInput = DOM.spotifyModalLinkInput || document.getElementById("spotifyModalLinkInput");
+    if (modalInput) {
+      modalInput.placeholder = title ? `Paste Spotify link for "${title}"...` : "Paste any Spotify Track, Album, or Playlist URL...";
+    }
+    showToast("🟢 Opened In-Page Spotify Embed Player", "info");
+    return;
   }
-  showToast(`🟢 Opening "${title}" on Spotify...`, "info");
+
+  // Fallback: Seamlessly navigate to the in-page Spotify Hub section
+  AppState.activeSection = "spotify";
+  AppState.activeLanguage = "all";
+  updateActivePills();
+  renderContent();
+  if (typeof window !== "undefined" && window.scrollTo) {
+    window.scrollTo({ top: 0, behavior: "smooth" });
+  }
+  showToast("🟢 Loaded In-Page Spotify Player Hub", "info");
+}
+
+function closeSpotifyModal() {
+  const modal = DOM.spotifyModal || document.getElementById("spotifyModal");
+  if (modal) {
+    modal.style.display = "none";
+    if (typeof document !== "undefined" && document.body) {
+      document.body.style.overflow = "";
+    }
+  }
+}
+
+// Deprecated external redirect: all interactions now stay 100% on the same page
+function openSpotifySearch(title, artist) {
+  openSpotifyInPagePlayer(title, artist);
+}
+
+function attachSpotifyModalControls() {
+  const iframe = DOM.spotifyModalIframe || document.getElementById("spotifyModalIframe");
+  const linkInput = DOM.spotifyModalLinkInput || document.getElementById("spotifyModalLinkInput");
+  const loadBtn = DOM.spotifyModalLoadBtn || document.getElementById("spotifyModalLoadBtn");
+
+  const loadFromInput = () => {
+    if (!linkInput || !iframe) return;
+    const val = linkInput.value.trim();
+    if (!val) return;
+    let embedSrc = "";
+    if (val.includes("open.spotify.com/")) {
+      const match = val.match(/open\.spotify\.com\/(track|album|playlist|artist)\/([a-zA-Z0-9]+)/);
+      if (match) {
+        embedSrc = `https://open.spotify.com/embed/${match[1]}/${match[2]}?utm_source=generator&theme=0`;
+      }
+    } else if (val.includes("spotify:")) {
+      const parts = val.split(":");
+      if (parts.length >= 3) {
+        embedSrc = `https://open.spotify.com/embed/${parts[1]}/${parts[2]}?utm_source=generator&theme=0`;
+      }
+    }
+
+    if (embedSrc) {
+      iframe.src = embedSrc;
+      showToast("🟢 Loaded Spotify Player!", "success");
+    } else {
+      showToast("⚠️ Invalid Spotify URL. Paste a link like open.spotify.com/track/...", "error");
+    }
+  };
+
+  if (loadBtn) loadBtn.addEventListener("click", loadFromInput);
+  if (linkInput) {
+    linkInput.addEventListener("keydown", (e) => {
+      if (e.key === "Enter") loadFromInput();
+    });
+  }
+
+  if (typeof document !== "undefined") {
+    document.querySelectorAll(".spotify-modal-chip").forEach(chip => {
+      chip.addEventListener("click", () => {
+        document.querySelectorAll(".spotify-modal-chip").forEach(c => c.classList.remove("active"));
+        chip.classList.add("active");
+        const uri = chip.dataset.uri;
+        if (uri && iframe) {
+          iframe.src = `https://open.spotify.com/embed/${uri}?utm_source=generator&theme=0`;
+          showToast(`🟢 Loading ${chip.textContent.trim()}...`, "info");
+        }
+      });
+    });
+  }
 }
 
 function attachSpotifyPageListeners() {
@@ -1379,7 +1482,7 @@ function createSongCardHTML(song) {
         </button>
         <div class="card-action-right" style="display:flex; align-items:center; gap:6px;">
           ${actionBtnHTML}
-          <button class="spotify-btn-card card-spotify-trigger" data-title="${escapeAttr(song.title)}" data-artist="${escapeAttr(song.artist)}" title="Listen on Spotify" aria-label="Listen on Spotify">
+          <button class="spotify-btn-card card-spotify-trigger" data-title="${escapeAttr(song.title)}" data-artist="${escapeAttr(song.artist)}" title="Open In-Page Spotify Embed Player" aria-label="Open In-Page Spotify Embed Player">
             <span>🟢</span>
           </button>
         </div>
@@ -1449,11 +1552,11 @@ function attachCardListeners(pool = []) {
     });
   });
 
-  // Spotify button triggers on song card
+  // Spotify button triggers on song card -> open in-page player (zero redirects)
   document.querySelectorAll(".card-spotify-trigger").forEach(btn => {
     btn.addEventListener("click", (e) => {
       e.stopPropagation();
-      openSpotifySearch(btn.dataset.title, btn.dataset.artist);
+      openSpotifyInPagePlayer(btn.dataset.title, btn.dataset.artist);
     });
   });
 

@@ -1052,6 +1052,116 @@ body {
 }
 
 /* ==========================================================================
+   In-Page Authorized Spotify Embedded Player Modal
+   ========================================================================== */
+.spotify-modal-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.82);
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
+  z-index: 2000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 16px;
+  animation: fadeInModal 0.22s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+@keyframes fadeInModal {
+  from {
+    opacity: 0;
+    transform: scale(0.96);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+.spotify-modal-content {
+  background: #0f172a;
+  border: 1px solid rgba(30, 215, 96, 0.45);
+  border-radius: 20px;
+  width: 100%;
+  max-width: 660px;
+  max-height: 90vh;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  box-shadow: 0 24px 60px rgba(0, 0, 0, 0.85), 0 0 35px rgba(30, 215, 96, 0.22);
+}
+
+.spotify-modal-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 16px 20px;
+  background: rgba(255, 255, 255, 0.03);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.spotify-modal-header-left {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.spotify-modal-icon {
+  font-size: 1.6rem;
+}
+
+.spotify-modal-title {
+  margin: 0;
+  color: #fff;
+  font-size: 1.12rem;
+  font-weight: 700;
+}
+
+.spotify-modal-subtitle {
+  margin: 2px 0 0 0;
+  color: #4ade80;
+  font-size: 0.8rem;
+  font-weight: 500;
+}
+
+.spotify-modal-body {
+  padding: 18px 20px;
+  overflow-y: auto;
+}
+
+.spotify-modal-info-box {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  background: rgba(30, 215, 96, 0.08);
+  border: 1px solid rgba(30, 215, 96, 0.25);
+  border-radius: 12px;
+  padding: 10px 14px;
+  margin-bottom: 14px;
+}
+
+.spotify-modal-chip {
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  color: #e2e8f0;
+  padding: 6px 14px;
+  border-radius: 20px;
+  font-size: 0.82rem;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: all 0.2s ease;
+}
+
+.spotify-modal-chip:hover,
+.spotify-modal-chip.active {
+  background: #1ed760;
+  color: #000;
+  font-weight: 700;
+  border-color: #1ed760;
+}
+
+/* ==========================================================================
    Up Next & Related Songs Playlist Drawer (Slide-Up)
    ========================================================================== */
 .playlist-drawer {
