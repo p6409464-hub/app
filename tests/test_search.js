@@ -309,6 +309,34 @@ assert(matchSongQuery(testItem, "cinema movie"), "Should match 'cinema movie'");
 assert(matchSongQuery(testItem, "singer"), "Should match 'singer'");
 console.log("[PASS] Fallback property names (name, singer, movie) correctly handled.");
 
+// Test 12: Compact search matching (e.g. 'ar rahman' vs 'A.R. Rahman', 'naatunaatu' vs 'Naatu Naatu')
+console.log("\nTest 12: Compact search matching (ar rahman, gv prakash, naatunaatu)...");
+executeSearch("ar rahman");
+const arRahmanMatches = AppState.searchResults.length;
+assert(arRahmanMatches >= 40, `'ar rahman' must return >= 40 tracks (got ${arRahmanMatches})`);
+
+executeSearch("a.r. rahman");
+const arRahmanDotted = AppState.searchResults.length;
+assert(arRahmanDotted >= 40, `'a.r. rahman' must return >= 40 tracks (got ${arRahmanDotted})`);
+
+executeSearch("naatunaatu");
+const naatuCompact = AppState.searchResults.length;
+assert(naatuCompact >= 1, `'naatunaatu' compact must match 'Naatu Naatu' (got ${naatuCompact})`);
+
+executeSearch("gv prakash");
+const gvMatches = AppState.searchResults.length;
+assert(gvMatches >= 5, `'gv prakash' must match 'G.V. Prakash' (got ${gvMatches})`);
+console.log(`[PASS] Compact search matching verified ('ar rahman' -> ${arRahmanMatches}, 'naatunaatu' -> ${naatuCompact}, 'gv prakash' -> ${gvMatches}).`);
+
+// Test 13: Tip Keywords Verification (Ghilli, Mankatha, Sivaji, Amaran, Illuminati, Badass, Shape of You)
+console.log("\nTest 13: Search tip keywords verification...");
+const tipKeywords = ["ghilli", "mankatha", "sivaji", "amaran", "illuminati", "badass", "shape of you"];
+for (const kw of tipKeywords) {
+  executeSearch(kw);
+  assert(AppState.searchResults.length > 0, `Keyword '${kw}' must return matching tracks`);
+}
+console.log("[PASS] All recommended tip keywords (Ghilli, Mankatha, Sivaji, Amaran, Illuminati, Badass, Shape of You) match successfully.");
+
 console.log("\n==================================================");
-console.log("ALL 11 SEARCH & CATALOGUE TESTS PASSED SUCCESSFULLY!");
+console.log("ALL 13 SEARCH & CATALOGUE TESTS PASSED SUCCESSFULLY!");
 console.log("==================================================\n");

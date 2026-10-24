@@ -460,6 +460,15 @@ function normalizeSearchText(str) {
     .trim();
 }
 
+function normalizeCompact(str) {
+  if (!str) return "";
+  return String(str)
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .toLowerCase()
+    .replace(/[^a-z0-9]/g, ""); // completely compact alphanumeric string
+}
+
 function prepareSongSearchMetadata(song) {
   const title = song.title || song.name || "";
   const artist = song.artist || song.singer || song.artists || "";
@@ -478,6 +487,7 @@ function prepareSongSearchMetadata(song) {
   const normCategory = normalizeSearchText(category);
 
   const searchCorpus = [normTitle, normArtist, normAlbum, normLang, normCategory, ...normTags].join(" ");
+  const compactCorpus = normalizeCompact([normTitle, normArtist, normAlbum, normLang, normCategory, ...normTags].join(" "));
 
   return {
     ...song,
@@ -492,13 +502,18 @@ function prepareSongSearchMetadata(song) {
     _normLang: normLang,
     _normCategory: normCategory,
     _normTags: normTags,
-    _searchCorpus: searchCorpus
+    _searchCorpus: searchCorpus,
+    _compactCorpus: compactCorpus
   };
 }
 
-function matchSongQuery(song, normalizedQuery) {
-  if (!normalizedQuery) return true;
+function matchSongQuery(song, rawQuery) {
+  if (!rawQuery) return true;
   if (!song) return false;
+
+  const normQuery = normalizeSearchText(rawQuery);
+  const compactQuery = normalizeCompact(rawQuery);
+  if (!normQuery && !compactQuery) return true;
 
   const corpus = song._searchCorpus || normalizeSearchText([
     song.title || song.name || "",
@@ -509,13 +524,29 @@ function matchSongQuery(song, normalizedQuery) {
     ...(song.tags || [])
   ].join(" "));
 
-  // Exact phrase match first
-  if (corpus.includes(normalizedQuery)) return true;
+  const compactCorpus = song._compactCorpus || normalizeCompact([
+    song.title || song.name || "",
+    song.artist || song.singer || "",
+    song.album || song.movie || "",
+    song.language || song.lang || "",
+    song.category || song.genre || "",
+    ...(song.tags || [])
+  ].join(" "));
 
-  // Multi-token match: all tokens must be present in song corpus
-  const tokens = normalizedQuery.split(" ").filter(Boolean);
+  // 1. Exact phrase match
+  if (normQuery && corpus.includes(normQuery)) return true;
+
+  // 2. Compact match (e.g. "ar rahman" matches "A.R. Rahman", "kgf" matches "K.G.F.", "naatunaatu" matches "Naatu Naatu")
+  if (compactQuery && compactCorpus.includes(compactQuery)) return true;
+
+  // 3. Multi-token match: every token in the query must match in corpus OR compactCorpus
+  const tokens = normQuery ? normQuery.split(" ").filter(Boolean) : [];
   if (tokens.length > 1) {
-    return tokens.every(token => corpus.includes(token));
+    const allTokensMatch = tokens.every(token => {
+      const compactToken = normalizeCompact(token);
+      return corpus.includes(token) || (compactToken && compactCorpus.includes(compactToken));
+    });
+    if (allTokensMatch) return true;
   }
 
   return false;
@@ -610,7 +641,7 @@ function executeSearch(rawQuery) {
   if (DOM.clearSearchBtn) DOM.clearSearchBtn.style.display = "block";
 
   // ALWAYS filter from the immutable master collection (never from previous search results!)
-  const localMatches = AppState.masterSongs.filter(song => matchSongQuery(song, normalized));
+  const localMatches = AppState.masterSongs.filter(song => matchSongQuery(song, trimmed));
   AppState.searchResults = [...localMatches];
 
   // Update active queue for uninterrupted playback
