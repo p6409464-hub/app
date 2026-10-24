@@ -86,7 +86,6 @@ window.CATALOGUE_SONGS = [
     "tags": [
       "tamil",
       "friends",
-      "kodi",
       "ilaiyaraaja",
       "vijay",
       "suriya"
@@ -112,8 +111,7 @@ window.CATALOGUE_SONGS = [
       "tamil",
       "friends",
       "rukku",
-      "dance",
-      "kodi"
+      "dance"
     ]
   },
   {
@@ -134,7 +132,6 @@ window.CATALOGUE_SONGS = [
     "download_authorized": true,
     "tags": [
       "tamil",
-      "aval",
       "flute",
       "carnatic",
       "melody"
@@ -158,12 +155,10 @@ window.CATALOGUE_SONGS = [
     "download_authorized": true,
     "tags": [
       "tamil",
-      "kodi",
       "vaathi",
       "anirudh",
       "master",
-      "thalapathy",
-      "aval"
+      "thalapathy"
     ]
   },
   {
@@ -7575,6 +7570,113 @@ window.CATALOGUE_SONGS = [
       "cello",
       "epic",
       "instrumental"
+    ]
+  },
+  {
+    "id": "aval_hit_01",
+    "title": "Aval",
+    "artist": "Santhosh Narayanan, Pradeep Kumar, Priya Hemesh",
+    "album": "Manithan",
+    "duration": 284,
+    "duration_str": "4:44",
+    "language": "Tamil",
+    "category": "Tamil Songs",
+    "sections": [
+      "trending",
+      "tamil"
+    ],
+    "cover_url": "https://c.saavncdn.com/393/Manithan-Tamil-2016-500x500.jpg",
+    "audio_url": "https://aac.saavncdn.com/837/72db4e57f7475281bf3382259ffe02ed_320.mp4",
+    "download_authorized": true,
+    "tags": [
+      "aval",
+      "manithan",
+      "santhosh narayanan",
+      "pradeep kumar",
+      "udhayanidhi stalin",
+      "tamil",
+      "melody"
+    ]
+  },
+  {
+    "id": "aval_hit_02",
+    "title": "Aval Ulaga Azhagiye",
+    "artist": "Karthik, Harris Jayaraj",
+    "album": "Lesa Lesa",
+    "duration": 332,
+    "duration_str": "5:32",
+    "language": "Tamil",
+    "category": "Tamil Songs",
+    "sections": [
+      "trending",
+      "tamil"
+    ],
+    "cover_url": "https://c.saavncdn.com/023/Lesa-Lesa-Tamil-2003-500x500.jpg",
+    "audio_url": "https://aac.saavncdn.com/864/3a9d1669e17c2005db6724265acdf8cb_320.mp4",
+    "download_authorized": true,
+    "tags": [
+      "aval",
+      "aval ulaga azhagiye",
+      "lesa lesa",
+      "harris jayaraj",
+      "karthik",
+      "shaam",
+      "trisha",
+      "tamil"
+    ]
+  },
+  {
+    "id": "aval_hit_03",
+    "title": "Uravugal Thodarkathai",
+    "artist": "K. J. Yesudas, Ilaiyaraaja",
+    "album": "Aval Appadithan",
+    "duration": 258,
+    "duration_str": "4:18",
+    "language": "Tamil",
+    "category": "Tamil Songs",
+    "sections": [
+      "recent",
+      "tamil"
+    ],
+    "cover_url": "https://c.saavncdn.com/769/Aval-Appadithan-Tamil-1978-500x500.jpg",
+    "audio_url": "https://aac.saavncdn.com/026/3ff856fc4eb4f91129b87df7efefaa95_320.mp4",
+    "download_authorized": true,
+    "tags": [
+      "aval",
+      "aval appadithan",
+      "uravugal thodarkathai",
+      "ilaiyaraaja",
+      "yesudas",
+      "kamal haasan",
+      "rajinikanth",
+      "tamil"
+    ]
+  },
+  {
+    "id": "aval_hit_04",
+    "title": "Avalukkenna Azhagiya Mugam",
+    "artist": "T. M. Soundararajan, M. S. Viswanathan",
+    "album": "Server Sundaram",
+    "duration": 242,
+    "duration_str": "4:02",
+    "language": "Tamil",
+    "category": "Tamil Songs",
+    "sections": [
+      "recent",
+      "tamil"
+    ],
+    "cover_url": "https://c.saavncdn.com/050/Server-Sundaram-Tamil-1964-500x500.jpg",
+    "audio_url": "https://aac.saavncdn.com/978/cf281a78e7275d27ee1c8d5503e0cebe_320.mp4",
+    "download_authorized": true,
+    "tags": [
+      "aval",
+      "avalukkenna",
+      "server sundaram",
+      "nagesh",
+      "tms",
+      "msv",
+      "tamil",
+      "classic"
     ]
   }
 ];
