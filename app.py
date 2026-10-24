@@ -402,6 +402,10 @@ def get_songs():
     if language and language != "all":
         if language == "tamil":
             filtered = [s for s in filtered if s["language"].lower() == "tamil"]
+        elif language == "telugu":
+            filtered = [s for s in filtered if s["language"].lower() == "telugu"]
+        elif language == "hindi":
+            filtered = [s for s in filtered if s["language"].lower() == "hindi"]
         elif language == "english":
             filtered = [s for s in filtered if s["language"].lower() == "english"]
         elif language == "malayalam":
@@ -417,13 +421,17 @@ def get_songs():
         elif section == "recent":
             filtered = [s for s in filtered if "recent" in s.get("sections", [])]
         elif section == "tamil":
-            filtered = [s for s in filtered if s["category"] == "Tamil Songs"]
+            filtered = [s for s in filtered if s["category"] == "Tamil Songs" or s.get("language", "").lower() == "tamil"]
+        elif section == "telugu":
+            filtered = [s for s in filtered if s["category"] == "Telugu Songs" or s.get("language", "").lower() == "telugu"]
+        elif section == "hindi":
+            filtered = [s for s in filtered if s["category"] == "Hindi Songs" or s.get("language", "").lower() == "hindi"]
         elif section == "english":
-            filtered = [s for s in filtered if s["category"] == "English Songs"]
+            filtered = [s for s in filtered if s["category"] == "English Songs" or s.get("language", "").lower() == "english"]
         elif section == "malayalam":
-            filtered = [s for s in filtered if s["category"] == "Malayalam Songs"]
+            filtered = [s for s in filtered if s["category"] == "Malayalam Songs" or s.get("language", "").lower() == "malayalam"]
         elif section == "instrumental":
-            filtered = [s for s in filtered if s["category"] == "Instrumental Music"]
+            filtered = [s for s in filtered if s["category"] == "Instrumental Music" or s.get("language", "").lower() == "instrumental"]
         elif section == "only_friends":
             filtered = [s for s in filtered if s["category"] == "Only Friends OST"]
 

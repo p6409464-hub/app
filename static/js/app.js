@@ -81,6 +81,8 @@ const AppState = {
   isMuted: false,
   activeLanguage: "all",
   activeSection: "all",
+  currentPage: 1,        // Active pagination page
+  pageSize: 24,          // Number of tracks per page chunk
   favourites: safeGetStorage("pranesh_hub_favs", []),
   history: safeGetStorage("pranesh_hub_history", []),
   queue: []
@@ -194,6 +196,7 @@ function setupEventListeners() {
       DOM.langChips.forEach(c => c.classList.remove("active"));
       chip.classList.add("active");
       AppState.activeLanguage = chip.dataset.lang || "all";
+      AppState.currentPage = 1;
       if (AppState.searchQuery) {
         executeSearch(AppState.searchQuery);
       } else {
@@ -208,6 +211,7 @@ function setupEventListeners() {
       DOM.sectionPills.forEach(p => p.classList.remove("active"));
       pill.classList.add("active");
       AppState.activeSection = pill.dataset.section || "all";
+      AppState.currentPage = 1;
       // Clear search when intentionally navigating to a section view
       if (AppState.searchQuery) {
         if (DOM.searchInput) DOM.searchInput.value = "";
@@ -694,6 +698,34 @@ function renderContent() {
       return;
     }
 
+    const totalCount = displayList.length;
+    const visibleList = displayList.slice(0, AppState.currentPage * AppState.pageSize);
+
+    let loadMoreHTML = "";
+    if (visibleList.length < totalCount) {
+      loadMoreHTML = `
+        <div class="load-more-wrap">
+          <p style="color:var(--text-muted); font-size:0.86rem;">
+            Showing <strong>${visibleList.length}</strong> of <strong>${totalCount}</strong> matching tracks
+          </p>
+          <div style="display:flex; justify-content:center; gap:12px; flex-wrap:wrap;">
+            <button id="loadMoreBtn" class="btn btn-primary" style="padding:10px 28px; border-radius:30px; font-weight:600; font-size:0.92rem; box-shadow:0 4px 15px rgba(168,85,247,0.35);">
+              <span>⬇️</span> Load More Songs (${totalCount - visibleList.length} remaining)
+            </button>
+            <button id="showAllSongsBtn" class="btn btn-pill" style="padding:10px 20px; font-size:0.88rem; background:rgba(255,255,255,0.08); border:1px solid rgba(255,255,255,0.18);">
+              Show All (${totalCount})
+            </button>
+          </div>
+        </div>
+      `;
+    } else if (totalCount > AppState.pageSize) {
+      loadMoreHTML = `
+        <div style="text-align:center; margin:28px 0 16px 0; color:var(--text-dim); font-size:0.82rem;">
+          ✨ All <strong>${totalCount}</strong> matching songs loaded
+        </div>
+      `;
+    }
+
     if (DOM.emptyState) DOM.emptyState.style.display = "none";
 
     DOM.contentContainer.innerHTML = `
@@ -703,17 +735,19 @@ function renderContent() {
           <div class="section-title-wrap">
             <span class="section-icon">🔍</span>
             <h2 class="section-title">Search Results for "${escapeHTML(AppState.searchQuery)}"</h2>
-            <span class="section-badge">${displayList.length} tracks found</span>
+            <span class="section-badge">${totalCount} tracks found</span>
           </div>
         </div>
         <div class="songs-grid">
-          ${displayList.map(s => createSongCardHTML(s)).join("")}
+          ${visibleList.map(s => createSongCardHTML(s)).join("")}
         </div>
+        ${loadMoreHTML}
       </section>
     `;
 
-    attachCardListeners(displayList);
+    attachCardListeners(visibleList);
     attachRetryListener();
+    attachPaginationListeners();
     updatePlayingCardHighlight();
     return;
   }
@@ -740,11 +774,11 @@ function renderContent() {
     filtered = filtered.filter(s => (s.sections || []).includes("recent"));
   } else if (isFavourites) {
     filtered = AppState.favourites
-      .map(id => AppState.songs.find(s => s.id === id))
+      .map(id => AppState.masterSongs.find(s => s.id === id))
       .filter(Boolean);
   } else if (isHistory) {
     filtered = AppState.history
-      .map(id => AppState.songs.find(s => s.id === id))
+      .map(id => AppState.masterSongs.find(s => s.id === id))
       .filter(Boolean);
   }
 
@@ -799,9 +833,43 @@ function renderContent() {
     } else if (AppState.activeSection === "recent") {
       headerTitle = "🆕 Recently Added Songs";
       headerIcon = "🆕";
+    } else if (AppState.activeLanguage === "telugu") {
+      headerTitle = "⚡ Telugu Blockbusters";
+      headerIcon = "⚡";
+    } else if (AppState.activeLanguage === "hindi") {
+      headerTitle = "🪔 Hindi Hits";
+      headerIcon = "🪔";
     } else if (AppState.activeLanguage !== "all") {
       headerTitle = `${capitalize(AppState.activeLanguage)} Music`;
       headerIcon = "🌺";
+    }
+
+    const totalCount = filtered.length;
+    const visibleList = filtered.slice(0, AppState.currentPage * AppState.pageSize);
+
+    let loadMoreHTML = "";
+    if (visibleList.length < totalCount) {
+      loadMoreHTML = `
+        <div class="load-more-wrap">
+          <p style="color:var(--text-muted); font-size:0.86rem;">
+            Showing <strong>${visibleList.length}</strong> of <strong>${totalCount}</strong> tracks
+          </p>
+          <div style="display:flex; justify-content:center; gap:12px; flex-wrap:wrap;">
+            <button id="loadMoreBtn" class="btn btn-primary" style="padding:10px 28px; border-radius:30px; font-weight:600; font-size:0.92rem; box-shadow:0 4px 15px rgba(168,85,247,0.35);">
+              <span>⬇️</span> Load More Songs (${totalCount - visibleList.length} remaining)
+            </button>
+            <button id="showAllSongsBtn" class="btn btn-pill" style="padding:10px 20px; font-size:0.88rem; background:rgba(255,255,255,0.08); border:1px solid rgba(255,255,255,0.18);">
+              Show All (${totalCount})
+            </button>
+          </div>
+        </div>
+      `;
+    } else if (totalCount > AppState.pageSize) {
+      loadMoreHTML = `
+        <div style="text-align:center; margin:28px 0 16px 0; color:var(--text-dim); font-size:0.82rem;">
+          ✨ All <strong>${totalCount}</strong> tracks loaded
+        </div>
+      `;
     }
 
     DOM.contentContainer.innerHTML = `
@@ -812,17 +880,19 @@ function renderContent() {
               <span class="section-icon">${headerIcon}</span>
               <h2 class="section-title">${headerTitle}</h2>
             </div>
-            <span class="section-badge">${filtered.length} tracks</span>
+            <span class="section-badge">${totalCount} tracks</span>
           </div>
           ${extraHeaderHTML}
         </div>
         <div class="songs-grid">
-          ${filtered.map(s => createSongCardHTML(s)).join("")}
+          ${visibleList.map(s => createSongCardHTML(s)).join("")}
         </div>
+        ${loadMoreHTML}
       </section>
     `;
 
-    attachCardListeners(filtered);
+    attachCardListeners(visibleList);
+    attachPaginationListeners();
 
     // Attach Clear History Event if present
     const clearHistoryBtn = document.getElementById("clearHistoryBtn");
@@ -841,22 +911,28 @@ function renderContent() {
     return;
   }
 
-  // Default Home Page View: Organized Section Grids
+  // Default Home Page View: Organized Section Grids with Top 8 and View All Buttons
   const sectionsDef = [
-    { id: "trending", title: "🔥 Trending Songs", icon: "🔥", filter: s => (s.sections || []).includes("trending") },
-    { id: "recent", title: "🆕 Recently Added", icon: "🆕", filter: s => (s.sections || []).includes("recent") },
-    { id: "tamil", title: "🌺 Tamil Blockbusters", icon: "🌺", filter: s => s.language === "Tamil" },
-    { id: "english", title: "🎸 English Hits", icon: "🎸", filter: s => s.language === "English" },
-    { id: "hindi", title: "🪔 Hindi Hits", icon: "🪔", filter: s => s.language === "Hindi" },
-    { id: "malayalam", title: "🌴 Malayalam Melodies", icon: "🌴", filter: s => s.language === "Malayalam" },
-    { id: "instrumental", title: "🎹 Instrumental & Soundtracks", icon: "🎹", filter: s => s.category === "Instrumental Music" || s.language === "Instrumental" },
-    { id: "only_friends", title: "🎬 Only Friends OST & Themes", icon: "🎬", filter: s => s.category === "Only Friends OST" }
+    { id: "trending", title: "🔥 Trending Songs", icon: "🔥", filter: s => (s.sections || []).includes("trending"), sectionId: "trending" },
+    { id: "recent", title: "🆕 Recently Added", icon: "🆕", filter: s => (s.sections || []).includes("recent"), sectionId: "recent" },
+    { id: "tamil", title: "🌺 Tamil Blockbusters", icon: "🌺", filter: s => s.language === "Tamil", lang: "tamil" },
+    { id: "telugu", title: "⚡ Telugu Blockbusters", icon: "⚡", filter: s => s.language === "Telugu", lang: "telugu" },
+    { id: "hindi", title: "🪔 Hindi Hits", icon: "🪔", filter: s => s.language === "Hindi", lang: "hindi" },
+    { id: "english", title: "🎸 English Hits", icon: "🎸", filter: s => s.language === "English", lang: "english" },
+    { id: "malayalam", title: "🌴 Malayalam Melodies", icon: "🌴", filter: s => s.language === "Malayalam", lang: "malayalam" },
+    { id: "instrumental", title: "🎹 Instrumental & Soundtracks", icon: "🎹", filter: s => s.category === "Instrumental Music" || s.language === "Instrumental", lang: "instrumental" },
+    { id: "only_friends", title: "🎬 Only Friends OST & Themes", icon: "🎬", filter: s => s.category === "Only Friends OST", lang: "only_friends" }
   ];
 
   let fullHTML = "";
+  const renderedPool = [];
+
   sectionsDef.forEach(sec => {
     const secSongs = filtered.filter(sec.filter);
     if (secSongs.length > 0) {
+      const topSongs = secSongs.slice(0, 8);
+      topSongs.forEach(s => renderedPool.push(s));
+
       fullHTML += `
         <section class="music-section">
           <div class="section-header">
@@ -865,9 +941,12 @@ function renderContent() {
               <h2 class="section-title">${sec.title}</h2>
               <span class="section-badge">${secSongs.length} tracks</span>
             </div>
+            <button class="section-view-all-link" data-lang="${sec.lang || ''}" data-section="${sec.sectionId || ''}">
+              Explore All (${secSongs.length}) →
+            </button>
           </div>
           <div class="songs-grid">
-            ${secSongs.map(s => createSongCardHTML(s)).join("")}
+            ${topSongs.map(s => createSongCardHTML(s)).join("")}
           </div>
         </section>
       `;
@@ -875,8 +954,46 @@ function renderContent() {
   });
 
   DOM.contentContainer.innerHTML = fullHTML;
-  attachCardListeners(filtered);
+  attachCardListeners(renderedPool);
+  attachSectionExploreListeners();
   updatePlayingCardHighlight();
+}
+
+function attachPaginationListeners() {
+  const loadMoreBtn = document.getElementById("loadMoreBtn");
+  if (loadMoreBtn) {
+    loadMoreBtn.addEventListener("click", () => {
+      AppState.currentPage++;
+      renderContent();
+    });
+  }
+  const showAllBtn = document.getElementById("showAllSongsBtn");
+  if (showAllBtn) {
+    showAllBtn.addEventListener("click", () => {
+      AppState.currentPage = 999;
+      renderContent();
+    });
+  }
+}
+
+function attachSectionExploreListeners() {
+  document.querySelectorAll(".section-view-all-link").forEach(btn => {
+    btn.addEventListener("click", () => {
+      const lang = btn.dataset.lang;
+      const sec = btn.dataset.section;
+      if (lang) {
+        AppState.activeLanguage = lang;
+        AppState.activeSection = "all";
+      } else if (sec) {
+        AppState.activeSection = sec;
+        AppState.activeLanguage = "all";
+      }
+      AppState.currentPage = 1;
+      updateActivePills();
+      renderContent();
+      window.scrollTo({ top: 0, behavior: "smooth" });
+    });
+  });
 }
 
 // Generate accessible HTML for an individual song card

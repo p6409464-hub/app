@@ -43,7 +43,7 @@ class PraneshMusicHubTests(unittest.TestCase):
 
     def test_03_language_filter(self):
         """Verify filtering songs by language."""
-        languages = ["tamil", "english", "malayalam", "instrumental", "only_friends"]
+        languages = ["tamil", "telugu", "hindi", "english", "malayalam", "instrumental", "only_friends"]
         for lang in languages:
             res = self.client.get(f"/api/songs?language={lang}")
             self.assertEqual(res.status_code, 200)

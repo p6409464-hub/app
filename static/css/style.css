@@ -465,6 +465,37 @@ body {
   border: 1px solid rgba(147, 51, 234, 0.3);
 }
 
+.section-view-all-link {
+  background: rgba(147, 51, 234, 0.12);
+  border: 1px solid rgba(147, 51, 234, 0.3);
+  color: #c084fc;
+  font-size: 0.82rem;
+  font-weight: 600;
+  cursor: pointer;
+  padding: 5px 14px;
+  border-radius: var(--radius-full);
+  transition: all 0.2s ease;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.section-view-all-link:hover {
+  background: rgba(147, 51, 234, 0.25);
+  color: #fff;
+  border-color: rgba(147, 51, 234, 0.6);
+  transform: translateX(3px);
+}
+
+.load-more-wrap {
+  text-align: center;
+  margin: 36px 0 24px 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+}
+
 /* Songs Grid */
 .songs-grid {
   display: grid;

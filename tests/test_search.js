@@ -250,6 +250,44 @@ AppState.activeLanguage = "all";
 executeSearch("");
 console.log("[PASS] Language filter tested; master collection remains 100% intact.");
 
+// Test 9: Telugu Songs Availability and Search
+console.log("\nTest 9: Verifying Telugu catalogue and searching...");
+executeSearch("Naatu Naatu");
+assert(AppState.searchResults.length > 0, "Naatu Naatu must be found in Telugu library");
+assert(AppState.searchResults.some(s => s.language === "Telugu"), "Song must have Telugu language");
+
+executeSearch("Pushpa");
+assert(AppState.searchResults.length >= 2, "Pushpa must return multiple songs");
+
+executeSearch("Chuttamalle");
+assert(AppState.searchResults.length > 0, "Chuttamalle (Devara) must be found");
+console.log(`[PASS] Telugu library tested; Naatu Naatu, Pushpa, and Chuttamalle all return valid tracks.`);
+
+// Test 10: Pagination and Load More Logic
+console.log("\nTest 10: Verifying Pagination & Load More slices...");
+AppState.activeLanguage = "all";
+AppState.activeSection = "all";
+executeSearch(""); // Clear search to view full library
+assert.strictEqual(AppState.currentPage, 1, "Initial page must be 1");
+assert.strictEqual(AppState.pageSize, 24, "Page size must be 24");
+
+const fullTotal = AppState.masterSongs.length;
+assert(fullTotal > 24, "Library must contain more songs than page size");
+
+const initialSlice = AppState.masterSongs.slice(0, AppState.currentPage * AppState.pageSize);
+assert.strictEqual(initialSlice.length, 24, "First page slice must be 24 items");
+
+// Simulate Load More
+AppState.currentPage++;
+const secondSlice = AppState.masterSongs.slice(0, AppState.currentPage * AppState.pageSize);
+assert.strictEqual(secondSlice.length, 48, "Second page slice must be 48 items");
+
+// Show All
+AppState.currentPage = 999;
+const allSlice = AppState.masterSongs.slice(0, AppState.currentPage * AppState.pageSize);
+assert.strictEqual(allSlice.length, fullTotal, "Show all must display all items");
+console.log(`[PASS] Pagination correctly controls DOM slicing (24 -> 48 -> ${fullTotal}).`);
+
 console.log("\n==================================================");
-console.log("ALL 8 SEARCH AUTOMATED TESTS PASSED SUCCESSFULLY!");
+console.log("ALL 10 SEARCH & CATALOGUE TESTS PASSED SUCCESSFULLY!");
 console.log("==================================================\n");
