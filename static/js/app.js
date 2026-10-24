@@ -61,8 +61,16 @@ const configuredApi = urlParams.get("api") || localStorage.getItem("pranesh_api_
 const API_BASE = configuredApi ? configuredApi.replace(/\/+$/, "") : "";
 
 const AppState = {
-  songs: [],
-  searchResults: [],
+  masterSongs: [],       // Immutable master catalogue (never mutated or permanently filtered)
+  songs: [],             // Active browsing list
+  searchResults: [],     // Current search matches
+  searchQuery: "",       // Active raw search query
+  normalizedQuery: "",   // Active normalized search query
+  isSearching: false,
+  searchRequestId: 0,    // Monotonic ID preventing async race conditions
+  searchDebounceTimer: null,
+  activeSearchAbortController: null,
+  searchError: null,     // Holds error state for user retry
   currentSong: null,
   currentSongIndex: -1,
   isPlaying: false,
@@ -73,9 +81,6 @@ const AppState = {
   isMuted: false,
   activeLanguage: "all",
   activeSection: "all",
-  searchQuery: "",
-  isSearching: false,
-  searchDebounceTimer: null,
   favourites: safeGetStorage("pranesh_hub_favs", []),
   history: safeGetStorage("pranesh_hub_history", []),
   queue: []
@@ -145,65 +150,41 @@ document.addEventListener("DOMContentLoaded", () => {
 });
 
 function setupEventListeners() {
-  // Live Instant Search Bar with 0ms local response
+  // Live Instant Search Bar with 0ms deterministic local response
   if (DOM.searchInput) {
     DOM.searchInput.addEventListener("input", (e) => {
-      const val = e.target.value.trim();
-      AppState.searchQuery = val.toLowerCase();
-      if (DOM.clearSearchBtn) {
-        DOM.clearSearchBtn.style.display = val ? "block" : "none";
-      }
-
-      clearTimeout(AppState.searchDebounceTimer);
-      if (!val) {
-        AppState.isSearching = false;
-        AppState.searchResults = [];
-        if (DOM.emptyState) DOM.emptyState.style.display = "none";
-        renderContent();
-        return;
-      }
-
-      // 0ms instantaneous local search matching
-      performLocalSearch(AppState.searchQuery);
-
-      // If a custom backend is configured, query it in background with a short 3s timeout
-      if (API_BASE) {
-        AppState.searchDebounceTimer = setTimeout(() => {
-          performOptionalBackendSearch(val);
-        }, 350);
-      }
+      executeSearch(e.target.value);
     });
 
     DOM.searchInput.addEventListener("keydown", (e) => {
       if (e.key === "Enter") {
-        clearTimeout(AppState.searchDebounceTimer);
-        const val = DOM.searchInput.value.trim();
-        if (val) performLocalSearch(val.toLowerCase());
+        executeSearch(DOM.searchInput.value);
+      } else if (e.key === "Escape") {
+        if (DOM.searchInput) DOM.searchInput.value = "";
+        executeSearch("");
       }
     });
   }
 
+  // Clear Search Button
   if (DOM.clearSearchBtn) {
     DOM.clearSearchBtn.addEventListener("click", () => {
-      DOM.searchInput.value = "";
-      AppState.searchQuery = "";
-      AppState.searchResults = [];
-      DOM.clearSearchBtn.style.display = "none";
-      if (DOM.emptyState) DOM.emptyState.style.display = "none";
-      renderContent();
+      if (DOM.searchInput) {
+        DOM.searchInput.value = "";
+        DOM.searchInput.focus();
+      }
+      executeSearch("");
     });
   }
 
+  // Reset Search & Filters Button
   if (DOM.resetSearchBtn) {
     DOM.resetSearchBtn.addEventListener("click", () => {
       if (DOM.searchInput) DOM.searchInput.value = "";
-      AppState.searchQuery = "";
-      AppState.searchResults = [];
-      if (DOM.clearSearchBtn) DOM.clearSearchBtn.style.display = "none";
       AppState.activeLanguage = "all";
       AppState.activeSection = "all";
       updateActivePills();
-      renderContent();
+      executeSearch("");
     });
   }
 
@@ -214,7 +195,7 @@ function setupEventListeners() {
       chip.classList.add("active");
       AppState.activeLanguage = chip.dataset.lang || "all";
       if (AppState.searchQuery) {
-        performLocalSearch(AppState.searchQuery);
+        executeSearch(AppState.searchQuery);
       } else {
         renderContent();
       }
@@ -227,7 +208,13 @@ function setupEventListeners() {
       DOM.sectionPills.forEach(p => p.classList.remove("active"));
       pill.classList.add("active");
       AppState.activeSection = pill.dataset.section || "all";
-      renderContent();
+      // Clear search when intentionally navigating to a section view
+      if (AppState.searchQuery) {
+        if (DOM.searchInput) DOM.searchInput.value = "";
+        executeSearch("");
+      } else {
+        renderContent();
+      }
     });
   });
 
@@ -386,7 +373,69 @@ function setupEventListeners() {
 }
 
 // ==========================================================================
-// 3. Catalogue Loader & Deduplicated Merging
+// 3. String Normalization & Multi-Field Search Matching
+// ==========================================================================
+
+function normalizeSearchText(str) {
+  if (!str) return "";
+  return String(str)
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "") // remove accents/diacritics
+    .toLowerCase()
+    .replace(/['’`"“”«»\-_.,/#!$%^&*;:{}=\-_~()\[\]]/g, "") // remove punctuation
+    .replace(/\s+/g, " ") // collapse whitespace
+    .trim();
+}
+
+function prepareSongSearchMetadata(song) {
+  const normTitle = normalizeSearchText(song.title);
+  const normArtist = normalizeSearchText(song.artist);
+  const normAlbum = normalizeSearchText(song.album);
+  const normLang = normalizeSearchText(song.language);
+  const normCategory = normalizeSearchText(song.category);
+  const normTags = Array.isArray(song.tags) ? song.tags.map(t => normalizeSearchText(t)) : [];
+
+  const searchCorpus = [normTitle, normArtist, normAlbum, normLang, normCategory, ...normTags].join(" ");
+
+  return {
+    ...song,
+    _normTitle: normTitle,
+    _normArtist: normArtist,
+    _normAlbum: normAlbum,
+    _normLang: normLang,
+    _normCategory: normCategory,
+    _normTags: normTags,
+    _searchCorpus: searchCorpus
+  };
+}
+
+function matchSongQuery(song, normalizedQuery) {
+  if (!normalizedQuery) return true;
+  if (!song) return false;
+
+  const corpus = song._searchCorpus || normalizeSearchText([
+    song.title,
+    song.artist,
+    song.album,
+    song.language,
+    song.category,
+    ...(song.tags || [])
+  ].join(" "));
+
+  // Exact phrase match first
+  if (corpus.includes(normalizedQuery)) return true;
+
+  // Multi-token match: all tokens must be present in song corpus
+  const tokens = normalizedQuery.split(" ").filter(Boolean);
+  if (tokens.length > 1) {
+    return tokens.every(token => corpus.includes(token));
+  }
+
+  return false;
+}
+
+// ==========================================================================
+// 4. Catalogue Loader & Deduplicated Merging
 // ==========================================================================
 
 function loadCatalogue() {
@@ -402,91 +451,144 @@ function loadCatalogue() {
   for (const s of sourceList) {
     if (!s || !s.id || !s.title) continue;
 
-    // Normalization check to prevent any duplicate song entries
-    const normTitle = s.title.toLowerCase().replace(/[\"'\-_\.\,\?\!:\(\)]/g, "").trim();
+    const normTitle = normalizeSearchText(s.title);
     if (seenIds.has(s.id) || seenTitles.has(normTitle)) continue;
 
     seenIds.add(s.id);
     seenTitles.add(normTitle);
 
-    // Ensure safe relative cover URLs
     let cover = s.cover_url || "static/images/only_friends_theme.svg";
     if (cover.startsWith("/")) cover = cover.substring(1);
 
-    deduped.push({
+    const prepared = prepareSongSearchMetadata({
       ...s,
       cover_url: cover,
       download_authorized: Boolean(s.download_authorized)
     });
+
+    deduped.push(prepared);
   }
 
-  AppState.songs = deduped;
-  AppState.queue = [...AppState.songs];
+  // Freeze the master catalogue so nothing can ever mutate, slice, or corrupt it
+  AppState.masterSongs = Object.freeze([...deduped]);
+  AppState.songs = [...deduped];
+  AppState.queue = [...deduped];
   renderContent();
 }
 
 // ==========================================================================
-// 4. Search Implementation (Instant 0ms Local Matching)
+// 5. Deterministic Search Engine with Race-Condition Protection
 // ==========================================================================
 
-function performLocalSearch(query) {
-  if (!query) {
+function executeSearch(rawQuery) {
+  const trimmed = (rawQuery || "").trim();
+  const normalized = normalizeSearchText(trimmed);
+
+  // Invalidate any previous async searches & timers
+  AppState.searchRequestId++;
+  const thisRequestId = AppState.searchRequestId;
+  clearTimeout(AppState.searchDebounceTimer);
+  if (AppState.activeSearchAbortController) {
+    try { AppState.activeSearchAbortController.abort(); } catch (_) {}
+    AppState.activeSearchAbortController = null;
+  }
+
+  AppState.searchError = null;
+
+  if (!trimmed) {
+    AppState.searchQuery = "";
+    AppState.normalizedQuery = "";
     AppState.isSearching = false;
     AppState.searchResults = [];
+    if (DOM.clearSearchBtn) DOM.clearSearchBtn.style.display = "none";
     if (DOM.emptyState) DOM.emptyState.style.display = "none";
     renderContent();
     return;
   }
 
+  AppState.searchQuery = trimmed;
+  AppState.normalizedQuery = normalized;
   AppState.isSearching = true;
-  const q = query.toLowerCase();
+  if (DOM.clearSearchBtn) DOM.clearSearchBtn.style.display = "block";
 
-  // Search across song name, artist, album/movie, language, and tags
-  const matches = AppState.songs.filter(s => {
-    const titleMatch = s.title && s.title.toLowerCase().includes(q);
-    const artistMatch = s.artist && s.artist.toLowerCase().includes(q);
-    const albumMatch = s.album && s.album.toLowerCase().includes(q);
-    const langMatch = s.language && s.language.toLowerCase().includes(q);
-    const tagMatch = s.tags && s.tags.some(t => t.toLowerCase().includes(q));
-    return titleMatch || artistMatch || albumMatch || langMatch || tagMatch;
-  });
+  // ALWAYS filter from the immutable master collection (never from previous search results!)
+  const localMatches = AppState.masterSongs.filter(song => matchSongQuery(song, normalized));
+  AppState.searchResults = [...localMatches];
 
-  AppState.searchResults = matches;
+  // Update active queue for uninterrupted playback
+  AppState.queue = localMatches.length > 0 ? [...localMatches] : [...AppState.masterSongs];
+
+  // 0ms instant local rendering
   renderContent();
+
+  // If a custom backend is configured, query asynchronously with sequence protection
+  if (API_BASE) {
+    AppState.searchDebounceTimer = setTimeout(() => {
+      fetchBackendSearchResults(trimmed, thisRequestId);
+    }, 350);
+  }
 }
 
-// Optional query to an external backend if the user explicitly configured one
-async function performOptionalBackendSearch(query) {
+// Optional query to an external backend with sequence & race-condition protection
+async function fetchBackendSearchResults(query, requestId) {
   if (!API_BASE || !query) return;
 
+  const abortController = new AbortController();
+  AppState.activeSearchAbortController = abortController;
+
   try {
-    const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 3000);
-    const res = await fetch(`${API_BASE}/api/search?query=${encodeURIComponent(query)}&language=${encodeURIComponent(AppState.activeLanguage)}`, { signal: controller.signal });
+    const timeoutId = setTimeout(() => abortController.abort(), 4000);
+    const url = `${API_BASE}/api/search?query=${encodeURIComponent(query)}&language=${encodeURIComponent(AppState.activeLanguage)}`;
+    const res = await fetch(url, { signal: abortController.signal });
     clearTimeout(timeoutId);
+
+    // Verify this is still the active search request
+    if (requestId !== AppState.searchRequestId) {
+      console.log(`[Search] Discarding stale response for request #${requestId} (active is #${AppState.searchRequestId})`);
+      return;
+    }
 
     if (res.ok) {
       const data = await res.json();
-      if (data.status === "success" && Array.isArray(data.songs) && data.songs.length > 0) {
+      if (requestId !== AppState.searchRequestId) return;
+
+      if (data.status === "success" && Array.isArray(data.songs)) {
+        // Merge without duplicating or mutating masterSongs
         const seenIds = new Set(AppState.searchResults.map(s => s.id));
         const newFound = [];
         for (const s of data.songs) {
           if (!seenIds.has(s.id)) {
             seenIds.add(s.id);
-            newFound.push({
+            newFound.push(prepareSongSearchMetadata({
               ...s,
-              download_authorized: false
-            });
+              download_authorized: Boolean(s.download_authorized)
+            }));
           }
         }
+
         if (newFound.length > 0) {
           AppState.searchResults = [...AppState.searchResults, ...newFound];
+          AppState.queue = [...AppState.searchResults];
           renderContent();
         }
       }
+    } else {
+      throw new Error(`Server returned HTTP ${res.status}`);
     }
   } catch (err) {
-    // Graceful silent fallback to local search results
+    if (err.name === "AbortError") return; // Normal abort on new input
+    if (requestId !== AppState.searchRequestId) return;
+
+    console.warn("[Search] Backend search notice:", err.message);
+    AppState.searchError = {
+      query: query,
+      message: "Online search request could not be completed."
+    };
+    renderContent();
+  } finally {
+    if (AppState.activeSearchAbortController === abortController) {
+      AppState.activeSearchAbortController = null;
+    }
   }
 }
 
@@ -500,7 +602,7 @@ function updateActivePills() {
 }
 
 // ==========================================================================
-// 5. Content Rendering & Song Card Generation
+// 6. Content Rendering & Song Card Generation
 // ==========================================================================
 
 function renderContent() {
@@ -510,17 +612,81 @@ function renderContent() {
   if (AppState.searchQuery) {
     let displayList = [...AppState.searchResults];
 
-    // Filter by language if selected and results exist
+    // Language Filter Handling during Search
+    let languageFilteredOut = false;
     if (AppState.activeLanguage !== "all") {
-      const langFiltered = displayList.filter(s =>
-        (s.language && s.language.toLowerCase() === AppState.activeLanguage.toLowerCase()) ||
-        (s.tags && s.tags.some(t => t.toLowerCase() === AppState.activeLanguage.toLowerCase()))
-      );
-      if (langFiltered.length > 0) displayList = langFiltered;
+      const activeLang = AppState.activeLanguage.toLowerCase();
+      const langFiltered = displayList.filter(s => {
+        const sLang = (s.language || "").toLowerCase();
+        if (activeLang === "only_friends") {
+          return s.category === "Only Friends OST" || (s._normTags && s._normTags.includes("only friends"));
+        }
+        return sLang === activeLang || (s._normTags && s._normTags.includes(activeLang));
+      });
+
+      if (displayList.length > 0 && langFiltered.length === 0) {
+        languageFilteredOut = true;
+      }
+      displayList = langFiltered;
     }
 
+    // Error Banner (if API search failed, allows user retry)
+    let errorBannerHTML = "";
+    if (AppState.searchError) {
+      errorBannerHTML = `
+        <div class="search-error-banner" style="display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:12px; background:rgba(239,68,68,0.12); border:1px solid rgba(239,68,68,0.3); border-radius:12px; padding:12px 18px; margin-bottom:20px; color:#fca5a5; font-size:0.88rem;">
+          <div>
+            <span style="font-weight:600;">⚠️ ${escapeHTML(AppState.searchError.message)}</span>
+            <span style="display:block; font-size:0.78rem; color:var(--text-dim); margin-top:2px;">Showing instant results from built-in offline music catalogue.</span>
+          </div>
+          <button id="retrySearchBtn" class="btn btn-pill" style="padding:6px 16px; font-size:0.8rem; background:rgba(239,68,68,0.25); border:1px solid rgba(239,68,68,0.5); color:#fff; cursor:pointer;">
+            🔄 Retry Online Search
+          </button>
+        </div>
+      `;
+    }
+
+    const attachRetryListener = () => {
+      const retryBtn = document.getElementById("retrySearchBtn");
+      if (retryBtn) {
+        retryBtn.addEventListener("click", () => {
+          AppState.searchError = null;
+          executeSearch(AppState.searchQuery);
+        });
+      }
+    };
+
     if (displayList.length === 0) {
-      DOM.contentContainer.innerHTML = "";
+      if (DOM.emptyState) DOM.emptyState.style.display = "none";
+      if (languageFilteredOut) {
+        DOM.contentContainer.innerHTML = `
+          ${errorBannerHTML}
+          <div style="text-align:center; padding: 48px 20px; background:rgba(30,27,75,0.4); border:1px solid rgba(139,92,246,0.25); border-radius:16px; margin:20px 0;">
+            <div style="font-size:2.5rem; margin-bottom:12px;">🌐</div>
+            <h3 style="color:#fff; font-size:1.2rem; margin-bottom:8px;">No ${capitalize(AppState.activeLanguage)} songs matched "${escapeHTML(AppState.searchQuery)}"</h3>
+            <p style="color:var(--text-muted); font-size:0.92rem; max-width:480px; margin:0 auto 20px auto;">
+              Found <strong>${AppState.searchResults.length}</strong> matching track(s) in other languages.
+            </p>
+            <button id="searchShowAllLanguagesBtn" class="btn btn-primary" style="padding:10px 24px;">
+              <span>🌐</span> Show Results in All Languages (${AppState.searchResults.length})
+            </button>
+          </div>
+        `;
+        const showAllBtn = document.getElementById("searchShowAllLanguagesBtn");
+        if (showAllBtn) {
+          showAllBtn.addEventListener("click", () => {
+            AppState.activeLanguage = "all";
+            updateActivePills();
+            renderContent();
+          });
+        }
+        attachRetryListener();
+        return;
+      }
+
+      // No songs matched across any language
+      DOM.contentContainer.innerHTML = errorBannerHTML;
+      attachRetryListener();
       if (DOM.emptyState) {
         DOM.emptyState.style.display = "block";
         if (DOM.emptySearchQuery) DOM.emptySearchQuery.textContent = `"${escapeHTML(AppState.searchQuery)}"`;
@@ -531,6 +697,7 @@ function renderContent() {
     if (DOM.emptyState) DOM.emptyState.style.display = "none";
 
     DOM.contentContainer.innerHTML = `
+      ${errorBannerHTML}
       <section class="music-section">
         <div class="section-header">
           <div class="section-title-wrap">
@@ -546,12 +713,13 @@ function renderContent() {
     `;
 
     attachCardListeners(displayList);
+    attachRetryListener();
     updatePlayingCardHighlight();
     return;
   }
 
-  // Browsing Mode (Filtered by Section / Language)
-  let filtered = [...AppState.songs];
+  // Browsing Mode (Filtered by Section / Language) - Always starts from immutable masterSongs
+  let filtered = [...AppState.masterSongs];
 
   // Language Filter
   if (AppState.activeLanguage !== "all") {
@@ -772,8 +940,9 @@ function createSongCardHTML(song) {
 function attachCardListeners(pool = []) {
   const getSongById = (id) => {
     return pool.find(s => s.id === id) ||
-           AppState.songs.find(s => s.id === id) ||
-           AppState.searchResults.find(s => s.id === id);
+           AppState.searchResults.find(s => s.id === id) ||
+           AppState.masterSongs.find(s => s.id === id) ||
+           AppState.songs.find(s => s.id === id);
   };
 
   // Play button triggers
@@ -863,7 +1032,13 @@ function playSong(song) {
 
   AppState.currentSong = song;
 
-  // Queue tracking
+  // Queue tracking: sync to search results when in search mode, otherwise master collection
+  if (AppState.isSearching && AppState.searchResults.length > 0) {
+    AppState.queue = [...AppState.searchResults];
+  } else if (!AppState.queue || AppState.queue.length === 0) {
+    AppState.queue = [...AppState.masterSongs];
+  }
+
   let idx = AppState.queue.findIndex(s => s.id === song.id);
   if (idx === -1) {
     AppState.queue.push(song);
@@ -1097,7 +1272,7 @@ async function handleDownloadAction(song, triggerBtn = null) {
 // ==========================================================================
 
 function toggleFavourite(songId) {
-  const song = AppState.songs.find(s => s.id === songId) || AppState.searchResults.find(s => s.id === songId);
+  const song = AppState.masterSongs.find(s => s.id === songId) || AppState.searchResults.find(s => s.id === songId) || AppState.songs.find(s => s.id === songId);
   const title = song ? song.title : "Song";
   const idx = AppState.favourites.indexOf(songId);
 
