@@ -361,8 +361,8 @@ assert(cardHTML.includes(cardSong.artist), "Must contain artist name");
 assert(cardHTML.includes('class="play-circle-btn card-play-trigger"'), "Must contain working play button control");
 assert(cardHTML.includes('class="download-btn card-download-trigger"'), "Must contain download button");
 assert(cardHTML.includes('class="fav-btn'), "Must contain favourites button");
-assert(cardHTML.includes('class="spotify-btn-card card-spotify-trigger"'), "Must contain in-page embedded player button");
-console.log("[PASS] Verified: Individual song cards display complete metadata, artwork, and working playback controls.");
+assert(!cardHTML.includes('class="spotify-btn-card'), "Card must NOT show distracting external Spotify buttons (transparent background fallback)");
+console.log("[PASS] Verified: Individual song cards display complete metadata, artwork, and clean controls without distracting branding.");
 
 // Test 16: Cross-language search fallback (never false 'No songs found')
 console.log("\nTest 16: Cross-language search fallback...");
@@ -375,6 +375,21 @@ AppState.activeLanguage = "all";
 executeSearch("");
 console.log("[PASS] Cross-language search fallback verified. Users never see false 'No songs found'.");
 
+// Test 17: Background Spotify / Audio Fallback when JioSaavn stream is missing
+console.log("\nTest 17: Verifying background Spotify fallback when audio stream is missing...");
+const mockSongWithoutJioSaavn = {
+  id: "test_no_saavn_1",
+  title: "Special Background Track",
+  artist: "Special Artist",
+  duration: 180,
+  audio_url: ""
+};
+playSong(mockSongWithoutJioSaavn);
+assert.strictEqual(AppState.isSpotifyBackground, true, "Must automatically engage background fallback");
+assert.strictEqual(AppState.isPlaying, true, "Must set isPlaying to true in background");
+stopSimulatedSeekbar();
+console.log("[PASS] Verified: Background Spotify fallback activates automatically when JioSaavn audio is missing.");
+
 console.log("\n==================================================");
-console.log("ALL 16 SEARCH, CATALOGUE & IN-PAGE PLAYBACK TESTS PASSED SUCCESSFULLY!");
+console.log("ALL 17 SEARCH, CATALOGUE & BACKGROUND FALLBACK TESTS PASSED SUCCESSFULLY!");
 console.log("==================================================\n");
