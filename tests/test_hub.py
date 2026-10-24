@@ -26,7 +26,6 @@ class PraneshMusicHubTests(unittest.TestCase):
         self.assertIn("Pranesh Music Hub", html)
         self.assertIn("playerBar", html)
         self.assertIn("searchInput", html)
-        self.assertIn("inspectionModal", html)
 
     def test_02_get_all_songs(self):
         """Verify the songs catalogue API returns valid data."""

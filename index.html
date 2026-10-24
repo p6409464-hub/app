@@ -44,9 +44,6 @@
 
     <!-- Nav Actions -->
     <div class="nav-actions">
-      <button id="openInspectionBtn" class="btn btn-inspection" title="Inspect requested Only Friends MP3 music source">
-        <span>⚡</span> Only Friends MP3 Inspector
-      </button>
       <button class="btn btn-pill section-pill" data-section="favourites" title="View your favourite tracks">
         <span>❤️</span> Favourites
       </button>
@@ -78,7 +75,7 @@
             <span>▶</span> Listen Now
           </button>
           <span style="font-size: 0.84rem; color: var(--text-dim); display: flex; align-items: center; gap: 6px;">
-            🔒 100% Ad-Free • ⚡ Direct MP3 Saves • 🎧 Lossless Audio
+            ✨ Ad-Free Experience • ⚡ High-Speed Audio Streaming • 🎧 250+ Curated Songs
           </span>
         </div>
       </div>
@@ -107,6 +104,7 @@
         <button class="chip lang-chip active" data-lang="all">All Languages</button>
         <button class="chip lang-chip" data-lang="tamil">🌺 Tamil</button>
         <button class="chip lang-chip" data-lang="english">🎸 English</button>
+        <button class="chip lang-chip" data-lang="hindi">🪔 Hindi</button>
         <button class="chip lang-chip" data-lang="malayalam">🌴 Malayalam</button>
         <button class="chip lang-chip" data-lang="instrumental">🎹 Instrumental</button>
         <button class="chip lang-chip" data-lang="only_friends">🎬 Only Friends OST</button>
@@ -131,7 +129,10 @@
       <div class="empty-state-icon">🔎</div>
       <h3>No matching songs found</h3>
       <p>We could not find any tracks matching <span id="emptySearchQuery" style="color:#c084fc; font-weight:700;"></span>.</p>
-      <button id="resetSearchBtn" class="btn btn-primary">
+      <p class="empty-search-tips" style="color:var(--text-dim); font-size:0.85rem; margin-top:8px;">
+        💡 Tip: Search by song title (e.g. <em>Badass, Shape of You, Illuminati</em>), movie name (e.g. <em>Ghilli, Mankatha, Leo, Sivaji, Amaran</em>), artist (e.g. <em>Anirudh, A.R. Rahman, Ed Sheeran</em>), or language.
+      </p>
+      <button id="resetSearchBtn" class="btn btn-primary" style="margin-top:16px;">
         <span>🔄</span> Reset Search &amp; Filters
       </button>
     </div>
@@ -181,28 +182,11 @@
         <input type="range" id="volumeSlider" class="volume-slider" min="0" max="1" step="0.05" value="0.85" />
       </div>
 
-      <button id="playerDownloadBtn" class="download-btn" title="Direct MP3 Download">
+      <button id="playerDownloadBtn" class="download-btn" title="Download Authorized MP3">
         <span>⬇️</span> Download
       </button>
     </div>
   </footer>
-
-  <!-- ========================================================================
-       Source Inspection Modal (Only Friends MP3 Verification)
-       ======================================================================== -->
-  <div id="inspectionModal" class="modal-overlay">
-    <div class="modal-card">
-      <div class="modal-header">
-        <h3 class="modal-title">
-          <span>⚡</span> Music Source Inspection: Only Friends MP3
-        </h3>
-        <button id="closeInspectionBtn" class="modal-close-btn" title="Close modal">✕</button>
-      </div>
-      <div id="inspectionContent" class="modal-body">
-        <!-- Loaded asynchronously from /api/source-inspection -->
-      </div>
-    </div>
-  </div>
 
   <!-- ========================================================================
        Toast Notification Hub
