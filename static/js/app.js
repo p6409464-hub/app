@@ -37,6 +37,9 @@ function safeSetStorage(key, value) {
 
 // Built-in offline audio library with verified full-length 320kbps streams (Zero 30s cutoffs!)
 const DEFAULT_STATIC_SONGS = [
+  {"id":"saavn_fzAg5UIy","title":"Manithan Manithan","artist":"Malaysia Vasudevan, Chandrabose, Vairamuthu","album":"Manithan","duration":260,"duration_str":"4:20","language":"Tamil","era":"80s","category":"Tamil Songs","sections":["trending","recent","era_80s","tamil"],"cover_url":"https://c.saavncdn.com/123/Manithan-1987-500x500.jpg","audio_url":"https://aac.saavncdn.com/123/eea4bbb94ae71a217d4c2910fd4d2baa_320.mp4","download_authorized":true,"tags":["manithan","manithan manithan","rajinikanth","rajini","chandrabose","malaysia vasudevan","80s","80s movie","80s songs","80s hits","tamil","trending"]},
+  {"id":"saavn_ioz_b6hk","title":"Vaanathe Paarthein","artist":"S. P. Balasubrahmanyam, Chandrabose, Vairamuthu","album":"Manithan","duration":315,"duration_str":"5:15","language":"Tamil","era":"80s","category":"Tamil Songs","sections":["trending","recent","era_80s","tamil"],"cover_url":"https://c.saavncdn.com/123/Manithan-1987-500x500.jpg","audio_url":"https://aac.saavncdn.com/123/56fcc3f711bc8c9cd080608c0c9bab3a_320.mp4","download_authorized":true,"tags":["vaanathe paarthein","vanathai parthen","vaanathe paarthen","vanathe parthen","manithan","rajinikanth","spb","chandrabose","80s","80s movie","80s songs","80s hits","tamil","trending"]},
+  {"id":"saavn_g51Odreb","title":"Aval","artist":"Santhosh Narayanan, Pradeep Kumar, Priya Hemesh, Vivek","album":"Manithan","duration":266,"duration_str":"4:26","language":"Tamil","era":"now","category":"Tamil Songs","sections":["trending","recent","era_now","tamil"],"cover_url":"https://c.saavncdn.com/386/Manithan-Tamil-2016-500x500.jpg","audio_url":"https://aac.saavncdn.com/386/19daccdb0bcf64f0318e10eccffe2773_320.mp4","download_authorized":true,"tags":["aval","aval manithan","manithan","pradeep kumar","santhosh narayanan","udhayanidhi stalin","now","now movie","now hits","tamil","trending"]},
   { id: "saavn_aasai_machaan_1", title: "Aasai Machaan", artist: "Swarnalatha, Arunmozhi, Ilaiyaraaja", album: "Kummi Paattu", duration: 302, duration_str: "5:02", language: "Tamil", category: "Tamil Songs", sections: ["trending", "recent", "era_90s", "tamil"], cover_url: "https://c.saavncdn.com/550/Kummi-Paattu-Tamil-2021-20230407030208-500x500.jpg", audio_url: "https://aac.saavncdn.com/550/9f902008db8062361c3b58713205661b_320.mp4", audio_file: "", download_authorized: true, tags: ["aasai machaan", "aasa machan", "adi aasa machan", "aasai machan", "swarnalatha", "arunmozhi", "ilaiyaraaja", "kummi paattu", "90s", "tamil", "trending"], era: "90s" },
   { id: "saavn_aasai_machaan_solo", title: "Aasai Machaan (Solo)", artist: "Swarnalatha, Ilaiyaraaja", album: "Kummi Paattu", duration: 302, duration_str: "5:02", language: "Tamil", category: "Tamil Songs", sections: ["recent", "era_90s", "tamil"], cover_url: "https://c.saavncdn.com/550/Kummi-Paattu-Tamil-2021-20230407030208-500x500.jpg", audio_url: "https://aac.saavncdn.com/550/b616a9f3076026e1f460609659186d06_320.mp4", audio_file: "", download_authorized: true, tags: ["aasai machaan", "aasa machan", "swarnalatha", "ilaiyaraaja", "kummi paattu", "90s", "tamil"], era: "90s" },
   { id: "saavn_karuppu_nila_machan", title: "Karuppu Nila", artist: "S.P. Balasubrahmanyam, K. S. Chithra, Deva", album: "En Aasai Machan", duration: 295, duration_str: "4:55", language: "Tamil", category: "Tamil Songs", sections: ["trending", "era_90s", "tamil"], cover_url: "https://c.saavncdn.com/024/En-Aasai-Machan-Tamil-1994-20240905140348-500x500.jpg", audio_url: "https://aac.saavncdn.com/024/88d549bd91b629c3bd3521483c35c2f1_320.mp4", audio_file: "", download_authorized: true, tags: ["karuppu nila", "en aasai machan", "aasai machan", "aasai machaan", "vijayakanth", "revathi", "spb", "chithra", "deva", "90s", "tamil"], era: "90s" },
@@ -758,13 +761,40 @@ function scoreAndMatchSong(song, rawQuery) {
   const pAlbum = song._pAlbum || toPhonetic(normAlbum);
   const pArtist = song._pArtist || toPhonetic(normArtist);
 
+  // 0. COMPOUND TITLE + MOVIE / ARTIST MATCH (e.g. "aval manithan", "manithan aval", "badass leo", "naa ready leo")
+  const titleAlbum1 = `${normTitle} ${normAlbum}`;
+  const titleAlbum2 = `${normAlbum} ${normTitle}`;
+  const pTitleAlbum1 = `${pTitle} ${pAlbum}`;
+  const pTitleAlbum2 = `${pAlbum} ${pTitle}`;
+
+  if (cleanQ === titleAlbum1 || cleanQ === titleAlbum2 || normQ === titleAlbum1 || normQ === titleAlbum2) {
+    matched = true;
+    score += 8500;
+  } else if (cleanPhoneticQ === pTitleAlbum1 || cleanPhoneticQ === pTitleAlbum2 || phoneticQ === pTitleAlbum1 || phoneticQ === pTitleAlbum2) {
+    matched = true;
+    score += 8000;
+  } else if (cleanQ && (cleanQ.startsWith(titleAlbum1 + " ") || cleanQ.startsWith(titleAlbum2 + " "))) {
+    matched = true;
+    score += 7500;
+  }
+
   // 1. EXACT SONG TITLE MATCH (Highest Single-Track Priority)
   if (normTitle === normQ || (cleanQ && normTitle === cleanQ)) {
     matched = true;
-    score += 3000;
+    score += 4000;
   } else if (normTitle.startsWith(normQ) || (cleanQ && normTitle.startsWith(cleanQ))) {
     matched = true;
-    score += 1500;
+    score += 3200;
+  } else if (cleanQ && normTitle && normTitle.length >= 3 && cleanQ.startsWith(normTitle + " ")) {
+    // Query starts with full song title followed by more keywords (e.g. "aval manithan", "badass anirudh")
+    const remainder = cleanQ.slice(normTitle.length).trim();
+    if (rawCorpus.includes(remainder) || (phoneticCorpus && phoneticCorpus.includes(toPhonetic(remainder)))) {
+      matched = true;
+      score += 4000;
+    } else {
+      matched = true;
+      score += 1500;
+    }
   } else if (normTitle.includes(normQ) || (cleanQ && normTitle.includes(cleanQ))) {
     matched = true;
     score += 800;
@@ -777,9 +807,16 @@ function scoreAndMatchSong(song, rawQuery) {
   } else if (normAlbum.startsWith(normQ) || (cleanQ && normAlbum.startsWith(cleanQ))) {
     matched = true;
     score += 2600;
-  } else if (cleanQ && cleanQ.startsWith(normAlbum)) {
-    matched = true;
-    score += 2400;
+  } else if (cleanQ && cleanQ.startsWith(normAlbum + " ") && normAlbum.length >= 3) {
+    // Query starts with movie album followed by song/artist keywords (e.g. "manithan aval", "leo badass")
+    const remainder = cleanQ.slice(normAlbum.length).trim();
+    if (rawCorpus.includes(remainder) || (phoneticCorpus && phoneticCorpus.includes(toPhonetic(remainder)))) {
+      matched = true;
+      score += 4000;
+    } else {
+      matched = true;
+      score += 1200;
+    }
   } else if (normAlbum.includes(normQ) || (cleanQ && normAlbum.includes(cleanQ))) {
     matched = true;
     score += 1200;
@@ -834,8 +871,11 @@ function scoreAndMatchSong(song, rawQuery) {
       matched = true;
       score += 2200;
     } else if (qp.startsWith(pAlbum) && pAlbum.length >= 3) {
-      matched = true;
-      score += 2000;
+      const pRemainder = qp.slice(pAlbum.length);
+      if (!pRemainder || phoneticCorpus.includes(pRemainder)) {
+        matched = true;
+        score += 2000;
+      }
     } else if (pAlbum.includes(qp)) {
       matched = true;
       score += 1000;

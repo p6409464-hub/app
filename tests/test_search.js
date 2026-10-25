@@ -610,6 +610,39 @@ eraSearches.forEach(({ q, expectedEra, minCount }) => {
 });
 console.log(`[PASS] Verified: All ${eraSearches.length} 80s, 90s, 2K, and Now movie queries return complete matching era catalogue tracks at the top!`);
 
+// Test 27: Verifying 'Manithan' movie and song searches (1987 Rajinikanth & 2016 albums)
+console.log("\nTest 27: Verifying 'Manithan' movie and song searches (1987 Rajinikanth & 2016 albums)...");
+const manithanSearches = [
+  { q: "manithan", expectedAlbum: "manithan" },
+  { q: "manithan movie", expectedAlbum: "manithan" },
+  { q: "manithan movice", expectedAlbum: "manithan" },
+  { q: "manithan song", expectedAlbum: "manithan" },
+  { q: "vaanathe paarthein", expectedTitle: "vaanathe paarthein" },
+  { q: "vanathai parthen", expectedTitle: "vaanathe paarthein" },
+  { q: "aval manithan", expectedTitle: "aval" },
+  { q: "mun sellada", expectedTitle: "mun sellada" },
+  { q: "moorutu kaalai", expectedTitle: "kaalai kaalai" },
+  { q: "80s manithan", expectedEra: "80s", expectedAlbum: "manithan" }
+];
+
+manithanSearches.forEach(({ q, expectedAlbum, expectedTitle, expectedEra }) => {
+  executeSearch(q);
+  assert(AppState.searchResults.length > 0, `Search for "${q}" must return results!`);
+  const topSong = AppState.searchResults[0];
+  if (expectedTitle) {
+    const titleMatch = (topSong.title || "").toLowerCase().startsWith(expectedTitle.toLowerCase());
+    assert(titleMatch, `Top song for query "${q}" must start with "${expectedTitle}", got "${topSong.title}"`);
+  }
+  if (expectedAlbum) {
+    const albumMatch = (topSong.album || "").toLowerCase() === expectedAlbum.toLowerCase();
+    assert(albumMatch, `Top song for query "${q}" must be from album "${expectedAlbum}", got "${topSong.title}" (${topSong.album})`);
+  }
+  if (expectedEra) {
+    assert.strictEqual(topSong.era, expectedEra, `Top song for query "${q}" must be from era "${expectedEra}", got "${topSong.era}"`);
+  }
+});
+console.log(`[PASS] Verified: All ${manithanSearches.length} Manithan movie and song queries rank the expected Manithan tracks at #1!`);
+
 console.log("\n==================================================");
-console.log("ALL 26 SEARCH, CATALOGUE, FULL-STREAM, ERA & MOVIE TESTS PASSED!");
+console.log("ALL 27 SEARCH, CATALOGUE, FULL-STREAM, ERA, MOVIE & MANITHAN TESTS PASSED!");
 console.log("==================================================\n");
