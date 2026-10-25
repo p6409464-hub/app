@@ -581,6 +581,16 @@ function boundedLevenshtein(a, b, maxDist) {
 function correctSearchQuery(q) {
   if (!q) return "";
   const replacements = {
+    "movice": "movie",
+    "flim": "film",
+    "filam": "film",
+    "ghili": "ghilli",
+    "gilli": "ghilli",
+    "kummi paatu": "kummi paattu",
+    "kummipaattu": "kummi paattu",
+    "kummipaatu": "kummi paattu",
+    "en aasa machan": "en aasai machan",
+    "en aasai machaan": "en aasai machan",
     "aasa": "aasai",
     "machan": "machaan",
     "maachan": "machaan",
@@ -598,13 +608,27 @@ function correctSearchQuery(q) {
     "vaathy": "vaathi",
     "kaavala": "kaavaalaa",
     "mangatha": "mankatha",
+    "mangkatha": "mankatha",
     "sandramukhi": "chandramukhi",
     "endhiran": "enthiran",
     "doktor": "doctor",
+    "doktar": "doctor",
     "amaram": "amaran",
+    "amram": "amaran",
     "beest": "beast",
     "leoo": "leo",
-    "vetaiyan": "vettaiyan"
+    "vetaiyan": "vettaiyan",
+    "vetayan": "vettaiyan",
+    "rayan": "raayan",
+    "rayen": "raayan",
+    "premm": "premam",
+    "avesham": "aavesham",
+    "visvaasam": "viswasam",
+    "basha": "baasha",
+    "anamalai": "annamalai",
+    "shivaji": "sivaji",
+    "padayapa": "padayappa",
+    "padaiyappa": "padayappa"
   };
   let corrected = q;
   for (const [typo, fix] of Object.entries(replacements)) {
@@ -673,9 +697,15 @@ function scoreAndMatchSong(song, rawQuery) {
   const compactQ = normalizeCompact(rawQuery);
   if (!normQ && !compactQ) return { matched: true, score: 0 };
 
-  // Strip noise words like "song", "songs", "mp3", "track", "audio" for clean title comparisons
-  const cleanQ = normQ.replace(/\b(songs|song|mp3|tracks|track|audio|full|original)\b/gi, " ").replace(/\s+/g, " ").trim();
+  // Strip noise / filler words like "movie", "movice", "film", "flim", "padam", "song", "mp3", "track", "ost", "album"
+  const noiseRegex = /\b(movice|movies|movie|movi|moive|movei|films|film|flims|flim|filam|padangal|padam|cinema|cinemas|theatre|theatres|soundtracks|soundtrack|ost|albums|album|songs|song|sngs|sng|paatu|paattu|pattu|geetham|mp3|tracks|track|audios|audio|full|original)\b/gi;
+  let cleanQ = normQ.replace(noiseRegex, " ").replace(/\s+/g, " ").trim();
+  if (!cleanQ) {
+    cleanQ = normQ;
+  }
+  const cleanCompactQ = normalizeCompact(cleanQ);
   const cleanPhoneticQ = toPhonetic(cleanQ);
+  const phoneticQ = toPhonetic(rawQuery);
 
   const rawCorpus = song._searchCorpus || normalizeSearchText([
     song.title || song.name || "",
@@ -695,8 +725,11 @@ function scoreAndMatchSong(song, rawQuery) {
   const normTitle = song._normTitle || normalizeSearchText(song.title || song.name || "");
   const normAlbum = song._normAlbum || normalizeSearchText(song.album || song.movie || "");
   const normArtist = song._normArtist || normalizeSearchText(song.artist || song.singer || "");
+  const pTitle = song._pTitle || toPhonetic(normTitle);
+  const pAlbum = song._pAlbum || toPhonetic(normAlbum);
+  const pArtist = song._pArtist || toPhonetic(normArtist);
 
-  // 1. Exact phrase matches (Highest Priority - guarantees Exact Song Title always lands #1)
+  // 1. EXACT SONG TITLE MATCH (Highest Single-Track Priority)
   if (normTitle === normQ || (cleanQ && normTitle === cleanQ)) {
     matched = true;
     score += 3000;
@@ -708,80 +741,128 @@ function scoreAndMatchSong(song, rawQuery) {
     score += 800;
   }
 
-  if (normAlbum.includes(normQ) || (cleanQ && normAlbum.includes(cleanQ))) {
+  // 2. EXACT MOVIE / ALBUM MATCH (Guarantees ALL songs from the movie rank first when searching for a movie!)
+  if (normAlbum === normQ || (cleanQ && normAlbum === cleanQ)) {
     matched = true;
-    score += 300;
+    score += 2800;
+  } else if (normAlbum.startsWith(normQ) || (cleanQ && normAlbum.startsWith(cleanQ))) {
+    matched = true;
+    score += 2600;
+  } else if (cleanQ && cleanQ.startsWith(normAlbum)) {
+    matched = true;
+    score += 2400;
+  } else if (normAlbum.includes(normQ) || (cleanQ && normAlbum.includes(cleanQ))) {
+    matched = true;
+    score += 1200;
   }
 
-  if (normArtist.includes(normQ) || (cleanQ && normArtist.includes(cleanQ))) {
+  // 3. ARTIST MATCHES
+  if (normArtist === normQ || (cleanQ && normArtist === cleanQ)) {
     matched = true;
-    score += 250;
+    score += 1800;
+  } else if (normArtist.startsWith(normQ) || (cleanQ && normArtist.startsWith(cleanQ))) {
+    matched = true;
+    score += 1200;
+  } else if (normArtist.includes(normQ) || (cleanQ && normArtist.includes(cleanQ))) {
+    matched = true;
+    score += 600;
   }
 
+  // General Corpus Substring Matches
   if (rawCorpus.includes(normQ) || (cleanQ && rawCorpus.includes(cleanQ))) {
     matched = true;
     score += 200;
   } else if (compactQ && compactCorpus.includes(compactQ)) {
     matched = true;
     score += 180;
+  } else if (cleanCompactQ && compactCorpus.includes(cleanCompactQ)) {
+    matched = true;
+    score += 180;
   }
 
-  // 2. Direct phonetic match (Tanglish sound-alikes for Tamil/Indian titles & albums)
-  const phoneticQ = toPhonetic(rawQuery);
-  const pTitle = song._pTitle || toPhonetic(normTitle);
-  const pAlbum = song._pAlbum || toPhonetic(normAlbum);
-  const pArtist = song._pArtist || toPhonetic(normArtist);
+  // 4. PHONETIC MATCHES (Tanglish sound-alikes for Tamil/Indian titles & movie albums)
+  const qPhonetics = [phoneticQ, cleanPhoneticQ].filter(Boolean);
+  for (const qp of qPhonetics) {
+    if (qp.length < 3) continue;
 
-  if ((phoneticQ && phoneticQ.length >= 3) || (cleanPhoneticQ && cleanPhoneticQ.length >= 3)) {
-    if (pTitle === phoneticQ || (cleanPhoneticQ && pTitle === cleanPhoneticQ)) {
+    // Title Phonetics
+    if (pTitle === qp) {
       matched = true;
       score += 2500;
-    } else if (pTitle.startsWith(phoneticQ) || (cleanPhoneticQ && pTitle.startsWith(cleanPhoneticQ))) {
+    } else if (pTitle.startsWith(qp)) {
       matched = true;
       score += 1200;
-    } else if (pTitle.includes(phoneticQ) || (cleanPhoneticQ && pTitle.includes(cleanPhoneticQ))) {
+    } else if (pTitle.includes(qp)) {
       matched = true;
       score += 900;
-    } else if (pAlbum.includes(phoneticQ) || (cleanPhoneticQ && pAlbum.includes(cleanPhoneticQ))) {
+    }
+
+    // Movie/Album Phonetics
+    if (pAlbum === qp) {
       matched = true;
-      score += 400;
-    } else if (pArtist.includes(phoneticQ) || (cleanPhoneticQ && pArtist.includes(cleanPhoneticQ))) {
+      score += 2400;
+    } else if (pAlbum.startsWith(qp)) {
       matched = true;
-      score += 300;
-    } else if (phoneticCorpus.includes(phoneticQ) || (cleanPhoneticQ && phoneticCorpus.includes(cleanPhoneticQ))) {
+      score += 2200;
+    } else if (qp.startsWith(pAlbum) && pAlbum.length >= 3) {
+      matched = true;
+      score += 2000;
+    } else if (pAlbum.includes(qp)) {
+      matched = true;
+      score += 1000;
+    }
+
+    // Artist Phonetics
+    if (pArtist === qp) {
+      matched = true;
+      score += 1000;
+    } else if (pArtist.includes(qp)) {
+      matched = true;
+      score += 500;
+    }
+
+    // Phonetic corpus inclusion
+    if (phoneticCorpus.includes(qp)) {
       matched = true;
       score += 250;
-    } else if (pTitle.length >= 4 && phoneticQ.includes(pTitle) && (phoneticQ.length - pTitle.length <= 2)) {
-      matched = true;
-      score += 350;
     }
   }
 
-  // 3. Typo-tolerant single query edit distance on title or album (e.g. "vikrem" -> "vikram", "leoo" -> "leo", "jayler" -> "jailer")
+  // 5. TYPO & EDIT DISTANCE (Handles misspelled movie titles & song names, e.g. "ghili", "amram", "jayler", "leoo")
   const qForDist = cleanQ && cleanQ.length >= 3 ? cleanQ : normQ;
   const pForDist = cleanPhoneticQ && cleanPhoneticQ.length >= 3 ? cleanPhoneticQ : phoneticQ;
   if (qForDist.length >= 3) {
     const maxDist = qForDist.length >= 7 ? 2 : 1;
+    const albumFirst = normAlbum.split(" ")[0];
     if (boundedLevenshtein(qForDist, normTitle, maxDist) <= maxDist) {
       matched = true;
       score += 850;
     }
+    if (boundedLevenshtein(qForDist, normAlbum, maxDist) <= maxDist) {
+      matched = true;
+      score += 1600;
+    } else if (albumFirst && albumFirst.length >= 3 && boundedLevenshtein(qForDist, albumFirst, maxDist) <= maxDist) {
+      matched = true;
+      score += 1400;
+    }
+
     if (pTitle && pForDist && boundedLevenshtein(pForDist, pTitle, 1) <= 1) {
       matched = true;
       score += 750;
     }
-    if (boundedLevenshtein(qForDist, normAlbum, 1) <= 1) {
-      matched = true;
-      score += 400;
-    }
+    const pAlbumFirst = pAlbum.split(" ")[0];
     if (pAlbum && pForDist && boundedLevenshtein(pForDist, pAlbum, 1) <= 1) {
       matched = true;
-      score += 350;
+      score += 1400;
+    } else if (pAlbumFirst && pForDist && boundedLevenshtein(pForDist, pAlbumFirst, 1) <= 1) {
+      matched = true;
+      score += 1200;
     }
   }
 
-  // 4. Multi-token fuzzy match with typo & wrong-letter tolerance
-  const tokens = normQ.split(" ").filter(Boolean);
+  // 6. Multi-token fuzzy match with clean tokens
+  const tokenSource = cleanQ && cleanQ.length >= 2 ? cleanQ : normQ;
+  const tokens = tokenSource.split(" ").filter(Boolean);
   if (tokens.length > 0) {
     let tokensMatched = 0;
     let typoPenalties = 0;
@@ -1016,7 +1097,12 @@ function executeSearch(rawQuery) {
 async function fetchSpotifySearchResults(query, requestId) {
   if (!query) return;
 
-  const cleanQuery = correctSearchQuery(query) || query;
+  const noiseRegex = /\b(movice|movies|movie|movi|moive|movei|films|film|flims|flim|filam|padangal|padam|cinema|cinemas|theatre|theatres|soundtracks|soundtrack|ost|albums|album|songs|song|sngs|sng|paatu|paattu|pattu|geetham|mp3|tracks|track|audios|audio|full|original)\b/gi;
+  let cleanQuery = correctSearchQuery(query) || query;
+  const strippedOnline = cleanQuery.replace(noiseRegex, " ").replace(/\s+/g, " ").trim();
+  if (strippedOnline) {
+    cleanQuery = strippedOnline;
+  }
   const abortController = new AbortController();
   AppState.activeSearchAbortController = abortController;
 

@@ -412,6 +412,16 @@ def correct_search_query_py(q):
     if not q:
         return ""
     replacements = {
+        "movice": "movie",
+        "flim": "film",
+        "filam": "film",
+        "ghili": "ghilli",
+        "gilli": "ghilli",
+        "kummi paatu": "kummi paattu",
+        "kummipaattu": "kummi paattu",
+        "kummipaatu": "kummi paattu",
+        "en aasa machan": "en aasai machan",
+        "en aasai machaan": "en aasai machan",
         "aasa": "aasai",
         "machan": "machaan",
         "maachan": "machaan",
@@ -429,13 +439,27 @@ def correct_search_query_py(q):
         "vaathy": "vaathi",
         "kaavala": "kaavaalaa",
         "mangatha": "mankatha",
+        "mangkatha": "mankatha",
         "sandramukhi": "chandramukhi",
         "endhiran": "enthiran",
         "doktor": "doctor",
+        "doktar": "doctor",
         "amaram": "amaran",
+        "amram": "amaran",
         "beest": "beast",
         "leoo": "leo",
-        "vetaiyan": "vettaiyan"
+        "vetaiyan": "vettaiyan",
+        "vetayan": "vettaiyan",
+        "rayan": "raayan",
+        "rayen": "raayan",
+        "premm": "premam",
+        "avesham": "aavesham",
+        "visvaasam": "viswasam",
+        "basha": "baasha",
+        "anamalai": "annamalai",
+        "shivaji": "sivaji",
+        "padayapa": "padayappa",
+        "padaiyappa": "padayappa"
     }
     corrected = q
     for typo, fix in replacements.items():
@@ -474,7 +498,7 @@ def match_song_typo_py(song, query):
     corpus_norm = re.sub(r"[^a-z0-9\s]", " ", corpus).strip()
     
     # 1. Exact phrase / substring
-    clean_q = re.sub(r"\b(songs|song|mp3|tracks|track|audio|full|original)\b", " ", q_norm)
+    clean_q = re.sub(r"\b(movice|movies|movie|movi|moive|movei|films|film|flims|flim|filam|padangal|padam|cinema|cinemas|theatre|theatres|soundtracks|soundtrack|ost|albums|album|songs|song|sngs|sng|paatu|paattu|pattu|geetham|mp3|tracks|track|audios|audio|full|original)\b", " ", q_norm, flags=re.I)
     clean_q = re.sub(r"\s+", " ", clean_q).strip()
     if q_norm in corpus_norm or "".join(q_norm.split()) in "".join(corpus_norm.split()):
         return True
@@ -491,7 +515,8 @@ def match_song_typo_py(song, query):
         return True
         
     # 3. Token-by-token typo tolerance
-    tokens = [t for t in q_norm.split() if t]
+    token_src = clean_q if clean_q else q_norm
+    tokens = [t for t in token_src.split() if t]
     words = [w for w in corpus_norm.split() if len(w) >= 2]
     p_words = [to_phonetic_py(w) for w in words]
     
@@ -601,9 +626,15 @@ def decrypt_saavn_url(encrypted_url):
 
 def search_jiosaavn(query, language="all"):
     """Search official JioSaavn catalogue for songs across languages."""
-    search_q = query
-    if language != "all" and language.lower() not in query.lower():
-        search_q = f"{query} {language}"
+    clean_q = correct_search_query_py(query) or query
+    noise_reg = r"\b(movice|movies|movie|movi|moive|movei|films|film|flims|flim|filam|padangal|padam|cinema|cinemas|theatre|theatres|soundtracks|soundtrack|ost|albums|album|songs|song|sngs|sng|paatu|paattu|pattu|geetham|mp3|tracks|track|audios|audio|full|original)\b"
+    stripped_q = re.sub(noise_reg, " ", clean_q, flags=re.IGNORECASE)
+    stripped_q = re.sub(r"\s+", " ", stripped_q).strip()
+    target_q = stripped_q if stripped_q else clean_q
+
+    search_q = target_q
+    if language != "all" and language.lower() not in target_q.lower():
+        search_q = f"{target_q} {language}"
 
     params = {
         "__call": "search.getResults",

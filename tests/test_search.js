@@ -553,6 +553,37 @@ assert.strictEqual(correctSearchQuery("jayler"), "jailer", "correctSearchQuery m
 assert.strictEqual(correctSearchQuery("thupaki"), "thuppakki", "correctSearchQuery must normalize 'thupaki' to 'thuppakki'");
 console.log("[PASS] Verified: Full-length stream resolution and query auto-correction operational.");
 
+// Test 25: Verifying Movie & Film searches (including typos like 'movice', 'flim', 'padam')
+console.log("\nTest 25: Verifying Movie & Film searches (including typos like 'movice', 'flim', 'padam')...");
+const movieSearches = [
+  { q: "leo movice", expectedAlbum: "leo" },
+  { q: "leo movie", expectedAlbum: "leo" },
+  { q: "ghilli movie", expectedAlbum: "gilli" },
+  { q: "kummi paattu movie", expectedAlbum: "kummi paattu" },
+  { q: "en aasai machan movie", expectedAlbum: "en aasai machan" },
+  { q: "master film", expectedAlbum: "master" },
+  { q: "jailer movie", expectedAlbum: "jailer" },
+  { q: "vikram film", expectedAlbum: "vikram" },
+  { q: "aavesham movie", expectedAlbum: "aavesham" },
+  { q: "raayan movie", expectedAlbum: "raayan" },
+  { q: "premam movie", expectedAlbum: "premam" },
+  { q: "aasai machaan song", expectedTitle: "aasai machaan" }
+];
+
+movieSearches.forEach(({ q, expectedAlbum, expectedTitle }) => {
+  executeSearch(q);
+  assert(AppState.searchResults.length > 0, `Search for "${q}" must return results!`);
+  const topSong = AppState.searchResults[0];
+  if (expectedTitle) {
+    const titleMatch = (topSong.title || "").toLowerCase().startsWith(expectedTitle.toLowerCase());
+    assert(titleMatch, `Top song for query "${q}" must be titled "${expectedTitle}", got "${topSong.title}"`);
+  } else if (expectedAlbum) {
+    const albumMatch = (topSong.album || "").toLowerCase().includes(expectedAlbum.toLowerCase()) || (topSong.title || "").toLowerCase().includes(expectedAlbum.toLowerCase());
+    assert(albumMatch, `Top song for movie query "${q}" must be from album "${expectedAlbum}", got "${topSong.title}" (${topSong.album})`);
+  }
+});
+console.log(`[PASS] Verified: All ${movieSearches.length} Movie, Film & Song queries rank the expected album/song as #1!`);
+
 console.log("\n==================================================");
-console.log("ALL 24 SEARCH, CATALOGUE, FULL-STREAM, ERA & TYPO-TOLERANT TESTS PASSED!");
+console.log("ALL 25 SEARCH, CATALOGUE, FULL-STREAM, ERA & MOVIE TESTS PASSED!");
 console.log("==================================================\n");
