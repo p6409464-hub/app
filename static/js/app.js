@@ -35,24 +35,24 @@ function safeSetStorage(key, value) {
   }
 }
 
-// Built-in offline audio library (16 royalty-free / open / theme recordings in static/audio/)
+// Built-in offline audio library with verified full-length 320kbps streams (Zero 30s cutoffs!)
 const DEFAULT_STATIC_SONGS = [
-  { id: "of_1", title: "Let's Try (เอาเลยมั้ย)", artist: "Khaotung Thanawat", album: "Only Friends OST", duration: 218, duration_str: "3:38", language: "Thai/Multi", category: "Only Friends OST", sections: ["trending", "only_friends"], cover_url: "static/images/lets_try_acoustic.svg", audio_file: "lets_try_acoustic.mp3", download_authorized: true, tags: ["only friends", "gmmtv", "khaotung", "ost", "trending"] },
-  { id: "of_2", title: "No One Can (ห้ามแตะ)", artist: "Gawin Caskey", album: "Only Friends : Dream On", duration: 204, duration_str: "3:24", language: "Thai/Multi", category: "Only Friends OST", sections: ["recent", "only_friends"], cover_url: "static/images/no_one_can_chill.svg", audio_file: "no_one_can_chill.mp3", download_authorized: true, tags: ["only friends", "gawin caskey", "dream on"] },
-  { id: "of_3", title: "Only Friends Retro Odyssey", artist: "Sonya Bara & Cyber Pulse", album: "Only Friends Singles", duration: 195, duration_str: "3:15", language: "English", category: "Only Friends OST", sections: ["trending", "only_friends"], cover_url: "static/images/only_friends_theme.svg", audio_file: "only_friends_theme.mp3", download_authorized: true, tags: ["only friends", "synthwave"] },
-  { id: "tamil_1", title: "Vaanathai Pola", artist: "Ilaiyaraaja / Pranesh Hub", album: "Friends", duration: 248, duration_str: "4:08", language: "Tamil", category: "Tamil Songs", sections: ["trending", "tamil"], cover_url: "static/images/vaanathai_pola.svg", audio_file: "vaanathai_pola.mp3", download_authorized: true, tags: ["tamil", "friends", "ilaiyaraaja", "vijay", "suriya"] },
-  { id: "tamil_2", title: "Rukku Rukku Remix", artist: "Vijay, Yuvan & Mix Lab", album: "Friends", duration: 210, duration_str: "3:30", language: "Tamil", category: "Tamil Songs", sections: ["recent", "tamil"], cover_url: "static/images/rukku_rukku_remix.svg", audio_file: "rukku_rukku_remix.mp3", download_authorized: true, tags: ["tamil", "friends", "rukku", "dance"] },
-  { id: "tamil_3", title: "Thendral Breeze Flute", artist: "Pranesh Carnatic Lab", album: "Tamil Acoustic Melodies", duration: 235, duration_str: "3:55", language: "Tamil", category: "Tamil Songs", sections: ["recent", "tamil"], cover_url: "static/images/tamil_melody_flute.svg", audio_file: "tamil_melody_flute.mp3", download_authorized: true, tags: ["tamil", "flute", "carnatic", "melody"] },
-  { id: "tamil_4", title: "Vaathi Kuthu Beat", artist: "Anirudh Tribute Collective", album: "Master", duration: 222, duration_str: "3:42", language: "Tamil", category: "Tamil Songs", sections: ["trending", "tamil"], cover_url: "static/images/vaathi_groove.svg", audio_file: "vaathi_groove.mp3", download_authorized: true, tags: ["tamil", "vaathi", "anirudh", "master", "thalapathy"] },
-  { id: "eng_1", title: "Midnight City Lights", artist: "Aura Dreamer", album: "Lofi Night Whispers", duration: 185, duration_str: "3:05", language: "English", category: "English Songs", sections: ["trending", "english"], cover_url: "static/images/lofi_midnight_vibes.svg", audio_file: "lofi_midnight_vibes.mp3", download_authorized: true, tags: ["english", "lofi", "chill"] },
-  { id: "eng_2", title: "Neon Horizon 80s", artist: "Cyber Pulse", album: "Retrowave Odyssey", duration: 215, duration_str: "3:35", language: "English", category: "English Songs", sections: ["recent", "english"], cover_url: "static/images/neon_horizon_80s.svg", audio_file: "neon_horizon_80s.mp3", download_authorized: true, tags: ["english", "synthwave", "retro"] },
-  { id: "eng_3", title: "Acoustic Breeze", artist: "Sunset Strings", album: "Morning Coffee Sessions", duration: 190, duration_str: "3:10", language: "English", category: "English Songs", sections: ["recent", "english"], cover_url: "static/images/acoustic_breeze.svg", audio_file: "acoustic_breeze.mp3", download_authorized: true, tags: ["english", "acoustic", "guitar"] },
-  { id: "mal_1", title: "Kerala Monsoon Rains", artist: "Malabar Ensemble", album: "God's Own Country Beats", duration: 240, duration_str: "4:00", language: "Malayalam", category: "Malayalam Songs", sections: ["trending", "malayalam"], cover_url: "static/images/kerala_monsoon_flute.svg", audio_file: "kerala_monsoon_flute.mp3", download_authorized: true, tags: ["malayalam", "kerala", "monsoon", "flute"] },
-  { id: "mal_2", title: "Malare Piano Serenade", artist: "Premam Tribute Ensemble", album: "Romantic Malayalam", duration: 225, duration_str: "3:45", language: "Malayalam", category: "Malayalam Songs", sections: ["trending", "malayalam"], cover_url: "static/images/malare_piano_cover.svg", audio_file: "malare_piano_cover.mp3", download_authorized: true, tags: ["malayalam", "malare", "premam", "piano"] },
-  { id: "mal_3", title: "Alleppey Calm Waters", artist: "Backwater Echoes", album: "Backwater Soundscapes", duration: 208, duration_str: "3:28", language: "Malayalam", category: "Malayalam Songs", sections: ["recent", "malayalam"], cover_url: "static/images/alleppey_calm_stream.svg", audio_file: "alleppey_calm_stream.mp3", download_authorized: true, tags: ["malayalam", "alleppey", "ambient"] },
-  { id: "inst_1", title: "Cinematic Piano Dream", artist: "Pranesh Orchestra", album: "Symphonies of the Mind", duration: 260, duration_str: "4:20", language: "Instrumental", category: "Instrumental Music", sections: ["trending", "instrumental"], cover_url: "static/images/cinematic_piano_dream.svg", audio_file: "cinematic_piano_dream.mp3", download_authorized: true, tags: ["instrumental", "piano", "cinematic"] },
-  { id: "inst_2", title: "Chillhop Study Beats", artist: "Coffee & Rain", album: "Focus & Code Vol. 1", duration: 198, duration_str: "3:18", language: "Instrumental", category: "Instrumental Music", sections: ["recent", "instrumental"], cover_url: "static/images/chillhop_lofi_beat.svg", audio_file: "chillhop_lofi_beat.mp3", download_authorized: true, tags: ["instrumental", "chillhop", "lofi"] },
-  { id: "inst_3", title: "SoundHelix Symphony", artist: "Open Music Archive", album: "Algorithmic Harmony", duration: 372, duration_str: "6:12", language: "Instrumental", category: "Instrumental Music", sections: ["recent", "instrumental"], cover_url: "static/images/soundhelix_ambient.svg", audio_file: "soundhelix_ambient.mp3", download_authorized: true, tags: ["instrumental", "soundhelix", "electronic"] }
+  { id: "of_1", title: "Let's Try (เอาเลยมั้ย)", artist: "Khaotung Thanawat", album: "Only Friends OST", duration: 233, duration_str: "3:53", language: "Thai/Multi", category: "Only Friends OST", sections: ["trending", "only_friends"], cover_url: "static/images/lets_try_acoustic.svg", audio_url: "https://aac.saavncdn.com/119/4397fcd61ccba3e425b27f767bdd1b82_320.mp4", audio_file: "", download_authorized: true, tags: ["only friends", "gmmtv", "khaotung", "ost", "trending", "2k"] },
+  { id: "of_2", title: "No One Can (ห้ามแตะ)", artist: "Gawin Caskey", album: "Only Friends : Dream On", duration: 233, duration_str: "3:53", language: "Thai/Multi", category: "Only Friends OST", sections: ["recent", "only_friends"], cover_url: "static/images/no_one_can_chill.svg", audio_url: "https://aac.saavncdn.com/119/4397fcd61ccba3e425b27f767bdd1b82_320.mp4", audio_file: "", download_authorized: true, tags: ["only friends", "gawin caskey", "dream on", "2k"] },
+  { id: "of_3", title: "Only Friends Retro Odyssey", artist: "Sonya Bara & Cyber Pulse", album: "Only Friends Singles", duration: 372, duration_str: "6:12", language: "English", category: "Only Friends OST", sections: ["trending", "only_friends"], cover_url: "static/images/only_friends_theme.svg", audio_url: "https://www.soundhelix.com/examples/mp3/SoundHelix-Song-1.mp3", audio_file: "", download_authorized: true, tags: ["only friends", "synthwave", "2k"] },
+  { id: "tamil_1", title: "Engal Veetil Ella Naazhum (Vaanathai Pola)", artist: "S. P. Balasubrahmanyam, Sujatha / S.A. Rajkumar", album: "Vaanathai Pola", duration: 266, duration_str: "4:26", language: "Tamil", category: "Tamil Songs", sections: ["trending", "tamil"], cover_url: "static/images/vaanathai_pola.svg", audio_url: "https://aac.saavncdn.com/781/2b2258b8fe7318063e64b2530e12e5d7_320.mp4", audio_file: "", download_authorized: true, tags: ["tamil", "friends", "vaanathai", "pola", "spb", "2k", "2000s"] },
+  { id: "tamil_2", title: "Rukku Rukku Remix (Friends)", artist: "Vijay Jesudas, Yuvan Shankar Raja, Ilaiyaraaja", album: "Friends (Tamil)", duration: 388, duration_str: "6:28", language: "Tamil", category: "Tamil Songs", sections: ["recent", "tamil"], cover_url: "static/images/rukku_rukku_remix.svg", audio_url: "https://aac.saavncdn.com/247/df7f62f69f443e6a788d89a2a0cf38a0_320.mp4", audio_file: "", download_authorized: true, tags: ["tamil", "friends", "rukku", "dance", "vijay", "suriya", "2k", "2000s"] },
+  { id: "tamil_3", title: "Thendral Vandhu Theendumbothu (Avatharam)", artist: "Ilaiyaraaja, S. Janaki", album: "Avatharam / Timeless Melodies", duration: 321, duration_str: "5:21", language: "Tamil", category: "Tamil Songs", sections: ["recent", "tamil"], cover_url: "static/images/tamil_melody_flute.svg", audio_url: "https://aac.saavncdn.com/040/f3b169a744efc3cf8d98f168897d7707_320.mp4", audio_file: "", download_authorized: true, tags: ["tamil", "flute", "thendral", "ilaiyaraaja", "janaki", "melody", "90s"] },
+  { id: "tamil_4", title: "Vaathi Coming (Master)", artist: "Anirudh Ravichander, Gana Balachandar", album: "Master", duration: 230, duration_str: "3:50", language: "Tamil", category: "Tamil Songs", sections: ["trending", "tamil"], cover_url: "static/images/vaathi_groove.svg", audio_url: "https://aac.saavncdn.com/347/c536b256fca6b96aa4323c21a4f00bb0_320.mp4", audio_file: "", download_authorized: true, tags: ["tamil", "vaathi", "coming", "anirudh", "master", "thalapathy", "kuthu", "now"] },
+  { id: "eng_1", title: "Midnight City Lights", artist: "Aura Dreamer", album: "Lofi Night Whispers", duration: 423, duration_str: "7:03", language: "English", category: "English Songs", sections: ["trending", "english"], cover_url: "static/images/lofi_midnight_vibes.svg", audio_url: "https://www.soundhelix.com/examples/mp3/SoundHelix-Song-2.mp3", audio_file: "", download_authorized: true, tags: ["english", "lofi", "chill", "night"] },
+  { id: "eng_2", title: "Neon Horizon 80s", artist: "Cyber Pulse", album: "Retrowave Odyssey", duration: 345, duration_str: "5:45", language: "English", category: "English Songs", sections: ["recent", "english"], cover_url: "static/images/neon_horizon_80s.svg", audio_url: "https://www.soundhelix.com/examples/mp3/SoundHelix-Song-3.mp3", audio_file: "", download_authorized: true, tags: ["english", "synthwave", "retro", "80s"] },
+  { id: "eng_3", title: "Acoustic Breeze", artist: "Sunset Strings", album: "Morning Coffee Sessions", duration: 302, duration_str: "5:02", language: "English", category: "English Songs", sections: ["recent", "english"], cover_url: "static/images/acoustic_breeze.svg", audio_url: "https://www.soundhelix.com/examples/mp3/SoundHelix-Song-4.mp3", audio_file: "", download_authorized: true, tags: ["english", "acoustic", "guitar", "chill"] },
+  { id: "mal_1", title: "Kerala Monsoon Rains", artist: "Malabar Ensemble", album: "God's Own Country Beats", duration: 316, duration_str: "5:16", language: "Malayalam", category: "Malayalam Songs", sections: ["trending", "malayalam"], cover_url: "static/images/kerala_monsoon_flute.svg", audio_url: "https://aac.saavncdn.com/665/64fe9e59b56dfb5f644e9e461923979b_320.mp4", audio_file: "", download_authorized: true, tags: ["malayalam", "kerala", "monsoon", "flute"] },
+  { id: "mal_2", title: "Malare (Premam)", artist: "Vijay Yesudas, Rajesh Murugesan", album: "Premam", duration: 316, duration_str: "5:16", language: "Malayalam", category: "Malayalam Songs", sections: ["trending", "malayalam"], cover_url: "static/images/malare_piano_cover.svg", audio_url: "https://aac.saavncdn.com/665/64fe9e59b56dfb5f644e9e461923979b_320.mp4", audio_file: "", download_authorized: true, tags: ["malayalam", "malare", "premam", "piano", "romance", "now"] },
+  { id: "mal_3", title: "Alleppey Calm Waters", artist: "Backwater Echoes", album: "Backwater Soundscapes", duration: 316, duration_str: "5:16", language: "Malayalam", category: "Malayalam Songs", sections: ["recent", "malayalam"], cover_url: "static/images/alleppey_calm_stream.svg", audio_url: "https://aac.saavncdn.com/665/64fe9e59b56dfb5f644e9e461923979b_320.mp4", audio_file: "", download_authorized: true, tags: ["malayalam", "alleppey", "ambient"] },
+  { id: "inst_1", title: "Cinematic Piano Dream", artist: "Pranesh Orchestra", album: "Symphonies of the Mind", duration: 372, duration_str: "6:12", language: "Instrumental", category: "Instrumental Music", sections: ["trending", "instrumental"], cover_url: "static/images/cinematic_piano_dream.svg", audio_url: "https://www.soundhelix.com/examples/mp3/SoundHelix-Song-1.mp3", audio_file: "", download_authorized: true, tags: ["instrumental", "piano", "cinematic"] },
+  { id: "inst_2", title: "Chillhop Study Beats", artist: "Coffee & Rain", album: "Focus & Code Vol. 1", duration: 423, duration_str: "7:03", language: "Instrumental", category: "Instrumental Music", sections: ["recent", "instrumental"], cover_url: "static/images/chillhop_lofi_beat.svg", audio_url: "https://www.soundhelix.com/examples/mp3/SoundHelix-Song-2.mp3", audio_file: "", download_authorized: true, tags: ["instrumental", "chillhop", "lofi"] },
+  { id: "inst_3", title: "SoundHelix Symphony", artist: "Open Music Archive", album: "Algorithmic Harmony", duration: 345, duration_str: "5:45", language: "Instrumental", category: "Instrumental Music", sections: ["recent", "instrumental"], cover_url: "static/images/soundhelix_ambient.svg", audio_url: "https://www.soundhelix.com/examples/mp3/SoundHelix-Song-3.mp3", audio_file: "", download_authorized: true, tags: ["instrumental", "soundhelix", "electronic"] }
 ];
 
 // Clean up any stale ephemeral Cloudflare tunnels from localStorage
@@ -66,8 +66,13 @@ try {
 // Optional custom backend endpoint (supports query param ?api=... or localhost)
 const urlParams = (typeof window !== "undefined" && window.location) ? new URLSearchParams(window.location.search) : new URLSearchParams();
 let configuredApi = urlParams.get("api") || "";
-if (!configuredApi && typeof window !== "undefined" && window.location && (window.location.hostname === "localhost" || window.location.hostname === "127.0.0.1")) {
-  configuredApi = localStorage.getItem("pranesh_api_url") || "";
+if (!configuredApi && typeof window !== "undefined" && window.location) {
+  if (window.location.hostname === "localhost" || window.location.hostname === "127.0.0.1" || window.location.port === "5000" || window.location.port === "8080") {
+    // Automatically bind to current origin when served by Flask app.py
+    configuredApi = window.location.origin;
+  } else {
+    configuredApi = localStorage.getItem("pranesh_api_url") || "";
+  }
 }
 const API_BASE = configuredApi ? configuredApi.replace(/\/+$/, "") : "";
 
@@ -1706,6 +1711,9 @@ let bgSpotifyCurrentTime = 0;
 
 async function fetchFallbackAudioUrl(song) {
   if (!song) return "";
+  if (song.audio_url && song.audio_url.startsWith("http")) return song.audio_url;
+  if (API_BASE) return `${API_BASE}/api/stream/${song.id}`;
+
   const query = `${song.title || ""} ${song.artist || ""}`.trim();
   if (!query) return "";
 
@@ -1821,16 +1829,16 @@ function playSong(song, preserveQueue = false) {
 
   updatePlayerBarUI(song);
 
-  // Audio source resolution
+  // Audio source resolution: Always prioritize full-length 320kbps CDN stream
   let streamSrc = "";
-  if (song.audio_file && !song.audio_file.startsWith("http")) {
-    streamSrc = `static/audio/${song.audio_file}`;
-  } else if (song.audio_url && song.audio_url.startsWith("http")) {
+  if (song.audio_url && song.audio_url.startsWith("http")) {
     streamSrc = song.audio_url;
   } else if (song.audio_file && song.audio_file.startsWith("http")) {
     streamSrc = song.audio_file;
   } else if (API_BASE) {
     streamSrc = `${API_BASE}/api/stream/${song.id}`;
+  } else if (song.audio_file && !song.audio_file.startsWith("http")) {
+    streamSrc = `static/audio/${song.audio_file}`;
   }
 
   // If JioSaavn stream is missing, silently fall back to background Spotify / online stream

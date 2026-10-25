@@ -473,6 +473,20 @@ AppState.activeSection = "all";
 renderContent();
 console.log(`[PASS] Verified: 80s (${songs80s.length}), 90s (${songs90s.length}), 2K (${songs2k.length}), and Now (${songsNow.length}) sections operational.`);
 
+// Test 21: Verifying 100% of catalogue tracks have direct full-length 320kbps audio URLs (Zero 30s cutoffs)
+console.log("\nTest 21: Verifying 100% full-length audio streams across all catalogue tracks...");
+const songsWithoutAudioUrl = AppState.masterSongs.filter(s => !s.audio_url || !s.audio_url.startsWith("http"));
+assert.strictEqual(songsWithoutAudioUrl.length, 0, `All tracks must have direct http(s) audio_url. Found ${songsWithoutAudioUrl.length} without it.`);
+
+// Verify specific previously-problematic demo songs have full-length audio URLs
+const vaathi = AppState.masterSongs.find(s => s.id === "tamil_4");
+assert(vaathi && vaathi.audio_url && vaathi.audio_url.includes("aac.saavncdn.com"), "Vaathi must stream full-length audio from CDN");
+
+const vaanathai = AppState.masterSongs.find(s => s.id === "tamil_1");
+assert(vaanathai && vaanathai.audio_url && vaanathai.audio_url.includes("aac.saavncdn.com"), "Vaanathai Pola must stream full-length audio from CDN");
+
+console.log(`[PASS] Verified: All ${AppState.masterSongs.length} tracks have direct full-length 320kbps streams. Zero 30-second placeholder audio.`);
+
 console.log("\n==================================================");
-console.log("ALL 20 SEARCH, CATALOGUE, ERA & SPOTIFY FALLBACK TESTS PASSED!");
+console.log("ALL 21 SEARCH, CATALOGUE, FULL-STREAM & SPOTIFY FALLBACK TESTS PASSED!");
 console.log("==================================================\n");

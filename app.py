@@ -459,7 +459,7 @@ def decrypt_saavn_url(encrypted_url):
         cipher = DES.new(b"38346591", DES.MODE_ECB)
         dec = cipher.decrypt(base64.b64decode(encrypted_url.strip()))
         pad = dec[-1]
-        if pad < 8:
+        if 1 <= pad <= 8:
             dec = dec[:-pad]
         url = dec.decode("utf-8", errors="ignore")
         return url.replace("_96.mp4", "_320.mp4").replace("_160.mp4", "_320.mp4")
@@ -548,6 +548,29 @@ def search_jiosaavn(query, language="all"):
     except Exception as e:
         print("JioSaavn search error:", e)
         return []
+
+
+def resolve_full_audio_stream(query):
+    """Resolve high-definition full-length stream URL via yt-dlp (Zero 30s snippets)."""
+    try:
+        ydl_opts = {
+            'format': 'bestaudio[ext=m4a]/bestaudio/best',
+            'quiet': True,
+            'no_warnings': True,
+            'extract_flat': False,
+            'skip_download': True,
+            'noplaylist': True
+        }
+        with yt_dlp.YoutubeDL(ydl_opts) as ydl:
+            res = ydl.extract_info(f"ytsearch1:{query} official audio", download=False)
+            if res and 'entries' in res and len(res['entries']) > 0:
+                first = res['entries'][0]
+                return first.get('url'), int(first.get('duration') or 210)
+            elif res and 'url' in res:
+                return res.get('url'), int(res.get('duration') or 210)
+    except Exception as e:
+        print("yt-dlp full stream resolution notice:", e)
+    return None, None
 
 
 def search_spotify_fallback(query, language="all"):
@@ -664,7 +687,9 @@ def stream_song(song_id):
     """
     # 1. Built-in songs
     built_in = next((s for s in SONGS_CATALOGUE if s["id"] == song_id), None)
-    if built_in:
+    if built_in and built_in.get("audio_url"):
+        audio_url = built_in["audio_url"]
+    elif built_in and built_in.get("audio_file"):
         filepath = os.path.join(AUDIO_DIR, built_in["audio_file"])
         if os.path.exists(filepath):
             return send_file(filepath, mimetype="audio/mpeg", conditional=True)
@@ -674,12 +699,20 @@ def stream_song(song_id):
     if os.path.exists(cached_mp3) and os.path.getsize(cached_mp3) > 50000:
         return send_file(cached_mp3, mimetype="audio/mpeg", conditional=True)
 
-    # 3. Retrieve online audio URL
+    # 3. Retrieve online audio URL (Seamlessly upgrade previews to full streams)
+    meta = song_meta_cache.get(song_id, {})
     audio_url = stream_url_cache.get(song_id)
-    if not audio_url:
-        meta = song_meta_cache.get(song_id)
-        if meta and meta.get("audio_url"):
-            audio_url = meta["audio_url"]
+    if not audio_url and meta and meta.get("audio_url"):
+        audio_url = meta["audio_url"]
+
+    if audio_url and ("apple.com" in audio_url or "preview" in audio_url):
+        # Resolve full-length stream so user gets the complete 3-5 minute song, not 30s
+        query = f"{meta.get('title', '')} {meta.get('artist', '')}".strip()
+        if query:
+            full_url, _ = resolve_full_audio_stream(query)
+            if full_url:
+                audio_url = full_url
+                stream_url_cache[song_id] = full_url
 
     if not audio_url:
         return jsonify({"error": "Audio track not found"}), 404
@@ -755,6 +788,13 @@ def download_song(song_id):
 
     # 3. Convert online audio URL to MP3 via ffmpeg
     audio_url = stream_url_cache.get(song_id) or meta.get("audio_url")
+    if audio_url and ("apple.com" in audio_url or "preview" in audio_url):
+        query = f"{title} {artist}".strip()
+        full_url, _ = resolve_full_audio_stream(query)
+        if full_url:
+            audio_url = full_url
+            stream_url_cache[song_id] = full_url
+
     if audio_url:
         try:
             cmd = [
