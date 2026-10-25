@@ -343,9 +343,10 @@ let windowOpenCalled = false;
 global.window.open = function() {
   windowOpenCalled = true;
 };
-// Test openSpotifyInPagePlayer and openSpotifySearch
-openSpotifyInPagePlayer("Badass", "Anirudh");
-openSpotifySearch("Naatu Naatu", "M.M. Keeravaani");
+executeSearch("Leo");
+if (AppState.searchResults.length > 0) {
+  playSong(AppState.searchResults[0]);
+}
 assert.strictEqual(windowOpenCalled, false, "window.open must NEVER be called (zero external redirects)");
 console.log("[PASS] Verified: Zero external redirects. Playback and Spotify actions remain 100% in-page.");
 
@@ -390,6 +391,53 @@ assert.strictEqual(AppState.isPlaying, true, "Must set isPlaying to true in back
 stopSimulatedSeekbar();
 console.log("[PASS] Verified: Background Spotify fallback activates automatically when JioSaavn audio is missing.");
 
+// Test 18: Spotify is completely hidden before search
+console.log("\nTest 18: Verifying Spotify is not shown anywhere on the website before search...");
+const indexHtmlContent = fs.readFileSync(path.join(__dirname, "..", "index.html"), "utf8");
+assert(!indexHtmlContent.includes('data-section="spotify"'), "Must NOT show Spotify Hub button in Browse pills");
+assert(!indexHtmlContent.includes('id="spotifyModal"'), "Must NOT have visible Spotify modal on page");
+console.log("[PASS] Verified: Spotify is completely invisible across the website before search.");
+
+// Test 19: When song is not found in JioSaavn, automatically queries Spotify & displays on search page
+console.log("\nTest 19: Verifying Spotify fallback on search miss (Zero external redirects)...");
+executeSearch("UniqueGlobalPopSongQueryXYZ");
+assert.strictEqual(AppState.isFetchingSpotify, true, "Must engage Spotify fallback when song not found in JioSaavn");
+assert(DOM.contentContainer.innerHTML.includes("Song not found in JioSaavn"), "Must render in-page notification that song was not found in JioSaavn");
+assert(DOM.contentContainer.innerHTML.includes("Connecting to Spotify &amp; Global Catalogue"), "Must inform user that search is querying Spotify & Global catalogue");
+
+// Simulate Spotify returning search results
+const mockSpotifyResults = [
+  prepareSongSearchMetadata({
+    id: "spotify_test_track_1",
+    title: "Global Hit Song",
+    artist: "Global Superstar",
+    album: "Global Album",
+    duration: 210,
+    duration_str: "3:30",
+    language: "Global",
+    cover_url: "https://example.com/art.jpg",
+    audio_url: "https://example.com/preview.mp3",
+    download_authorized: true,
+    source: "spotify"
+  })
+];
+
+AppState.searchResults = mockSpotifyResults;
+AppState.isSpotifyFallbackResults = true;
+AppState.isFetchingSpotify = false;
+renderContent();
+
+assert(DOM.contentContainer.innerHTML.includes("spotify-fallback-banner"), "Must display Spotify fallback banner on search page");
+assert(DOM.contentContainer.innerHTML.includes("Song not found in JioSaavn"), "Banner must state song was not found in JioSaavn");
+assert(DOM.contentContainer.innerHTML.includes("Global Hit Song"), "Must render song card for the Spotify search result");
+assert(DOM.contentContainer.innerHTML.includes("Global Superstar"), "Must render artist for the Spotify search result");
+
+// Test playback of Spotify track on search page
+playSong(mockSpotifyResults[0]);
+assert.strictEqual(AppState.currentSong.id, "spotify_test_track_1", "Must play Spotify track directly on page");
+assert.strictEqual(audioPlayer.src, "https://example.com/preview.mp3", "Must route audio preview to in-page audio player");
+console.log("[PASS] Verified: Song not found in JioSaavn automatically fetches Spotify tracks, renders on search page, and plays in-page with ZERO redirects.");
+
 console.log("\n==================================================");
-console.log("ALL 17 SEARCH, CATALOGUE & BACKGROUND FALLBACK TESTS PASSED SUCCESSFULLY!");
+console.log("ALL 19 SEARCH, CATALOGUE, SPOTIFY FALLBACK & ZERO REDIRECT TESTS PASSED!");
 console.log("==================================================\n");

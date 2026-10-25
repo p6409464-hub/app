@@ -949,6 +949,44 @@ body {
   color: #fff;
 }
 
+/* Spotify Fallback Search Banner & Loading Indicator */
+.spotify-fallback-banner {
+  background: rgba(30, 215, 96, 0.12);
+  border: 1px solid rgba(30, 215, 96, 0.35);
+  border-radius: 14px;
+  padding: 14px 20px;
+  margin-bottom: 20px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 12px;
+  animation: fadeIn 0.3s ease;
+}
+
+.spotify-fallback-badge {
+  background: #1ed760;
+  color: #000;
+  font-weight: 700;
+  font-size: 0.75rem;
+  padding: 5px 12px;
+  border-radius: 20px;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  letter-spacing: 0.2px;
+}
+
+.spotify-loading-banner {
+  text-align: center;
+  padding: 48px 20px;
+  background: rgba(30, 215, 96, 0.08);
+  border: 1px solid rgba(30, 215, 96, 0.25);
+  border-radius: 16px;
+  margin: 24px 0;
+  animation: fadeIn 0.3s ease;
+}
+
 /* Spotify Button in Player Bar */
 .spotify-pill-btn {
   transition: all 0.25s ease;

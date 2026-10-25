@@ -6,7 +6,7 @@
   <meta name="referrer" content="no-referrer" />
   <title>Pranesh Music Hub - Modern Dark Music Experience</title>
   <meta name="description" content="Stream and directly download Tamil, English, Malayalam, Instrumental, and Only Friends OST tracks in a modern, ad-free dark theme." />
-  <link rel="stylesheet" href="static/css/style.css?v=3.3.0" />
+  <link rel="stylesheet" href="static/css/style.css?v=3.5.0" />
   <!-- Google Fonts: Inter -->
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
@@ -117,7 +117,6 @@
         <span class="filter-label">Browse:</span>
         <button class="chip section-pill active" data-section="all">All Sections</button>
         <button class="chip section-pill" data-section="full_library">📚 All Songs (4,000+)</button>
-        <button class="chip section-pill" data-section="spotify">🟢 Spotify Hub</button>
         <button class="chip section-pill" data-section="trending">🔥 Trending Songs</button>
         <button class="chip section-pill" data-section="recent">🆕 Recently Added</button>
       </div>
@@ -220,66 +219,12 @@
   </aside>
 
   <!-- ========================================================================
-       In-Page Authorized Spotify Embedded Player Modal (100% In-Page, Zero Redirection)
-       ======================================================================== -->
-  <div id="spotifyModal" class="spotify-modal-overlay" style="display: none;" role="dialog" aria-modal="true" aria-labelledby="spotifyModalTitle">
-    <div class="spotify-modal-content">
-      <div class="spotify-modal-header">
-        <div class="spotify-modal-header-left">
-          <span class="spotify-modal-icon">🟢</span>
-          <div>
-            <h3 id="spotifyModalTitle" class="spotify-modal-title">Official Spotify Embedded Player</h3>
-            <p class="spotify-modal-subtitle">Authorized In-Page Playback • No External Redirects</p>
-          </div>
-        </div>
-        <button id="closeSpotifyModalBtn" class="playlist-close-btn" title="Close Player" aria-label="Close">✕</button>
-      </div>
-
-      <div class="spotify-modal-body">
-        <!-- Direct Iframe Embed (plays within this website) -->
-        <div class="spotify-embed-container" style="margin-bottom: 14px;">
-          <iframe id="spotifyModalIframe" style="border-radius:14px; width:100%; height:352px; border:none; box-shadow:0 8px 30px rgba(0,0,0,0.6);" src="https://open.spotify.com/embed/playlist/37i9dQZF1DX4s3V2rT5alW?utm_source=generator&theme=0" allowfullscreen="" allow="autoplay; clipboard-write; encrypted-media; fullscreen; picture-in-picture" loading="lazy"></iframe>
-        </div>
-
-        <!-- In-page Direct Playback Guidance -->
-        <div class="spotify-modal-info-box">
-          <span style="font-size:1.15rem;">🎧</span>
-          <div style="flex:1;">
-            <strong style="color:#fff; font-size:0.86rem; display:block;">Plays directly inside this website:</strong>
-            <span style="color:var(--text-dim); font-size:0.78rem;">Spotify embeds stream 30-sec previews for guest listeners and full songs for logged-in Spotify listeners. To stream 100% full songs with zero login, play any track directly using the Pranesh Music Hub player below.</span>
-          </div>
-        </div>
-
-        <!-- URL Embed Input -->
-        <div class="spotify-input-box" style="margin: 12px 0;">
-          <input type="text" id="spotifyModalLinkInput" class="spotify-link-input" placeholder="Paste any Spotify Track, Album, or Playlist URL..." />
-          <button id="spotifyModalLoadBtn" class="btn btn-primary" style="background:#1ed760; color:#000; font-weight:700;">
-            Load Link
-          </button>
-        </div>
-
-        <!-- Quick Switcher for Curated Spotify Playlists -->
-        <div class="spotify-modal-presets">
-          <span style="font-size:0.8rem; color:var(--text-muted); font-weight:600; display:block; margin-bottom:8px;">Featured Spotify Playlists (In-Page):</span>
-          <div style="display:flex; gap:8px; overflow-x:auto; padding-bottom:6px;">
-            <button class="chip spotify-modal-chip active" data-uri="playlist/37i9dQZF1DX4s3V2rT5alW">🌺 Tamil Top 50</button>
-            <button class="chip spotify-modal-chip" data-uri="playlist/37i9dQZF1DX14CbVHtlw2r">🪘 Telugu Hits</button>
-            <button class="chip spotify-modal-chip" data-uri="playlist/37i9dQZF1DX0XUfTFmNBRM">🪔 Hindi Chartbusters</button>
-            <button class="chip spotify-modal-chip" data-uri="playlist/37i9dQZF1DXcBWIGoYBM5M">🎸 Global Top 50</button>
-            <button class="chip spotify-modal-chip" data-uri="playlist/37i9dQZF1DWVKDFnCqcskw">🌴 Malayalam Melodies</button>
-          </div>
-        </div>
-      </div>
-    </div>
-  </div>
-
-  <!-- ========================================================================
        Toast Notification Hub
        ======================================================================== -->
   <div id="toastContainer" class="toast-container"></div>
 
   <!-- JavaScript Application Logic -->
-  <script src="static/js/songs_data.js?v=3.3.0"></script>
-  <script src="static/js/app.js?v=3.3.0"></script>
+  <script src="static/js/songs_data.js?v=3.5.0"></script>
+  <script src="static/js/app.js?v=3.5.0"></script>
 </body>
 </html>

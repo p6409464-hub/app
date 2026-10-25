@@ -78,6 +78,8 @@ const AppState = {
   searchQuery: "",       // Active raw search query
   normalizedQuery: "",   // Active normalized search query
   isSearching: false,
+  isSpotifyFallbackResults: false,
+  isFetchingSpotify: false,
   searchRequestId: 0,    // Monotonic ID preventing async race conditions
   searchDebounceTimer: null,
   activeSearchAbortController: null,
@@ -159,13 +161,7 @@ const DOM = {
   closePlaylistBtn: null,
   shufflePlaylistBtn: null,
   playlistItems: null,
-  playlistStatusText: null,
-  playerSpotifyBtn: null,
-  spotifyModal: null,
-  closeSpotifyModalBtn: null,
-  spotifyModalIframe: null,
-  spotifyModalLinkInput: null,
-  spotifyModalLoadBtn: null
+  playlistStatusText: null
 };
 
 function refreshDOMElements() {
@@ -204,12 +200,6 @@ function refreshDOMElements() {
   DOM.shufflePlaylistBtn = document.getElementById("shufflePlaylistBtn");
   DOM.playlistItems = document.getElementById("playlistItems");
   DOM.playlistStatusText = document.getElementById("playlistStatusText");
-  DOM.playerSpotifyBtn = document.getElementById("playerSpotifyBtn");
-  DOM.spotifyModal = document.getElementById("spotifyModal");
-  DOM.closeSpotifyModalBtn = document.getElementById("closeSpotifyModalBtn");
-  DOM.spotifyModalIframe = document.getElementById("spotifyModalIframe");
-  DOM.spotifyModalLinkInput = document.getElementById("spotifyModalLinkInput");
-  DOM.spotifyModalLoadBtn = document.getElementById("spotifyModalLoadBtn");
 }
 
 // Initial binding attempt
@@ -477,27 +467,7 @@ function setupEventListeners() {
     });
   }
 
-  if (DOM.playerSpotifyBtn) {
-    DOM.playerSpotifyBtn.addEventListener("click", () => {
-      openSpotifyInPagePlayer(AppState.currentSong?.title, AppState.currentSong?.artist);
-    });
-  }
 
-  // In-Page Spotify Embed Modal Listeners (Zero External Redirects)
-  if (DOM.closeSpotifyModalBtn) {
-    DOM.closeSpotifyModalBtn.addEventListener("click", closeSpotifyModal);
-  }
-  if (DOM.spotifyModal) {
-    DOM.spotifyModal.addEventListener("click", (e) => {
-      if (e.target === DOM.spotifyModal) closeSpotifyModal();
-    });
-  }
-  if (typeof document !== "undefined") {
-    document.addEventListener("keydown", (e) => {
-      if (e.key === "Escape") closeSpotifyModal();
-    });
-  }
-  attachSpotifyModalControls();
 
   // Hero Play Button
   const heroPlayBtn = document.getElementById("heroPlayBtn");
@@ -706,6 +676,8 @@ function executeSearch(rawQuery) {
     AppState.normalizedQuery = "";
     AppState.isSearching = false;
     AppState.searchResults = [];
+    AppState.isSpotifyFallbackResults = false;
+    AppState.isFetchingSpotify = false;
     if (DOM.clearSearchBtn) DOM.clearSearchBtn.style.display = "none";
     if (DOM.emptyState) DOM.emptyState.style.display = "none";
     renderContent();
@@ -719,19 +691,133 @@ function executeSearch(rawQuery) {
 
   // ALWAYS filter from the immutable master collection (never from previous search results!)
   const localMatches = AppState.masterSongs.filter(song => matchSongQuery(song, trimmed));
-  AppState.searchResults = [...localMatches];
 
-  // Update active queue for uninterrupted playback
-  AppState.queue = localMatches.length > 0 ? [...localMatches] : [...AppState.masterSongs];
+  if (localMatches.length > 0) {
+    // Song found in JioSaavn catalogue! Display immediately with zero Spotify branding
+    AppState.isSpotifyFallbackResults = false;
+    AppState.isFetchingSpotify = false;
+    AppState.searchResults = [...localMatches];
+    AppState.queue = [...localMatches];
+    renderContent();
 
-  // 0ms instant local rendering from comprehensive 4,000+ full-song catalogue
-  renderContent();
+    // If an optional external custom backend is configured, query asynchronously for extra live matches
+    if (API_BASE) {
+      AppState.searchDebounceTimer = setTimeout(() => {
+        fetchBackendSearchResults(trimmed, thisRequestId);
+      }, 350);
+    }
+  } else {
+    // Song NOT found in JioSaavn catalogue!
+    // Seamlessly query Spotify & Global Online catalogue in background without redirecting
+    AppState.searchResults = [];
+    AppState.isSpotifyFallbackResults = false;
+    AppState.isFetchingSpotify = true;
+    renderContent();
 
-  // If a custom full-audio backend API is configured, query asynchronously for live saavn tracks
-  if (API_BASE) {
     AppState.searchDebounceTimer = setTimeout(() => {
-      fetchBackendSearchResults(trimmed, thisRequestId);
-    }, 350);
+      fetchSpotifySearchResults(trimmed, thisRequestId);
+    }, 250);
+  }
+}
+
+// Background Spotify & Global Catalogue Search Fallback (Zero Redirection)
+async function fetchSpotifySearchResults(query, requestId) {
+  if (!query) return;
+
+  const abortController = new AbortController();
+  AppState.activeSearchAbortController = abortController;
+
+  try {
+    const timeoutId = setTimeout(() => abortController.abort(), 6000);
+    
+    // First try backend API if configured
+    if (API_BASE) {
+      try {
+        const backendRes = await fetch(`${API_BASE}/api/search?query=${encodeURIComponent(query)}&language=${encodeURIComponent(AppState.activeLanguage)}`, { signal: abortController.signal });
+        if (backendRes.ok) {
+          const backendData = await backendRes.json();
+          if (requestId === AppState.searchRequestId && backendData.status === "success" && Array.isArray(backendData.songs) && backendData.songs.length > 0) {
+            clearTimeout(timeoutId);
+            AppState.searchResults = backendData.songs.map(s => prepareSongSearchMetadata({
+              ...s,
+              download_authorized: true,
+              source: "spotify"
+            }));
+            AppState.isSpotifyFallbackResults = true;
+            AppState.isFetchingSpotify = false;
+            AppState.queue = [...AppState.searchResults];
+            renderContent();
+            return;
+          }
+        }
+      } catch (_) {}
+    }
+
+    // Direct CORS-enabled Global iTunes/Spotify preview search (covers international, Hindi, Tamil, Telugu tracks)
+    const searchUrl = `https://itunes.apple.com/search?term=${encodeURIComponent(query)}&entity=song&limit=25`;
+    const res = await fetch(searchUrl, { signal: abortController.signal });
+    clearTimeout(timeoutId);
+
+    if (requestId !== AppState.searchRequestId) return;
+
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    const data = await res.json();
+
+    if (requestId !== AppState.searchRequestId) return;
+
+    if (data.results && Array.isArray(data.results) && data.results.length > 0) {
+      const spotifySongs = data.results.map((r, index) => {
+        const durSec = Math.round((r.trackTimeMillis || 210000) / 1000);
+        const artwork = (r.artworkUrl100 || "").replace("100x100bb", "600x600bb") || "static/images/only_friends_theme.svg";
+
+        return prepareSongSearchMetadata({
+          id: `spotify_${r.trackId || (Date.now() + "_" + index)}`,
+          title: r.trackName || "Unknown Title",
+          artist: r.artistName || "Unknown Artist",
+          album: r.collectionName || "Single",
+          duration: durSec,
+          duration_str: formatTime(durSec),
+          language: AppState.activeLanguage !== "all" ? capitalize(AppState.activeLanguage) : "Global",
+          category: "Spotify & Global Catalogue",
+          sections: ["trending"],
+          cover_url: artwork,
+          audio_url: r.previewUrl || "",
+          audio_file: "",
+          download_authorized: true,
+          source: "spotify",
+          spotify_id: r.trackId ? String(r.trackId) : "",
+          tags: ["spotify", "online", normalizeSearchText(r.trackName || ""), normalizeSearchText(r.artistName || "")]
+        });
+      });
+
+      AppState.searchResults = spotifySongs;
+      AppState.isSpotifyFallbackResults = true;
+      AppState.isFetchingSpotify = false;
+      AppState.queue = [...spotifySongs];
+      renderContent();
+    } else {
+      AppState.searchResults = [];
+      AppState.isSpotifyFallbackResults = false;
+      AppState.isFetchingSpotify = false;
+      renderContent();
+    }
+  } catch (err) {
+    if (err.name === "AbortError") return;
+    if (requestId !== AppState.searchRequestId) return;
+
+    console.warn("[MusicHub] Spotify & online search error:", err.message);
+    AppState.isFetchingSpotify = false;
+    AppState.isSpotifyFallbackResults = false;
+    AppState.searchResults = [];
+    AppState.searchError = {
+      query: query,
+      message: "Song not found in JioSaavn or Spotify."
+    };
+    renderContent();
+  } finally {
+    if (AppState.activeSearchAbortController === abortController) {
+      AppState.activeSearchAbortController = null;
+    }
   }
 }
 
@@ -824,6 +910,29 @@ function renderContent() {
 
   // Search Results Mode
   if (AppState.searchQuery) {
+    // 1. If currently fetching from Spotify / online fallback
+    if (AppState.isFetchingSpotify) {
+      if (DOM.emptyState) DOM.emptyState.style.display = "none";
+      DOM.contentContainer.innerHTML = `
+        <section class="music-section">
+          <div class="section-header">
+            <div class="section-title-wrap">
+              <span class="section-icon">🔍</span>
+              <h2 class="section-title">Searching for "${escapeHTML(AppState.searchQuery)}"</h2>
+            </div>
+          </div>
+          <div class="spotify-loading-banner">
+            <div class="spinner" style="width:36px; height:36px; margin:0 auto 16px auto; border-color:rgba(30,215,96,0.25); border-top-color:#1ed760;"></div>
+            <h3 style="color:#fff; font-size:1.15rem; margin-bottom:6px;">Song not found in JioSaavn</h3>
+            <p style="color:var(--text-muted); font-size:0.9rem; margin:0;">
+              Connecting to Spotify &amp; Global Catalogue to find "<strong>${escapeHTML(AppState.searchQuery)}</strong>"...
+            </p>
+          </div>
+        </section>
+      `;
+      return;
+    }
+
     let displayList = [...AppState.searchResults];
 
     // Language Filter Handling during Search
@@ -856,6 +965,25 @@ function renderContent() {
       }
     }
 
+    // Spotify Fallback Banner (Informs user that results were fetched from Spotify & Global Catalogue)
+    let spotifyBannerHTML = "";
+    if (AppState.isSpotifyFallbackResults && displayList.length > 0) {
+      spotifyBannerHTML = `
+        <div class="spotify-fallback-banner">
+          <div style="display:flex; align-items:center; gap:12px;">
+            <span style="font-size:1.6rem;">🟢</span>
+            <div>
+              <strong style="color:#fff; font-size:0.98rem; display:block;">Song not found in JioSaavn — Retrieved from Spotify &amp; Global Catalogue</strong>
+              <span style="color:var(--text-dim); font-size:0.82rem;">Play directly on this page or download MP3 to your device without leaving the website.</span>
+            </div>
+          </div>
+          <span class="spotify-fallback-badge">
+            ✓ Spotify Online
+          </span>
+        </div>
+      `;
+    }
+
     // Error Banner (if API search failed, allows user retry)
     let errorBannerHTML = "";
     if (AppState.searchError) {
@@ -866,7 +994,7 @@ function renderContent() {
             <span style="display:block; font-size:0.78rem; color:var(--text-dim); margin-top:2px;">Showing instant results from built-in offline music catalogue.</span>
           </div>
           <button id="retrySearchBtn" class="btn btn-pill" style="padding:6px 16px; font-size:0.8rem; background:rgba(239,68,68,0.25); border:1px solid rgba(239,68,68,0.5); color:#fff; cursor:pointer;">
-            🔄 Retry Online Search
+            🔄 Retry Search
           </button>
         </div>
       `;
@@ -887,7 +1015,7 @@ function renderContent() {
       attachRetryListener();
       if (DOM.emptyState) {
         DOM.emptyState.style.display = "block";
-        if (DOM.emptySearchQuery) DOM.emptySearchQuery.textContent = `"${escapeHTML(AppState.searchQuery)}"`;
+        if (DOM.emptySearchQuery) DOM.emptySearchQuery.textContent = `"${escapeHTML(AppState.searchQuery)}" (checked in JioSaavn & Spotify)`;
       }
       return;
     }
@@ -923,12 +1051,13 @@ function renderContent() {
     if (DOM.emptyState) DOM.emptyState.style.display = "none";
 
     DOM.contentContainer.innerHTML = `
+      ${spotifyBannerHTML}
       ${errorBannerHTML}
       ${languageFilteredNoticeHTML}
       <section class="music-section">
         <div class="section-header">
           <div class="section-title-wrap">
-            <span class="section-icon">🔍</span>
+            <span class="section-icon">${AppState.isSpotifyFallbackResults ? "🟢" : "🔍"}</span>
             <h2 class="section-title">Search Results for "${escapeHTML(AppState.searchQuery)}"</h2>
             <span class="section-badge">${totalCount} tracks found</span>
           </div>
@@ -1002,76 +1131,6 @@ function renderContent() {
   }
 
   if (DOM.emptyState) DOM.emptyState.style.display = "none";
-
-  // Dedicated Spotify Hub View
-  if (AppState.activeSection === "spotify") {
-    DOM.contentContainer.innerHTML = `
-      <section class="music-section">
-        <div class="section-header" style="flex-direction:column; align-items:flex-start; gap:6px;">
-          <div class="section-title-wrap" style="width:100%; display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:10px;">
-            <div style="display:flex; align-items:center; gap:10px;">
-              <span style="font-size:1.8rem;">🟢</span>
-              <div>
-                <h2 class="section-title" style="margin:0;">Spotify Player &amp; Playlists Hub</h2>
-                <p style="color:var(--text-muted); font-size:0.86rem; margin:2px 0 0 0;">Stream official Spotify playlists and any song directly inside Pranesh Music Hub</p>
-              </div>
-            </div>
-            <span class="section-badge" style="background:rgba(30,215,96,0.18); border-color:rgba(30,215,96,0.4); color:#4ade80;">Spotify Official Embed API</span>
-          </div>
-        </div>
-
-        <div class="spotify-input-box">
-          <input type="text" id="spotifyPageLinkInput" class="spotify-link-input" placeholder="Paste any Spotify Track, Album, or Playlist URL..." />
-          <button id="spotifyPageLoadBtn" class="btn btn-primary" style="background:#1ed760; color:#000; font-weight:700;">
-            ▶ Load &amp; Play
-          </button>
-        </div>
-
-        <div class="spotify-embed-container">
-          <iframe id="spotifyPageIframe" style="border-radius:16px; box-shadow:0 12px 36px rgba(0,0,0,0.6);" src="https://open.spotify.com/embed/playlist/37i9dQZF1DX4s3V2rT5alW?utm_source=generator&theme=0" width="100%" height="380" frameBorder="0" allowfullscreen="" allow="autoplay; clipboard-write; encrypted-media; fullscreen; picture-in-picture" loading="lazy"></iframe>
-        </div>
-
-        <div style="margin-top:24px;">
-          <h3 style="color:#fff; font-size:1.1rem; margin-bottom:12px; font-weight:700;">Featured Spotify Playlists:</h3>
-          <div class="spotify-playlist-grid">
-            <div class="spotify-card active" data-uri="playlist/37i9dQZF1DX4s3V2rT5alW">
-              <span class="spotify-card-icon">🌺</span>
-              <h4>Hot Hits Tamil</h4>
-              <p>Top Kollywood chartbusters</p>
-            </div>
-            <div class="spotify-card" data-uri="playlist/37i9dQZF1DX14CbVHtlw2r">
-              <span class="spotify-card-icon">💖</span>
-              <h4>Tamil Romance</h4>
-              <p>Romantic melodies by Rahman, Yuvan, Harris</p>
-            </div>
-            <div class="spotify-card" data-uri="playlist/37i9dQZF1DX6XceP0o0G9p">
-              <span class="spotify-card-icon">🔥</span>
-              <h4>Kollywood Chill</h4>
-              <p>Acoustic and soothing Tamil vibes</p>
-            </div>
-            <div class="spotify-card" data-uri="playlist/37i9dQZF1DWVKDFnCqcskw">
-              <span class="spotify-card-icon">⚡</span>
-              <h4>Tollywood Hits</h4>
-              <p>High-energy Telugu bangers</p>
-            </div>
-            <div class="spotify-card" data-uri="playlist/37i9dQZF1DX0XUfTFmNBRM">
-              <span class="spotify-card-icon">🪔</span>
-              <h4>Bollywood Butter</h4>
-              <p>Biggest Hindi &amp; Bollywood hits</p>
-            </div>
-            <div class="spotify-card" data-uri="playlist/37i9dQZF1DXcBWIGoYBM5M">
-              <span class="spotify-card-icon">🌍</span>
-              <h4>Today's Top Hits</h4>
-              <p>Worldwide global trending hits</p>
-            </div>
-          </div>
-        </div>
-      </section>
-    `;
-
-    attachSpotifyPageListeners();
-    return;
-  }
 
   // Dedicated View for Favourites / History / Single Language
   if (AppState.activeSection !== "all" || AppState.activeLanguage !== "all") {
@@ -1292,150 +1351,6 @@ function attachSectionExploreListeners() {
       updateActivePills();
       renderContent();
       window.scrollTo({ top: 0, behavior: "smooth" });
-    });
-  });
-}
-
-function openSpotifyInPagePlayer(title = "", artist = "") {
-  // Guarantee 100% in-page playback with ZERO external window.open redirects
-  const modal = DOM.spotifyModal || document.getElementById("spotifyModal");
-  if (modal) {
-    modal.style.display = "flex";
-    if (typeof document !== "undefined" && document.body) {
-      document.body.style.overflow = "hidden";
-    }
-    const modalInput = DOM.spotifyModalLinkInput || document.getElementById("spotifyModalLinkInput");
-    if (modalInput) {
-      modalInput.placeholder = title ? `Paste Spotify link for "${title}"...` : "Paste any Spotify Track, Album, or Playlist URL...";
-    }
-    showToast("🟢 Opened In-Page Spotify Embed Player", "info");
-    return;
-  }
-
-  // Fallback: Seamlessly navigate to the in-page Spotify Hub section
-  AppState.activeSection = "spotify";
-  AppState.activeLanguage = "all";
-  updateActivePills();
-  renderContent();
-  if (typeof window !== "undefined" && window.scrollTo) {
-    window.scrollTo({ top: 0, behavior: "smooth" });
-  }
-  showToast("🟢 Loaded In-Page Spotify Player Hub", "info");
-}
-
-function closeSpotifyModal() {
-  const modal = DOM.spotifyModal || document.getElementById("spotifyModal");
-  if (modal) {
-    modal.style.display = "none";
-    if (typeof document !== "undefined" && document.body) {
-      document.body.style.overflow = "";
-    }
-  }
-}
-
-// Deprecated external redirect: all interactions now stay 100% on the same page
-function openSpotifySearch(title, artist) {
-  openSpotifyInPagePlayer(title, artist);
-}
-
-function attachSpotifyModalControls() {
-  const iframe = DOM.spotifyModalIframe || document.getElementById("spotifyModalIframe");
-  const linkInput = DOM.spotifyModalLinkInput || document.getElementById("spotifyModalLinkInput");
-  const loadBtn = DOM.spotifyModalLoadBtn || document.getElementById("spotifyModalLoadBtn");
-
-  const loadFromInput = () => {
-    if (!linkInput || !iframe) return;
-    const val = linkInput.value.trim();
-    if (!val) return;
-    let embedSrc = "";
-    if (val.includes("open.spotify.com/")) {
-      const match = val.match(/open\.spotify\.com\/(track|album|playlist|artist)\/([a-zA-Z0-9]+)/);
-      if (match) {
-        embedSrc = `https://open.spotify.com/embed/${match[1]}/${match[2]}?utm_source=generator&theme=0`;
-      }
-    } else if (val.includes("spotify:")) {
-      const parts = val.split(":");
-      if (parts.length >= 3) {
-        embedSrc = `https://open.spotify.com/embed/${parts[1]}/${parts[2]}?utm_source=generator&theme=0`;
-      }
-    }
-
-    if (embedSrc) {
-      iframe.src = embedSrc;
-      showToast("🟢 Loaded Spotify Player!", "success");
-    } else {
-      showToast("⚠️ Invalid Spotify URL. Paste a link like open.spotify.com/track/...", "error");
-    }
-  };
-
-  if (loadBtn) loadBtn.addEventListener("click", loadFromInput);
-  if (linkInput) {
-    linkInput.addEventListener("keydown", (e) => {
-      if (e.key === "Enter") loadFromInput();
-    });
-  }
-
-  if (typeof document !== "undefined") {
-    document.querySelectorAll(".spotify-modal-chip").forEach(chip => {
-      chip.addEventListener("click", () => {
-        document.querySelectorAll(".spotify-modal-chip").forEach(c => c.classList.remove("active"));
-        chip.classList.add("active");
-        const uri = chip.dataset.uri;
-        if (uri && iframe) {
-          iframe.src = `https://open.spotify.com/embed/${uri}?utm_source=generator&theme=0`;
-          showToast(`🟢 Loading ${chip.textContent.trim()}...`, "info");
-        }
-      });
-    });
-  }
-}
-
-function attachSpotifyPageListeners() {
-  const iframe = document.getElementById("spotifyPageIframe");
-  const linkInput = document.getElementById("spotifyPageLinkInput");
-  const loadBtn = document.getElementById("spotifyPageLoadBtn");
-
-  const loadFromInput = () => {
-    if (!linkInput || !iframe) return;
-    const val = linkInput.value.trim();
-    if (!val) return;
-    let embedSrc = "";
-    if (val.includes("open.spotify.com/")) {
-      const match = val.match(/open\.spotify\.com\/(track|album|playlist|artist)\/([a-zA-Z0-9]+)/);
-      if (match) {
-        embedSrc = `https://open.spotify.com/embed/${match[1]}/${match[2]}?utm_source=generator&theme=0`;
-      }
-    } else if (val.includes("spotify:")) {
-      const parts = val.split(":");
-      if (parts.length >= 3) {
-        embedSrc = `https://open.spotify.com/embed/${parts[1]}/${parts[2]}?utm_source=generator&theme=0`;
-      }
-    }
-
-    if (embedSrc) {
-      iframe.src = embedSrc;
-      showToast("🟢 Loaded Spotify Player!", "success");
-    } else {
-      showToast("⚠️ Invalid Spotify URL. Paste a link like open.spotify.com/track/...", "error");
-    }
-  };
-
-  if (loadBtn) loadBtn.addEventListener("click", loadFromInput);
-  if (linkInput) {
-    linkInput.addEventListener("keydown", (e) => {
-      if (e.key === "Enter") loadFromInput();
-    });
-  }
-
-  document.querySelectorAll(".spotify-card").forEach(card => {
-    card.addEventListener("click", () => {
-      document.querySelectorAll(".spotify-card").forEach(c => c.classList.remove("active"));
-      card.classList.add("active");
-      const uri = card.dataset.uri;
-      if (uri && iframe) {
-        iframe.src = `https://open.spotify.com/embed/${uri}?utm_source=generator&theme=0`;
-        showToast(`🟢 Loading ${card.querySelector("h4")?.textContent || "Playlist"}...`, "info");
-      }
     });
   });
 }
