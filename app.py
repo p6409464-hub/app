@@ -382,6 +382,95 @@ for s in SONGS_CATALOGUE:
     song_meta_cache[s["id"]] = s
 
 
+def to_phonetic_py(s):
+    if not s:
+        return ""
+    res = str(s).lower()
+    res = re.sub(r"aa+", "a", res)
+    res = re.sub(r"ee+", "i", res)
+    res = re.sub(r"oo+", "u", res)
+    res = re.sub(r"ii+", "i", res)
+    res = re.sub(r"uu+", "u", res)
+    res = re.sub(r"dh", "th", res)
+    res = re.sub(r"sh", "s", res)
+    res = re.sub(r"ch", "s", res)
+    res = re.sub(r"zh", "l", res)
+    res = re.sub(r"ph", "f", res)
+    res = re.sub(r"w", "v", res)
+    res = re.sub(r"y", "i", res)
+    res = re.sub(r"([b-df-hj-np-tv-z])\1+", r"\1", res)
+    return re.sub(r"[^a-z0-9]", "", res)
+
+
+def bounded_levenshtein_py(a, b, max_dist):
+    if a == b:
+        return 0
+    la, lb = len(a), len(b)
+    if abs(la - lb) > max_dist:
+        return max_dist + 1
+    prev = list(range(lb + 1))
+    for i in range(1, la + 1):
+        curr = [i] + [0] * lb
+        row_min = i
+        ca = a[i - 1]
+        for j in range(1, lb + 1):
+            cost = 0 if ca == b[j - 1] else 1
+            val = min(curr[j - 1] + 1, prev[j] + 1, prev[j - 1] + cost)
+            curr[j] = val
+            if val < row_min:
+                row_min = val
+        if row_min > max_dist:
+            return max_dist + 1
+        prev = curr
+    return prev[lb]
+
+
+def match_song_typo_py(song, query):
+    if not query:
+        return True
+    q_norm = re.sub(r"[^a-z0-9\s]", " ", str(query).lower()).strip()
+    corpus = f"{song.get('title', '')} {song.get('artist', '')} {song.get('album', '')} {' '.join(song.get('tags', []))}".lower()
+    corpus_norm = re.sub(r"[^a-z0-9\s]", " ", corpus).strip()
+    
+    # 1. Exact phrase / substring
+    if q_norm in corpus_norm or "".join(q_norm.split()) in "".join(corpus_norm.split()):
+        return True
+    
+    # 2. Phonetic match
+    p_q = to_phonetic_py(query)
+    p_corpus = to_phonetic_py(corpus)
+    if p_q and len(p_q) >= 3 and p_q in p_corpus:
+        return True
+        
+    # 3. Token-by-token typo tolerance
+    tokens = [t for t in q_norm.split() if t]
+    words = [w for w in corpus_norm.split() if len(w) >= 2]
+    p_words = [to_phonetic_py(w) for w in words]
+    
+    for token in tokens:
+        if token in corpus_norm:
+            continue
+        token_found = False
+        t_len = len(token)
+        max_d = 2 if t_len >= 6 else 1
+        p_t = to_phonetic_py(token)
+        
+        for idx, w in enumerate(words):
+            if len(w) > t_len and w.startswith(token) and (len(w) - t_len <= 3):
+                token_found = True
+                break
+            if abs(len(w) - t_len) <= max_d and bounded_levenshtein_py(token, w, max_d) <= max_d:
+                token_found = True
+                break
+            if p_t and len(p_t) >= 3 and p_words[idx]:
+                if p_t == p_words[idx] or bounded_levenshtein_py(p_t, p_words[idx], 1) <= 1:
+                    token_found = True
+                    break
+        if not token_found:
+            return False
+    return True
+
+
 @app.route("/")
 def index():
     """Render the modern Pranesh Music Hub home page."""
@@ -436,13 +525,7 @@ def get_songs():
             filtered = [s for s in filtered if s["category"] == "Only Friends OST"]
 
     if query:
-        filtered = [
-            s for s in filtered
-            if query in s["title"].lower()
-            or query in s["artist"].lower()
-            or query in s["album"].lower()
-            or any(query in tag.lower() for tag in s.get("tags", []))
-        ]
+        filtered = [s for s in filtered if match_song_typo_py(s, query)]
 
     return jsonify({
         "status": "success",
@@ -647,14 +730,8 @@ def search_songs():
     if not query:
         return jsonify({"status": "success", "count": 0, "songs": []})
 
-    # 1. Check built-in curated songs
-    matched_builtin = [
-        s for s in SONGS_CATALOGUE
-        if query.lower() in s["title"].lower()
-        or query.lower() in s["artist"].lower()
-        or query.lower() in s["album"].lower()
-        or any(query.lower() in tag.lower() for tag in s.get("tags", []))
-    ]
+    # 1. Check built-in curated songs with typo tolerance & phonetic matching
+    matched_builtin = [s for s in SONGS_CATALOGUE if match_song_typo_py(s, query)]
 
     # 2. Search JioSaavn for full-length high-quality 320kbps songs
     online_songs = search_jiosaavn(query, lang)

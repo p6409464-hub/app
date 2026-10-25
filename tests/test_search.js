@@ -487,6 +487,34 @@ assert(vaanathai && vaanathai.audio_url && vaanathai.audio_url.includes("aac.saa
 
 console.log(`[PASS] Verified: All ${AppState.masterSongs.length} tracks have direct full-length 320kbps streams. Zero 30-second placeholder audio.`);
 
+// Test 22: Verifying typo-tolerant and wrong-letter search matching (Fuzzy search)
+console.log("\nTest 22: Verifying typo-tolerant & wrong-letter search matching...");
+
+const typoChecks = [
+  { typo: "arabi kuthu", expectedSnippet: "Arabic Kuthu", label: "missing 'c' in 'arabic'" },
+  { typo: "aniruth hukum", expectedSnippet: "Hukum", label: "'th' instead of 'dh' in 'anirudh'" },
+  { typo: "kaavala", expectedSnippet: "Kaavaalaa", label: "single 'a' instead of 'aa'" },
+  { typo: "hokum", expectedSnippet: "Hukum", label: "'o' instead of 'u' in 'hukum'" },
+  { typo: "vikrem", expectedSnippet: "Vikram", label: "'e' instead of 'a' in 'vikram'" },
+  { typo: "badaas", expectedSnippet: "Badass", label: "'aa' instead of 'ass' in 'badass'" },
+  { typo: "jayler", expectedSnippet: "Jailer", label: "'y' instead of 'i' in 'jailer'" },
+  { typo: "illayaraja", expectedSnippet: "Ilayaraja", label: "phonetic variation of 'ilaiyaraaja'" },
+  { typo: "chutamalle", expectedSnippet: "Chuttamalle", label: "single 't' instead of 'tt'" },
+  { typo: "vaathy", expectedSnippet: "Vaathi", label: "'thy' instead of 'thi'" }
+];
+
+typoChecks.forEach(({ typo, expectedSnippet, label }) => {
+  executeSearch(typo);
+  const found = AppState.searchResults.some(s => 
+    (s.title && s.title.toLowerCase().includes(expectedSnippet.toLowerCase())) ||
+    (s.album && s.album.toLowerCase().includes(expectedSnippet.toLowerCase())) ||
+    (s.artist && s.artist.toLowerCase().includes(expectedSnippet.toLowerCase()))
+  );
+  assert(found, `Search with typo "${typo}" (${label}) must find song matching "${expectedSnippet}". Got ${AppState.searchResults.length} results.`);
+});
+
+console.log(`[PASS] Verified: All ${typoChecks.length} typo and wrong-letter search variations matched and displayed successfully!`);
+
 console.log("\n==================================================");
-console.log("ALL 21 SEARCH, CATALOGUE, FULL-STREAM & SPOTIFY FALLBACK TESTS PASSED!");
+console.log("ALL 22 SEARCH, CATALOGUE, FULL-STREAM, ERA & TYPO-TOLERANT TESTS PASSED!");
 console.log("==================================================\n");

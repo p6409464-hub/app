@@ -493,7 +493,7 @@ function setupEventListeners() {
 }
 
 // ==========================================================================
-// 3. String Normalization & Multi-Field Search Matching
+// 3. String Normalization, Phonetics & Typo-Tolerant Fuzzy Matching Engine
 // ==========================================================================
 
 function normalizeSearchText(str) {
@@ -517,6 +517,57 @@ function normalizeCompact(str) {
     .replace(/[^a-z0-9]/g, ""); // completely compact alphanumeric string
 }
 
+// Phonetic transformation for Tanglish (Romanized Tamil & Indian words)
+function toPhonetic(s) {
+  if (!s) return "";
+  return String(s)
+    .toLowerCase()
+    .replace(/aa+/g, "a")
+    .replace(/ee+/g, "i")
+    .replace(/oo+/g, "u")
+    .replace(/ii+/g, "i")
+    .replace(/uu+/g, "u")
+    .replace(/dh/g, "th")
+    .replace(/sh/g, "s")
+    .replace(/ch/g, "s")
+    .replace(/zh/g, "l")
+    .replace(/ph/g, "f")
+    .replace(/w/g, "v")
+    .replace(/y/g, "i")
+    .replace(/([b-df-hj-np-tv-z])\1+/g, "$1") // collapse doubled consonants (kk->k, pp->p, tt->t)
+    .replace(/[^a-z0-9]/g, "");
+}
+
+// Fast bounded Levenshtein distance (aborts early if distance exceeds maxDist)
+function boundedLevenshtein(a, b, maxDist) {
+  if (a === b) return 0;
+  const la = a.length;
+  const lb = b.length;
+  if (Math.abs(la - lb) > maxDist) return maxDist + 1;
+
+  let prev = [];
+  for (let j = 0; j <= lb; j++) prev[j] = j;
+
+  for (let i = 1; i <= la; i++) {
+    let curr = [i];
+    let rowMin = curr[0];
+    const ca = a.charCodeAt(i - 1);
+    for (let j = 1; j <= lb; j++) {
+      const cost = ca === b.charCodeAt(j - 1) ? 0 : 1;
+      const val = Math.min(
+        curr[j - 1] + 1,       // insertion
+        prev[j] + 1,           // deletion
+        prev[j - 1] + cost     // substitution
+      );
+      curr[j] = val;
+      if (val < rowMin) rowMin = val;
+    }
+    if (rowMin > maxDist) return maxDist + 1;
+    prev = curr;
+  }
+  return prev[lb];
+}
+
 function prepareSongSearchMetadata(song) {
   const title = song.title || song.name || "";
   const artist = song.artist || song.singer || song.artists || "";
@@ -534,8 +585,13 @@ function prepareSongSearchMetadata(song) {
   const normLang = normalizeSearchText(lang);
   const normCategory = normalizeSearchText(category);
 
-  const searchCorpus = [normTitle, normArtist, normAlbum, normLang, normCategory, ...normTags].join(" ");
-  const compactCorpus = normalizeCompact([normTitle, normArtist, normAlbum, normLang, normCategory, ...normTags].join(" "));
+  const rawCorpus = [normTitle, normArtist, normAlbum, normLang, normCategory, ...normTags].join(" ");
+  const compactCorpus = normalizeCompact(rawCorpus);
+  const phoneticCorpus = toPhonetic(rawCorpus);
+
+  // Pre-split tokens for instantaneous typo-tolerant fuzzy lookup (< 1ms per 5,000 items)
+  const wordTokens = rawCorpus.split(" ").filter(w => w.length >= 2);
+  const phoneticTokens = wordTokens.map(w => toPhonetic(w)).filter(Boolean);
 
   return {
     ...song,
@@ -550,20 +606,22 @@ function prepareSongSearchMetadata(song) {
     _normLang: normLang,
     _normCategory: normCategory,
     _normTags: normTags,
-    _searchCorpus: searchCorpus,
-    _compactCorpus: compactCorpus
+    _searchCorpus: rawCorpus,
+    _compactCorpus: compactCorpus,
+    _phoneticCorpus: phoneticCorpus,
+    _wordTokens: wordTokens,
+    _phoneticTokens: phoneticTokens
   };
 }
 
-function matchSongQuery(song, rawQuery) {
-  if (!rawQuery) return true;
-  if (!song) return false;
+// Typo-tolerant relevance scorer & matcher
+function scoreAndMatchSong(song, rawQuery) {
+  if (!rawQuery) return { matched: true, score: 0 };
+  const normQ = normalizeSearchText(rawQuery);
+  const compactQ = normalizeCompact(rawQuery);
+  if (!normQ && !compactQ) return { matched: true, score: 0 };
 
-  const normQuery = normalizeSearchText(rawQuery);
-  const compactQuery = normalizeCompact(rawQuery);
-  if (!normQuery && !compactQuery) return true;
-
-  const corpus = song._searchCorpus || normalizeSearchText([
+  const rawCorpus = song._searchCorpus || normalizeSearchText([
     song.title || song.name || "",
     song.artist || song.singer || "",
     song.album || song.movie || "",
@@ -572,32 +630,172 @@ function matchSongQuery(song, rawQuery) {
     ...(song.tags || [])
   ].join(" "));
 
-  const compactCorpus = song._compactCorpus || normalizeCompact([
-    song.title || song.name || "",
-    song.artist || song.singer || "",
-    song.album || song.movie || "",
-    song.language || song.lang || "",
-    song.category || song.genre || "",
-    ...(song.tags || [])
-  ].join(" "));
+  const compactCorpus = song._compactCorpus || normalizeCompact(rawCorpus);
+  const phoneticCorpus = song._phoneticCorpus || toPhonetic(rawCorpus);
 
-  // 1. Exact phrase match
-  if (normQuery && corpus.includes(normQuery)) return true;
+  let score = 0;
+  let matched = false;
 
-  // 2. Compact match (e.g. "ar rahman" matches "A.R. Rahman", "kgf" matches "K.G.F.", "naatunaatu" matches "Naatu Naatu")
-  if (compactQuery && compactCorpus.includes(compactQuery)) return true;
+  const normTitle = song._normTitle || normalizeSearchText(song.title || song.name || "");
+  const normAlbum = song._normAlbum || normalizeSearchText(song.album || song.movie || "");
+  const normArtist = song._normArtist || normalizeSearchText(song.artist || song.singer || "");
 
-  // 3. Multi-token match: every token in the query must match in corpus OR compactCorpus
-  const tokens = normQuery ? normQuery.split(" ").filter(Boolean) : [];
-  if (tokens.length > 1) {
-    const allTokensMatch = tokens.every(token => {
-      const compactToken = normalizeCompact(token);
-      return corpus.includes(token) || (compactToken && compactCorpus.includes(compactToken));
-    });
-    if (allTokensMatch) return true;
+  // 1. Exact phrase matches (Highest Priority)
+  if (normTitle === normQ) {
+    matched = true;
+    score += 1000;
+  } else if (normTitle.startsWith(normQ)) {
+    matched = true;
+    score += 500;
+  } else if (normTitle.includes(normQ)) {
+    matched = true;
+    score += 300;
   }
 
-  return false;
+  if (normAlbum.includes(normQ)) {
+    matched = true;
+    score += 200;
+  }
+
+  if (normArtist.includes(normQ)) {
+    matched = true;
+    score += 150;
+  }
+
+  if (rawCorpus.includes(normQ)) {
+    matched = true;
+    score += 120;
+  } else if (compactQ && compactCorpus.includes(compactQ)) {
+    matched = true;
+    score += 90;
+  }
+
+  // 2. Phonetic full match (Sound-alike Tanglish query)
+  const phoneticQ = toPhonetic(rawQuery);
+  if (phoneticQ && phoneticQ.length >= 3 && phoneticCorpus.includes(phoneticQ)) {
+    matched = true;
+    score += 80;
+  }
+
+  // 3. Typo-tolerant single query edit distance on title or album (e.g. "leoo" -> "leo", "jayler" -> "jailer")
+  if (normQ.length >= 3) {
+    const titleDist = boundedLevenshtein(normQ, normTitle, 1);
+    if (titleDist <= 1) {
+      matched = true;
+      score += 400;
+    }
+    const albumDist = boundedLevenshtein(normQ, normAlbum, 1);
+    if (albumDist <= 1) {
+      matched = true;
+      score += 350;
+    }
+  }
+
+  // 4. Multi-token fuzzy match with typo & wrong-letter tolerance
+  const tokens = normQ.split(" ").filter(Boolean);
+  if (tokens.length > 0) {
+    let tokensMatched = 0;
+    let typoPenalties = 0;
+    const wordTokens = song._wordTokens || rawCorpus.split(" ").filter(w => w.length >= 2);
+    const phoneticTokens = song._phoneticTokens || wordTokens.map(w => toPhonetic(w)).filter(Boolean);
+
+    for (const qToken of tokens) {
+      const qLen = qToken.length;
+
+      // Direct exact token match in song corpus
+      if (rawCorpus.includes(qToken)) {
+        tokensMatched++;
+        score += 30;
+        continue;
+      }
+
+      // Direct phonetic token match
+      const qPhonetic = toPhonetic(qToken);
+      if (qPhonetic && qPhonetic.length >= 3 && phoneticCorpus.includes(qPhonetic)) {
+        tokensMatched++;
+        score += 25;
+        continue;
+      }
+
+      // Fuzzy / typo check against word tokens
+      if (qLen >= 3) {
+        const maxDist = qLen >= 6 ? 2 : 1;
+        let tokenFound = false;
+
+        for (let i = 0; i < wordTokens.length; i++) {
+          const w = wordTokens[i];
+          const wLen = w.length;
+
+          // Prefix match: word starts with query token (e.g. "arabic".startsWith("arabi"))
+          if (wLen > qLen && w.startsWith(qToken) && (wLen - qLen <= 3)) {
+            tokenFound = true;
+            score += 20;
+            break;
+          }
+
+          // Edit distance check for words of similar length (wrong letter, missing letter, extra letter)
+          if (Math.abs(wLen - qLen) <= maxDist) {
+            const d = boundedLevenshtein(qToken, w, maxDist);
+            if (d <= maxDist) {
+              tokenFound = true;
+              score += Math.max(10, 25 - d * 8);
+              typoPenalties += d;
+              break;
+            }
+          }
+
+          // Phonetic edit distance check
+          if (qPhonetic && qPhonetic.length >= 3 && phoneticTokens[i]) {
+            const pToken = phoneticTokens[i];
+            if (pToken === qPhonetic) {
+              tokenFound = true;
+              score += 20;
+              break;
+            }
+            if (Math.abs(pToken.length - qPhonetic.length) <= 1) {
+              if (boundedLevenshtein(qPhonetic, pToken, 1) <= 1) {
+                tokenFound = true;
+                score += 15;
+                typoPenalties += 1;
+                break;
+              }
+            }
+          }
+        }
+
+        if (tokenFound) {
+          tokensMatched++;
+        }
+      }
+    }
+
+    if (tokensMatched === tokens.length) {
+      matched = true;
+      score += 40 - typoPenalties * 5;
+    }
+  }
+
+  return { matched, score };
+}
+
+// Backward-compatible matcher (returns true/false for filtering)
+function matchSongQuery(song, rawQuery) {
+  return scoreAndMatchSong(song, rawQuery).matched;
+}
+
+// Master search function: filters and sorts songs by typo-tolerant relevance score
+function searchMasterSongs(rawQuery) {
+  if (!rawQuery) return [...AppState.masterSongs];
+  const results = [];
+  for (const song of AppState.masterSongs) {
+    const res = scoreAndMatchSong(song, rawQuery);
+    if (res.matched) {
+      results.push({ song, score: res.score });
+    }
+  }
+  // Sort descending by relevance score (highest quality match first)
+  results.sort((a, b) => b.score - a.score);
+  return results.map(r => r.song);
 }
 
 // ==========================================================================
@@ -694,8 +892,8 @@ function executeSearch(rawQuery) {
   AppState.isSearching = true;
   if (DOM.clearSearchBtn) DOM.clearSearchBtn.style.display = "block";
 
-  // ALWAYS filter from the immutable master collection (never from previous search results!)
-  const localMatches = AppState.masterSongs.filter(song => matchSongQuery(song, trimmed));
+  // ALWAYS filter and sort from the immutable master collection using typo-tolerant fuzzy relevance scoring!
+  const localMatches = searchMasterSongs(trimmed);
 
   if (localMatches.length > 0) {
     // Song found in JioSaavn catalogue! Display immediately with zero Spotify branding
