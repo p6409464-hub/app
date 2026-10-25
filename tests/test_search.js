@@ -438,6 +438,41 @@ assert.strictEqual(AppState.currentSong.id, "spotify_test_track_1", "Must play S
 assert.strictEqual(audioPlayer.src, "https://example.com/preview.mp3", "Must route audio preview to in-page audio player");
 console.log("[PASS] Verified: Song not found in JioSaavn automatically fetches Spotify tracks, renders on search page, and plays in-page with ZERO redirects.");
 
+// Test 20: Verifying 80s, 90s, 2Ks, and 2010s-to-now era classifications and filters
+console.log("\nTest 20: Verifying 80s, 90s, 2K, and 2010s-to-now era filters...");
+const songs80s = AppState.masterSongs.filter(s => s.era === "80s");
+const songs90s = AppState.masterSongs.filter(s => s.era === "90s");
+const songs2k = AppState.masterSongs.filter(s => s.era === "2k");
+const songsNow = AppState.masterSongs.filter(s => s.era === "now");
+
+assert(songs80s.length > 0, "Must have songs classified in 80s era");
+assert(songs90s.length > 0, "Must have songs classified in 90s era");
+assert(songs2k.length > 0, "Must have songs classified in 2K (2000s) era");
+assert(songsNow.length > 0, "Must have songs classified in 2010s-to-now era");
+
+// Verify browsing by section pill
+AppState.searchQuery = "";
+AppState.activeSection = "era_80s";
+renderContent();
+assert(DOM.contentContainer.innerHTML.includes("80s Golden Classics"), "Must render 80s Golden Classics header in era view");
+
+AppState.activeSection = "era_90s";
+renderContent();
+assert(DOM.contentContainer.innerHTML.includes("90s Evergreen Hits"), "Must render 90s Evergreen Hits header in era view");
+
+AppState.activeSection = "era_2k";
+renderContent();
+assert(DOM.contentContainer.innerHTML.includes("2K Nostalgia"), "Must render 2K Hits header in era view");
+
+AppState.activeSection = "era_now";
+renderContent();
+assert(DOM.contentContainer.innerHTML.includes("2010s to Now"), "Must render 2010s to Now header in era view");
+
+// Reset to default
+AppState.activeSection = "all";
+renderContent();
+console.log(`[PASS] Verified: 80s (${songs80s.length}), 90s (${songs90s.length}), 2K (${songs2k.length}), and Now (${songsNow.length}) sections operational.`);
+
 console.log("\n==================================================");
-console.log("ALL 19 SEARCH, CATALOGUE, SPOTIFY FALLBACK & ZERO REDIRECT TESTS PASSED!");
+console.log("ALL 20 SEARCH, CATALOGUE, ERA & SPOTIFY FALLBACK TESTS PASSED!");
 console.log("==================================================\n");

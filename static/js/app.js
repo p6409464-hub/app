@@ -1104,6 +1104,14 @@ function renderContent() {
     filtered = filtered.filter(s => (s.sections || []).includes("trending"));
   } else if (AppState.activeSection === "recent") {
     filtered = filtered.filter(s => (s.sections || []).includes("recent"));
+  } else if (AppState.activeSection === "era_80s") {
+    filtered = filtered.filter(s => s.era === "80s");
+  } else if (AppState.activeSection === "era_90s") {
+    filtered = filtered.filter(s => s.era === "90s");
+  } else if (AppState.activeSection === "era_2k") {
+    filtered = filtered.filter(s => s.era === "2k");
+  } else if (AppState.activeSection === "era_now") {
+    filtered = filtered.filter(s => s.era === "now");
   } else if (isFavourites) {
     filtered = AppState.favourites
       .map(id => AppState.masterSongs.find(s => s.id === id))
@@ -1162,6 +1170,18 @@ function renderContent() {
     } else if (AppState.activeSection === "full_library") {
       headerTitle = "📚 Complete Music Library";
       headerIcon = "📚";
+    } else if (AppState.activeSection === "era_80s") {
+      headerTitle = "📻 80s Golden Classics (Ilaiyaraaja & SPB Era)";
+      headerIcon = "📻";
+    } else if (AppState.activeSection === "era_90s") {
+      headerTitle = "📼 90s Evergreen Hits (A.R. Rahman & Deva Era)";
+      headerIcon = "📼";
+    } else if (AppState.activeSection === "era_2k") {
+      headerTitle = "💿 2K Nostalgia Hits (Harris, Yuvan & Vidyasagar Era)";
+      headerIcon = "💿";
+    } else if (AppState.activeSection === "era_now") {
+      headerTitle = "⚡ 2010s to Now (Anirudh & Modern Blockbusters)";
+      headerIcon = "⚡";
     } else if (AppState.activeSection === "trending") {
       headerTitle = "🔥 Trending Songs";
       headerIcon = "🔥";
@@ -1248,6 +1268,10 @@ function renderContent() {
 
   // Default Home Page View: Organized Section Grids with Top 8 and View All Buttons
   const sectionsDef = [
+    { id: "era_now", title: "⚡ 2010s to Now (Modern Hits)", icon: "⚡", filter: s => s.era === "now", sectionId: "era_now" },
+    { id: "era_2k", title: "💿 2000s Nostalgia (2K Hits)", icon: "💿", filter: s => s.era === "2k", sectionId: "era_2k" },
+    { id: "era_90s", title: "📼 90s Evergreen Hits", icon: "📼", filter: s => s.era === "90s", sectionId: "era_90s" },
+    { id: "era_80s", title: "📻 80s Golden Classics", icon: "📻", filter: s => s.era === "80s", sectionId: "era_80s" },
     { id: "trending", title: "🔥 Trending Songs", icon: "🔥", filter: s => (s.sections || []).includes("trending"), sectionId: "trending" },
     { id: "recent", title: "🆕 Recently Added", icon: "🆕", filter: s => (s.sections || []).includes("recent"), sectionId: "recent" },
     { id: "tamil", title: "🌺 Tamil Blockbusters", icon: "🌺", filter: s => s.language === "Tamil", lang: "tamil" },
