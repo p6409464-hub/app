@@ -37,6 +37,9 @@ function safeSetStorage(key, value) {
 
 // Built-in offline audio library with verified full-length 320kbps streams (Zero 30s cutoffs!)
 const DEFAULT_STATIC_SONGS = [
+  { id: "saavn_aasai_machaan_1", title: "Aasai Machaan", artist: "Swarnalatha, Arunmozhi, Ilaiyaraaja", album: "Kummi Paattu", duration: 302, duration_str: "5:02", language: "Tamil", category: "Tamil Songs", sections: ["trending", "recent", "era_90s", "tamil"], cover_url: "https://c.saavncdn.com/550/Kummi-Paattu-Tamil-2021-20230407030208-500x500.jpg", audio_url: "https://aac.saavncdn.com/550/9f902008db8062361c3b58713205661b_320.mp4", audio_file: "", download_authorized: true, tags: ["aasai machaan", "aasa machan", "adi aasa machan", "aasai machan", "swarnalatha", "arunmozhi", "ilaiyaraaja", "kummi paattu", "90s", "tamil", "trending"], era: "90s" },
+  { id: "saavn_aasai_machaan_solo", title: "Aasai Machaan (Solo)", artist: "Swarnalatha, Ilaiyaraaja", album: "Kummi Paattu", duration: 302, duration_str: "5:02", language: "Tamil", category: "Tamil Songs", sections: ["recent", "era_90s", "tamil"], cover_url: "https://c.saavncdn.com/550/Kummi-Paattu-Tamil-2021-20230407030208-500x500.jpg", audio_url: "https://aac.saavncdn.com/550/b616a9f3076026e1f460609659186d06_320.mp4", audio_file: "", download_authorized: true, tags: ["aasai machaan", "aasa machan", "swarnalatha", "ilaiyaraaja", "kummi paattu", "90s", "tamil"], era: "90s" },
+  { id: "saavn_karuppu_nila_machan", title: "Karuppu Nila", artist: "S.P. Balasubrahmanyam, K. S. Chithra, Deva", album: "En Aasai Machan", duration: 295, duration_str: "4:55", language: "Tamil", category: "Tamil Songs", sections: ["trending", "era_90s", "tamil"], cover_url: "https://c.saavncdn.com/024/En-Aasai-Machan-Tamil-1994-20240905140348-500x500.jpg", audio_url: "https://aac.saavncdn.com/024/88d549bd91b629c3bd3521483c35c2f1_320.mp4", audio_file: "", download_authorized: true, tags: ["karuppu nila", "en aasai machan", "aasai machan", "aasai machaan", "vijayakanth", "revathi", "spb", "chithra", "deva", "90s", "tamil"], era: "90s" },
   { id: "of_1", title: "Let's Try (เอาเลยมั้ย)", artist: "Khaotung Thanawat", album: "Only Friends OST", duration: 233, duration_str: "3:53", language: "Thai/Multi", category: "Only Friends OST", sections: ["trending", "only_friends"], cover_url: "static/images/lets_try_acoustic.svg", audio_url: "https://aac.saavncdn.com/119/4397fcd61ccba3e425b27f767bdd1b82_320.mp4", audio_file: "", download_authorized: true, tags: ["only friends", "gmmtv", "khaotung", "ost", "trending", "2k"] },
   { id: "of_2", title: "No One Can (ห้ามแตะ)", artist: "Gawin Caskey", album: "Only Friends : Dream On", duration: 233, duration_str: "3:53", language: "Thai/Multi", category: "Only Friends OST", sections: ["recent", "only_friends"], cover_url: "static/images/no_one_can_chill.svg", audio_url: "https://aac.saavncdn.com/119/4397fcd61ccba3e425b27f767bdd1b82_320.mp4", audio_file: "", download_authorized: true, tags: ["only friends", "gawin caskey", "dream on", "2k"] },
   { id: "of_3", title: "Only Friends Retro Odyssey", artist: "Sonya Bara & Cyber Pulse", album: "Only Friends Singles", duration: 372, duration_str: "6:12", language: "English", category: "Only Friends OST", sections: ["trending", "only_friends"], cover_url: "static/images/only_friends_theme.svg", audio_url: "https://www.soundhelix.com/examples/mp3/SoundHelix-Song-1.mp3", audio_file: "", download_authorized: true, tags: ["only friends", "synthwave", "2k"] },
@@ -526,7 +529,7 @@ function toPhonetic(s) {
            .replace(/oo+/g, "u")
            .replace(/ii+/g, "i")
            .replace(/uu+/g, "u")
-           .replace(/ai|ay/g, "i")
+           .replace(/ai|ay/g, "a")
            .replace(/ou|au/g, "u")
            .replace(/o+/g, "u")
            .replace(/e+/g, "i")
@@ -578,6 +581,9 @@ function boundedLevenshtein(a, b, maxDist) {
 function correctSearchQuery(q) {
   if (!q) return "";
   const replacements = {
+    "aasa": "aasai",
+    "machan": "machaan",
+    "maachan": "machaan",
     "arabi": "arabic",
     "vikrem": "vikram",
     "jayler": "jailer",
@@ -667,6 +673,10 @@ function scoreAndMatchSong(song, rawQuery) {
   const compactQ = normalizeCompact(rawQuery);
   if (!normQ && !compactQ) return { matched: true, score: 0 };
 
+  // Strip noise words like "song", "songs", "mp3", "track", "audio" for clean title comparisons
+  const cleanQ = normQ.replace(/\b(songs|song|mp3|tracks|track|audio|full|original)\b/gi, " ").replace(/\s+/g, " ").trim();
+  const cleanPhoneticQ = toPhonetic(cleanQ);
+
   const rawCorpus = song._searchCorpus || normalizeSearchText([
     song.title || song.name || "",
     song.artist || song.singer || "",
@@ -686,29 +696,29 @@ function scoreAndMatchSong(song, rawQuery) {
   const normAlbum = song._normAlbum || normalizeSearchText(song.album || song.movie || "");
   const normArtist = song._normArtist || normalizeSearchText(song.artist || song.singer || "");
 
-  // 1. Exact phrase matches (Highest Priority)
-  if (normTitle === normQ) {
+  // 1. Exact phrase matches (Highest Priority - guarantees Exact Song Title always lands #1)
+  if (normTitle === normQ || (cleanQ && normTitle === cleanQ)) {
     matched = true;
-    score += 2000;
-  } else if (normTitle.startsWith(normQ)) {
+    score += 3000;
+  } else if (normTitle.startsWith(normQ) || (cleanQ && normTitle.startsWith(cleanQ))) {
     matched = true;
-    score += 1000;
-  } else if (normTitle.includes(normQ)) {
+    score += 1500;
+  } else if (normTitle.includes(normQ) || (cleanQ && normTitle.includes(cleanQ))) {
     matched = true;
-    score += 500;
+    score += 800;
   }
 
-  if (normAlbum.includes(normQ)) {
+  if (normAlbum.includes(normQ) || (cleanQ && normAlbum.includes(cleanQ))) {
     matched = true;
     score += 300;
   }
 
-  if (normArtist.includes(normQ)) {
+  if (normArtist.includes(normQ) || (cleanQ && normArtist.includes(cleanQ))) {
     matched = true;
     score += 250;
   }
 
-  if (rawCorpus.includes(normQ)) {
+  if (rawCorpus.includes(normQ) || (cleanQ && rawCorpus.includes(cleanQ))) {
     matched = true;
     score += 200;
   } else if (compactQ && compactCorpus.includes(compactQ)) {
@@ -722,23 +732,23 @@ function scoreAndMatchSong(song, rawQuery) {
   const pAlbum = song._pAlbum || toPhonetic(normAlbum);
   const pArtist = song._pArtist || toPhonetic(normArtist);
 
-  if (phoneticQ && phoneticQ.length >= 3) {
-    if (pTitle === phoneticQ) {
+  if ((phoneticQ && phoneticQ.length >= 3) || (cleanPhoneticQ && cleanPhoneticQ.length >= 3)) {
+    if (pTitle === phoneticQ || (cleanPhoneticQ && pTitle === cleanPhoneticQ)) {
       matched = true;
-      score += 1500;
-    } else if (pTitle.startsWith(phoneticQ)) {
+      score += 2500;
+    } else if (pTitle.startsWith(phoneticQ) || (cleanPhoneticQ && pTitle.startsWith(cleanPhoneticQ))) {
       matched = true;
-      score += 800;
-    } else if (pTitle.includes(phoneticQ)) {
+      score += 1200;
+    } else if (pTitle.includes(phoneticQ) || (cleanPhoneticQ && pTitle.includes(cleanPhoneticQ))) {
       matched = true;
-      score += 600;
-    } else if (pAlbum.includes(phoneticQ)) {
+      score += 900;
+    } else if (pAlbum.includes(phoneticQ) || (cleanPhoneticQ && pAlbum.includes(cleanPhoneticQ))) {
       matched = true;
       score += 400;
-    } else if (pArtist.includes(phoneticQ)) {
+    } else if (pArtist.includes(phoneticQ) || (cleanPhoneticQ && pArtist.includes(cleanPhoneticQ))) {
       matched = true;
       score += 300;
-    } else if (phoneticCorpus.includes(phoneticQ)) {
+    } else if (phoneticCorpus.includes(phoneticQ) || (cleanPhoneticQ && phoneticCorpus.includes(cleanPhoneticQ))) {
       matched = true;
       score += 250;
     } else if (pTitle.length >= 4 && phoneticQ.includes(pTitle) && (phoneticQ.length - pTitle.length <= 2)) {
@@ -748,21 +758,23 @@ function scoreAndMatchSong(song, rawQuery) {
   }
 
   // 3. Typo-tolerant single query edit distance on title or album (e.g. "vikrem" -> "vikram", "leoo" -> "leo", "jayler" -> "jailer")
-  if (normQ.length >= 3) {
-    const maxDist = normQ.length >= 7 ? 2 : 1;
-    if (boundedLevenshtein(normQ, normTitle, maxDist) <= maxDist) {
+  const qForDist = cleanQ && cleanQ.length >= 3 ? cleanQ : normQ;
+  const pForDist = cleanPhoneticQ && cleanPhoneticQ.length >= 3 ? cleanPhoneticQ : phoneticQ;
+  if (qForDist.length >= 3) {
+    const maxDist = qForDist.length >= 7 ? 2 : 1;
+    if (boundedLevenshtein(qForDist, normTitle, maxDist) <= maxDist) {
       matched = true;
-      score += 600;
+      score += 850;
     }
-    if (pTitle && phoneticQ && boundedLevenshtein(phoneticQ, pTitle, 1) <= 1) {
+    if (pTitle && pForDist && boundedLevenshtein(pForDist, pTitle, 1) <= 1) {
       matched = true;
-      score += 550;
+      score += 750;
     }
-    if (boundedLevenshtein(normQ, normAlbum, 1) <= 1) {
+    if (boundedLevenshtein(qForDist, normAlbum, 1) <= 1) {
       matched = true;
       score += 400;
     }
-    if (pAlbum && phoneticQ && boundedLevenshtein(phoneticQ, pAlbum, 1) <= 1) {
+    if (pAlbum && pForDist && boundedLevenshtein(pForDist, pAlbum, 1) <= 1) {
       matched = true;
       score += 350;
     }

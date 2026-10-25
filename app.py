@@ -391,7 +391,7 @@ def to_phonetic_py(s):
     res = re.sub(r"oo+", "u", res)
     res = re.sub(r"ii+", "i", res)
     res = re.sub(r"uu+", "u", res)
-    res = re.sub(r"ai|ay", "i", res)
+    res = re.sub(r"ai|ay", "a", res)
     res = re.sub(r"ou|au", "u", res)
     res = re.sub(r"o+", "u", res)
     res = re.sub(r"e+", "i", res)
@@ -412,6 +412,9 @@ def correct_search_query_py(q):
     if not q:
         return ""
     replacements = {
+        "aasa": "aasai",
+        "machan": "machaan",
+        "maachan": "machaan",
         "arabi": "arabic",
         "vikrem": "vikram",
         "jayler": "jailer",
@@ -471,13 +474,20 @@ def match_song_typo_py(song, query):
     corpus_norm = re.sub(r"[^a-z0-9\s]", " ", corpus).strip()
     
     # 1. Exact phrase / substring
+    clean_q = re.sub(r"\b(songs|song|mp3|tracks|track|audio|full|original)\b", " ", q_norm)
+    clean_q = re.sub(r"\s+", " ", clean_q).strip()
     if q_norm in corpus_norm or "".join(q_norm.split()) in "".join(corpus_norm.split()):
+        return True
+    if clean_q and (clean_q in corpus_norm or "".join(clean_q.split()) in "".join(corpus_norm.split())):
         return True
     
     # 2. Phonetic match
     p_q = to_phonetic_py(query)
+    p_clean_q = to_phonetic_py(clean_q) if clean_q else ""
     p_corpus = to_phonetic_py(corpus)
     if p_q and len(p_q) >= 3 and p_q in p_corpus:
+        return True
+    if p_clean_q and len(p_clean_q) >= 3 and p_clean_q in p_corpus:
         return True
         
     # 3. Token-by-token typo tolerance
