@@ -697,12 +697,36 @@ function scoreAndMatchSong(song, rawQuery) {
   const compactQ = normalizeCompact(rawQuery);
   if (!normQ && !compactQ) return { matched: true, score: 0 };
 
-  // Strip noise / filler words like "movie", "movice", "film", "flim", "padam", "song", "mp3", "track", "ost", "album"
-  const noiseRegex = /\b(movice|movies|movie|movi|moive|movei|films|film|flims|flim|filam|padangal|padam|cinema|cinemas|theatre|theatres|soundtracks|soundtrack|ost|albums|album|songs|song|sngs|sng|paatu|paattu|pattu|geetham|mp3|tracks|track|audios|audio|full|original)\b/gi;
+  // Strip noise / filler words like "movie", "movice", "film", "flim", "padam", "song", "mp3", "track", "ost", "album", "hits", "classics"
+  const noiseRegex = /\b(movice|movies|movie|movi|moive|movei|films|film|flims|flim|filam|padangal|padam|cinema|cinemas|theatre|theatres|soundtracks|soundtrack|ost|albums|album|songs|song|sngs|sng|paatu|paattu|pattu|geetham|mp3|tracks|track|audios|audio|full|original|hits|hit|classics|classic|evergreen|golden|blockbusters|blockbuster|popular)\b/gi;
   let cleanQ = normQ.replace(noiseRegex, " ").replace(/\s+/g, " ").trim();
   if (!cleanQ) {
     cleanQ = normQ;
   }
+
+  // Detect Era queries (80s, 90s, 2K, Now / Latest Movies & Songs)
+  const is80s = /\b(80s|eighties|80's|1980s|1980)\b/i.test(normQ);
+  const is90s = /\b(90s|nineties|90's|1990s|1990)\b/i.test(normQ);
+  const is2k = /\b(2k|2000s|2000|twothousand|2ks)\b/i.test(normQ);
+  const isNow = /\b(now|latest|current|new|2010s|2020s|2024|2025|2026)\b/i.test(normQ);
+  const requestedEra = is80s ? "80s" : (is90s ? "90s" : (is2k ? "2k" : (isNow ? "now" : null)));
+
+  // If the query specifically requests an era of movies or songs (e.g. "80s movie", "90s movice", "2k movies", "now movie")
+  const eraWordRegex = /\b(80s|eighties|80's|1980s|1980|90s|nineties|90's|1990s|1990|2k|2000s|2000|twothousand|2ks|now|latest|current|new|2010s|2020s|2024|2025|2026)\b/gi;
+  const remainingQuery = cleanQ.replace(eraWordRegex, " ").replace(/\s+/g, " ").trim();
+  const isPureEraQuery = requestedEra && remainingQuery.length === 0;
+
+  if (isPureEraQuery) {
+    if (song.era === requestedEra) {
+      let eraScore = 6000;
+      if (Array.isArray(song.sections) && song.sections.includes("trending")) eraScore += 100;
+      if (Array.isArray(song.sections) && song.sections.includes("recent")) eraScore += 50;
+      return { matched: true, score: eraScore };
+    } else {
+      return { matched: false, score: 0 };
+    }
+  }
+
   const cleanCompactQ = normalizeCompact(cleanQ);
   const cleanPhoneticQ = toPhonetic(cleanQ);
   const phoneticQ = toPhonetic(rawQuery);
@@ -721,6 +745,11 @@ function scoreAndMatchSong(song, rawQuery) {
 
   let score = 0;
   let matched = false;
+
+  // Era bonus when combining era with an artist or movie name (e.g. "90s rahman", "80s ilaiyaraaja", "2k vijay")
+  if (requestedEra && song.era === requestedEra) {
+    score += 2500;
+  }
 
   const normTitle = song._normTitle || normalizeSearchText(song.title || song.name || "");
   const normAlbum = song._normAlbum || normalizeSearchText(song.album || song.movie || "");
@@ -1097,7 +1126,7 @@ function executeSearch(rawQuery) {
 async function fetchSpotifySearchResults(query, requestId) {
   if (!query) return;
 
-  const noiseRegex = /\b(movice|movies|movie|movi|moive|movei|films|film|flims|flim|filam|padangal|padam|cinema|cinemas|theatre|theatres|soundtracks|soundtrack|ost|albums|album|songs|song|sngs|sng|paatu|paattu|pattu|geetham|mp3|tracks|track|audios|audio|full|original)\b/gi;
+  const noiseRegex = /\b(movice|movies|movie|movi|moive|movei|films|film|flims|flim|filam|padangal|padam|cinema|cinemas|theatre|theatres|soundtracks|soundtrack|ost|albums|album|songs|song|sngs|sng|paatu|paattu|pattu|geetham|mp3|tracks|track|audios|audio|full|original|hits|hit|classics|classic|evergreen|golden|blockbusters|blockbuster|popular)\b/gi;
   let cleanQuery = correctSearchQuery(query) || query;
   const strippedOnline = cleanQuery.replace(noiseRegex, " ").replace(/\s+/g, " ").trim();
   if (strippedOnline) {
@@ -1600,16 +1629,16 @@ function renderContent() {
       headerTitle = "📚 Complete Music Library";
       headerIcon = "📚";
     } else if (AppState.activeSection === "era_80s") {
-      headerTitle = "📻 80s Golden Classics (Ilaiyaraaja & SPB Era)";
+      headerTitle = "📻 80s Golden Classics & Movies (Ilaiyaraaja & SPB Era)";
       headerIcon = "📻";
     } else if (AppState.activeSection === "era_90s") {
-      headerTitle = "📼 90s Evergreen Hits (A.R. Rahman & Deva Era)";
+      headerTitle = "📼 90s Evergreen Hits & Movies (A.R. Rahman & Deva Era)";
       headerIcon = "📼";
     } else if (AppState.activeSection === "era_2k") {
-      headerTitle = "💿 2K Nostalgia Hits (Harris, Yuvan & Vidyasagar Era)";
+      headerTitle = "💿 2K Nostalgia Hits & Movies (2000s Golden Era)";
       headerIcon = "💿";
     } else if (AppState.activeSection === "era_now") {
-      headerTitle = "⚡ 2010s to Now (Anirudh & Modern Blockbusters)";
+      headerTitle = "⚡ 2010s to Now Movies & Hits (Modern Blockbusters)";
       headerIcon = "⚡";
     } else if (AppState.activeSection === "trending") {
       headerTitle = "🔥 Trending Songs";
@@ -1697,10 +1726,10 @@ function renderContent() {
 
   // Default Home Page View: Organized Section Grids with Top 8 and View All Buttons
   const sectionsDef = [
-    { id: "era_now", title: "⚡ 2010s to Now (Modern Hits)", icon: "⚡", filter: s => s.era === "now", sectionId: "era_now" },
-    { id: "era_2k", title: "💿 2000s Nostalgia (2K Hits)", icon: "💿", filter: s => s.era === "2k", sectionId: "era_2k" },
-    { id: "era_90s", title: "📼 90s Evergreen Hits", icon: "📼", filter: s => s.era === "90s", sectionId: "era_90s" },
-    { id: "era_80s", title: "📻 80s Golden Classics", icon: "📻", filter: s => s.era === "80s", sectionId: "era_80s" },
+    { id: "era_now", title: "⚡ Now Movies & Modern Hits (2010s - 2026)", icon: "⚡", filter: s => s.era === "now", sectionId: "era_now" },
+    { id: "era_2k", title: "💿 2K Movies & Nostalgia (2000s Hits)", icon: "💿", filter: s => s.era === "2k", sectionId: "era_2k" },
+    { id: "era_90s", title: "📼 90s Movies & Evergreen Hits", icon: "📼", filter: s => s.era === "90s", sectionId: "era_90s" },
+    { id: "era_80s", title: "📻 80s Movies & Golden Classics", icon: "📻", filter: s => s.era === "80s", sectionId: "era_80s" },
     { id: "trending", title: "🔥 Trending Songs", icon: "🔥", filter: s => (s.sections || []).includes("trending"), sectionId: "trending" },
     { id: "recent", title: "🆕 Recently Added", icon: "🆕", filter: s => (s.sections || []).includes("recent"), sectionId: "recent" },
     { id: "tamil", title: "🌺 Tamil Blockbusters", icon: "🌺", filter: s => s.language === "Tamil", lang: "tamil" },

@@ -584,6 +584,32 @@ movieSearches.forEach(({ q, expectedAlbum, expectedTitle }) => {
 });
 console.log(`[PASS] Verified: All ${movieSearches.length} Movie, Film & Song queries rank the expected album/song as #1!`);
 
+// Test 26: Verifying 80s, 90s, 2K, and Now movie & song era searches
+console.log("\nTest 26: Verifying 80s, 90s, 2K, and Now movie & song era searches...");
+const eraSearches = [
+  { q: "80s movie", expectedEra: "80s", minCount: 300 },
+  { q: "80s movice", expectedEra: "80s", minCount: 300 },
+  { q: "80s hits", expectedEra: "80s", minCount: 300 },
+  { q: "90s movie", expectedEra: "90s", minCount: 900 },
+  { q: "90s movice", expectedEra: "90s", minCount: 900 },
+  { q: "90s songs", expectedEra: "90s", minCount: 900 },
+  { q: "2k movie", expectedEra: "2k", minCount: 1500 },
+  { q: "2k movice", expectedEra: "2k", minCount: 1500 },
+  { q: "2000s movies", expectedEra: "2k", minCount: 1500 },
+  { q: "now movie", expectedEra: "now", minCount: 2500 },
+  { q: "now movice", expectedEra: "now", minCount: 2500 },
+  { q: "latest movies", expectedEra: "now", minCount: 2500 }
+];
+
+eraSearches.forEach(({ q, expectedEra, minCount }) => {
+  executeSearch(q);
+  assert(AppState.searchResults.length >= minCount, `Search "${q}" must return at least ${minCount} tracks, got ${AppState.searchResults.length}`);
+  const top10 = AppState.searchResults.slice(0, 10);
+  const allEra = top10.every(s => s.era === expectedEra);
+  assert(allEra, `Top 10 tracks for "${q}" must all be of era "${expectedEra}"!`);
+});
+console.log(`[PASS] Verified: All ${eraSearches.length} 80s, 90s, 2K, and Now movie queries return complete matching era catalogue tracks at the top!`);
+
 console.log("\n==================================================");
-console.log("ALL 25 SEARCH, CATALOGUE, FULL-STREAM, ERA & MOVIE TESTS PASSED!");
+console.log("ALL 26 SEARCH, CATALOGUE, FULL-STREAM, ERA & MOVIE TESTS PASSED!");
 console.log("==================================================\n");

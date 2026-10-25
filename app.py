@@ -497,9 +497,23 @@ def match_song_typo_py(song, query):
     corpus = f"{song.get('title', '')} {song.get('artist', '')} {song.get('album', '')} {' '.join(song.get('tags', []))}".lower()
     corpus_norm = re.sub(r"[^a-z0-9\s]", " ", corpus).strip()
     
-    # 1. Exact phrase / substring
-    clean_q = re.sub(r"\b(movice|movies|movie|movi|moive|movei|films|film|flims|flim|filam|padangal|padam|cinema|cinemas|theatre|theatres|soundtracks|soundtrack|ost|albums|album|songs|song|sngs|sng|paatu|paattu|pattu|geetham|mp3|tracks|track|audios|audio|full|original)\b", " ", q_norm, flags=re.I)
+    # Era query handling (80s, 90s, 2k, now movies and songs)
+    is_80s = bool(re.search(r"\b(80s|eighties|80's|1980s|1980)\b", q_norm, re.I))
+    is_90s = bool(re.search(r"\b(90s|nineties|90's|1990s|1990)\b", q_norm, re.I))
+    is_2k = bool(re.search(r"\b(2k|2000s|2000|twothousand|2ks)\b", q_norm, re.I))
+    is_now = bool(re.search(r"\b(now|latest|current|new|2010s|2020s|2024|2025|2026)\b", q_norm, re.I))
+    req_era = "80s" if is_80s else ("90s" if is_90s else ("2k" if is_2k else ("now" if is_now else None)))
+
+    noise_reg = r"\b(movice|movies|movie|movi|moive|movei|films|film|flims|flim|filam|padangal|padam|cinema|cinemas|theatre|theatres|soundtracks|soundtrack|ost|albums|album|songs|song|sngs|sng|paatu|paattu|pattu|geetham|mp3|tracks|track|audios|audio|full|original|hits|hit|classics|classic|evergreen|golden|blockbusters|blockbuster|popular)\b"
+    clean_q = re.sub(noise_reg, " ", q_norm, flags=re.I)
     clean_q = re.sub(r"\s+", " ", clean_q).strip()
+
+    era_words = r"\b(80s|eighties|80's|1980s|1980|90s|nineties|90's|1990s|1990|2k|2000s|2000|twothousand|2ks|now|latest|current|new|2010s|2020s|2024|2025|2026)\b"
+    remaining = re.sub(era_words, " ", clean_q, flags=re.I).strip()
+    if req_era and not remaining:
+        return song.get("era") == req_era
+
+    # 1. Exact phrase / substring
     if q_norm in corpus_norm or "".join(q_norm.split()) in "".join(corpus_norm.split()):
         return True
     if clean_q and (clean_q in corpus_norm or "".join(clean_q.split()) in "".join(corpus_norm.split())):
