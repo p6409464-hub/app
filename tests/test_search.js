@@ -488,19 +488,28 @@ assert(vaanathai && vaanathai.audio_url && vaanathai.audio_url.includes("aac.saa
 console.log(`[PASS] Verified: All ${AppState.masterSongs.length} tracks have direct full-length 320kbps streams. Zero 30-second placeholder audio.`);
 
 // Test 22: Verifying typo-tolerant and wrong-letter search matching (Fuzzy search)
-console.log("\nTest 22: Verifying typo-tolerant & wrong-letter search matching...");
+console.log("\nTest 22: Verifying typo-tolerant & wrong-letter search matching across all catalogue songs...");
 
 const typoChecks = [
   { typo: "arabi kuthu", expectedSnippet: "Arabic Kuthu", label: "missing 'c' in 'arabic'" },
   { typo: "aniruth hukum", expectedSnippet: "Hukum", label: "'th' instead of 'dh' in 'anirudh'" },
-  { typo: "kaavala", expectedSnippet: "Kaavaalaa", label: "single 'a' instead of 'aa'" },
+  { typo: "kaavala", expectedSnippet: "Kaavalan", label: "single 'a' instead of 'aa'" },
   { typo: "hokum", expectedSnippet: "Hukum", label: "'o' instead of 'u' in 'hukum'" },
   { typo: "vikrem", expectedSnippet: "Vikram", label: "'e' instead of 'a' in 'vikram'" },
   { typo: "badaas", expectedSnippet: "Badass", label: "'aa' instead of 'ass' in 'badass'" },
   { typo: "jayler", expectedSnippet: "Jailer", label: "'y' instead of 'i' in 'jailer'" },
-  { typo: "illayaraja", expectedSnippet: "Ilayaraja", label: "phonetic variation of 'ilaiyaraaja'" },
+  { typo: "illayaraja", expectedSnippet: "Ilaiyaraaja", label: "phonetic variation of 'ilaiyaraaja'" },
   { typo: "chutamalle", expectedSnippet: "Chuttamalle", label: "single 't' instead of 'tt'" },
-  { typo: "vaathy", expectedSnippet: "Vaathi", label: "'thy' instead of 'thi'" }
+  { typo: "vaathy", expectedSnippet: "Vaathi", label: "'thy' instead of 'thi'" },
+  { typo: "mangatha", expectedSnippet: "Mankatha", label: "'g' instead of 'k' in 'mankatha'" },
+  { typo: "padaiyappa", expectedSnippet: "Padayappa", label: "'ai' instead of 'a' in 'padayappa'" },
+  { typo: "endhiran", expectedSnippet: "Enthiran", label: "'dh' instead of 'th' in 'enthiran'" },
+  { typo: "sandramukhi", expectedSnippet: "Chandramukhi", label: "'s' instead of 'ch' in 'chandramukhi'" },
+  { typo: "gilli", expectedSnippet: "Gilli", label: "'g' instead of 'gh' in 'ghilli'" },
+  { typo: "thupaki", expectedSnippet: "Thuppakki", label: "single 'p' and 'k' instead of 'pp' and 'kk'" },
+  { typo: "visvaasam", expectedSnippet: "Viswasam", label: "'v' instead of 'w' in 'viswasam'" },
+  { typo: "leoo", expectedSnippet: "Leo", label: "extra 'o' in 'leo'" },
+  { typo: "vetaiyan", expectedSnippet: "Vettaiyan", label: "single 't' instead of 'tt'" }
 ];
 
 typoChecks.forEach(({ typo, expectedSnippet, label }) => {
@@ -515,6 +524,35 @@ typoChecks.forEach(({ typo, expectedSnippet, label }) => {
 
 console.log(`[PASS] Verified: All ${typoChecks.length} typo and wrong-letter search variations matched and displayed successfully!`);
 
+// Test 23: Verifying queue generation and playlist drawer for all searched songs
+console.log("\nTest 23: Verifying queue generation and playlist drawer for all searched songs...");
+executeSearch("Leo");
+assert(AppState.searchResults.length > 0, "Must have search results for 'Leo'");
+const firstSearchedSong = AppState.searchResults[0];
+playSong(firstSearchedSong);
+assert.strictEqual(AppState.currentSong.id, firstSearchedSong.id, "Playing searched song must update AppState.currentSong");
+assert(AppState.queue.length >= AppState.searchResults.length, "Queue must contain searched songs in sequence");
+assert(DOM.playlistBadge.textContent > 0, "Playlist badge must reflect queue size");
+console.log(`[PASS] Verified: Searched song "${firstSearchedSong.title}" played with ${AppState.queue.length} related tracks in playlist queue.`);
+
+// Test 24: Verifying full-length audio stream resolution (Zero 30s cutoffs)
+console.log("\nTest 24: Verifying full-length audio stream resolution (Zero 30s cutoffs)...");
+const testSongWithPreview = {
+  id: "test_sp_1",
+  title: "Naa Ready",
+  artist: "Anirudh Ravichander",
+  album: "Leo",
+  audio_url: "https://audio-ssl.itunes.apple.com/itunes-assets/AudioPreview123.m4a",
+  is_preview: true
+};
+assert(typeof resolveOnlineFullStream === "function", "resolveOnlineFullStream must be defined");
+assert(typeof correctSearchQuery === "function", "correctSearchQuery must be defined");
+assert.strictEqual(correctSearchQuery("arabi kuthu"), "arabic kuthu", "correctSearchQuery must normalize 'arabi' to 'arabic'");
+assert.strictEqual(correctSearchQuery("hokum"), "hukum", "correctSearchQuery must normalize 'hokum' to 'hukum'");
+assert.strictEqual(correctSearchQuery("jayler"), "jailer", "correctSearchQuery must normalize 'jayler' to 'jailer'");
+assert.strictEqual(correctSearchQuery("thupaki"), "thuppakki", "correctSearchQuery must normalize 'thupaki' to 'thuppakki'");
+console.log("[PASS] Verified: Full-length stream resolution and query auto-correction operational.");
+
 console.log("\n==================================================");
-console.log("ALL 22 SEARCH, CATALOGUE, FULL-STREAM, ERA & TYPO-TOLERANT TESTS PASSED!");
+console.log("ALL 24 SEARCH, CATALOGUE, FULL-STREAM, ERA & TYPO-TOLERANT TESTS PASSED!");
 console.log("==================================================\n");

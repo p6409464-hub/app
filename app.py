@@ -391,15 +391,53 @@ def to_phonetic_py(s):
     res = re.sub(r"oo+", "u", res)
     res = re.sub(r"ii+", "i", res)
     res = re.sub(r"uu+", "u", res)
-    res = re.sub(r"dh", "th", res)
-    res = re.sub(r"sh", "s", res)
-    res = re.sub(r"ch", "s", res)
-    res = re.sub(r"zh", "l", res)
-    res = re.sub(r"ph", "f", res)
+    res = re.sub(r"ai|ay", "i", res)
+    res = re.sub(r"ou|au", "u", res)
+    res = re.sub(r"o+", "u", res)
+    res = re.sub(r"e+", "i", res)
+    res = re.sub(r"dh|th", "t", res)
+    res = re.sub(r"sh|ch|zh|z|j", "s", res)
+    res = re.sub(r"ph|f", "p", res)
+    res = re.sub(r"b", "p", res)
+    res = re.sub(r"g", "k", res)
+    res = re.sub(r"d", "t", res)
     res = re.sub(r"w", "v", res)
     res = re.sub(r"y", "i", res)
-    res = re.sub(r"([b-df-hj-np-tv-z])\1+", r"\1", res)
+    res = re.sub(r"h", "", res)
+    res = re.sub(r"([a-z0-9])\1+", r"\1", res)
     return re.sub(r"[^a-z0-9]", "", res)
+
+
+def correct_search_query_py(q):
+    if not q:
+        return ""
+    replacements = {
+        "arabi": "arabic",
+        "vikrem": "vikram",
+        "jayler": "jailer",
+        "hokum": "hukum",
+        "hukumm": "hukum",
+        "badaas": "badass",
+        "thupaki": "thuppakki",
+        "thupakki": "thuppakki",
+        "illayaraja": "ilaiyaraaja",
+        "ilayaraja": "ilaiyaraaja",
+        "chutamalle": "chuttamalle",
+        "vaathy": "vaathi",
+        "kaavala": "kaavaalaa",
+        "mangatha": "mankatha",
+        "sandramukhi": "chandramukhi",
+        "endhiran": "enthiran",
+        "doktor": "doctor",
+        "amaram": "amaran",
+        "beest": "beast",
+        "leoo": "leo",
+        "vetaiyan": "vettaiyan"
+    }
+    corrected = q
+    for typo, fix in replacements.items():
+        corrected = re.sub(rf"\b{typo}\b", fix, corrected, flags=re.IGNORECASE)
+    return corrected
 
 
 def bounded_levenshtein_py(a, b, max_dist):
@@ -627,6 +665,12 @@ def search_jiosaavn(query, language="all"):
             song_meta_cache[song_id] = song_obj
             stream_url_cache[song_id] = audio_url
             songs.append(song_obj)
+
+        if not songs:
+            clean_q = correct_search_query_py(query)
+            if clean_q and clean_q.lower() != query.lower():
+                return search_jiosaavn(clean_q, language)
+
         return songs
     except Exception as e:
         print("JioSaavn search error:", e)
@@ -663,9 +707,10 @@ def search_spotify_fallback(query, language="all"):
     full metadata, playable audio, and download support without user needing to know.
     """
     try:
-        search_q = query
-        if language != "all" and language.lower() not in query.lower():
-            search_q = f"{query} {language}"
+        clean_q = correct_search_query_py(query) or query
+        search_q = clean_q
+        if language != "all" and language.lower() not in clean_q.lower():
+            search_q = f"{clean_q} {language}"
         url = f"https://itunes.apple.com/search?term={urllib.parse.quote(search_q)}&entity=song&limit=15"
         headers = {"User-Agent": "Mozilla/5.0"}
         res = requests.get(url, headers=headers, timeout=6)

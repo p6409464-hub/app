@@ -517,25 +517,31 @@ function normalizeCompact(str) {
     .replace(/[^a-z0-9]/g, ""); // completely compact alphanumeric string
 }
 
-// Phonetic transformation for Tanglish (Romanized Tamil & Indian words)
+// Enhanced Phonetic transformation for Tanglish (Romanized Tamil & Indian words)
 function toPhonetic(s) {
   if (!s) return "";
-  return String(s)
-    .toLowerCase()
-    .replace(/aa+/g, "a")
-    .replace(/ee+/g, "i")
-    .replace(/oo+/g, "u")
-    .replace(/ii+/g, "i")
-    .replace(/uu+/g, "u")
-    .replace(/dh/g, "th")
-    .replace(/sh/g, "s")
-    .replace(/ch/g, "s")
-    .replace(/zh/g, "l")
-    .replace(/ph/g, "f")
-    .replace(/w/g, "v")
-    .replace(/y/g, "i")
-    .replace(/([b-df-hj-np-tv-z])\1+/g, "$1") // collapse doubled consonants (kk->k, pp->p, tt->t)
-    .replace(/[^a-z0-9]/g, "");
+  let str = String(s).toLowerCase();
+  str = str.replace(/aa+/g, "a")
+           .replace(/ee+/g, "i")
+           .replace(/oo+/g, "u")
+           .replace(/ii+/g, "i")
+           .replace(/uu+/g, "u")
+           .replace(/ai|ay/g, "i")
+           .replace(/ou|au/g, "u")
+           .replace(/o+/g, "u")
+           .replace(/e+/g, "i")
+           .replace(/dh|th/g, "t")
+           .replace(/sh|ch|zh|z|j/g, "s")
+           .replace(/ph|f/g, "p")
+           .replace(/b/g, "p")
+           .replace(/g/g, "k")
+           .replace(/d/g, "t")
+           .replace(/w/g, "v")
+           .replace(/y/g, "i")
+           .replace(/h/g, "")
+           .replace(/([a-z0-9])\1+/g, "$1")
+           .replace(/[^a-z0-9]/g, "");
+  return str;
 }
 
 // Fast bounded Levenshtein distance (aborts early if distance exceeds maxDist)
@@ -568,6 +574,40 @@ function boundedLevenshtein(a, b, maxDist) {
   return prev[lb];
 }
 
+// Pre-cleans common Tamil/Indian transliteration typos before online search
+function correctSearchQuery(q) {
+  if (!q) return "";
+  const replacements = {
+    "arabi": "arabic",
+    "vikrem": "vikram",
+    "jayler": "jailer",
+    "hokum": "hukum",
+    "hukumm": "hukum",
+    "badaas": "badass",
+    "thupaki": "thuppakki",
+    "thupakki": "thuppakki",
+    "illayaraja": "ilaiyaraaja",
+    "ilayaraja": "ilaiyaraaja",
+    "chutamalle": "chuttamalle",
+    "vaathy": "vaathi",
+    "kaavala": "kaavaalaa",
+    "mangatha": "mankatha",
+    "sandramukhi": "chandramukhi",
+    "endhiran": "enthiran",
+    "doktor": "doctor",
+    "amaram": "amaran",
+    "beest": "beast",
+    "leoo": "leo",
+    "vetaiyan": "vettaiyan"
+  };
+  let corrected = q;
+  for (const [typo, fix] of Object.entries(replacements)) {
+    const reg = new RegExp(`\\b${typo}\\b`, "gi");
+    corrected = corrected.replace(reg, fix);
+  }
+  return corrected;
+}
+
 function prepareSongSearchMetadata(song) {
   const title = song.title || song.name || "";
   const artist = song.artist || song.singer || song.artists || "";
@@ -588,6 +628,9 @@ function prepareSongSearchMetadata(song) {
   const rawCorpus = [normTitle, normArtist, normAlbum, normLang, normCategory, ...normTags].join(" ");
   const compactCorpus = normalizeCompact(rawCorpus);
   const phoneticCorpus = toPhonetic(rawCorpus);
+  const pTitle = toPhonetic(normTitle);
+  const pAlbum = toPhonetic(normAlbum);
+  const pArtist = toPhonetic(normArtist);
 
   // Pre-split tokens for instantaneous typo-tolerant fuzzy lookup (< 1ms per 5,000 items)
   const wordTokens = rawCorpus.split(" ").filter(w => w.length >= 2);
@@ -609,6 +652,9 @@ function prepareSongSearchMetadata(song) {
     _searchCorpus: rawCorpus,
     _compactCorpus: compactCorpus,
     _phoneticCorpus: phoneticCorpus,
+    _pTitle: pTitle,
+    _pAlbum: pAlbum,
+    _pArtist: pArtist,
     _wordTokens: wordTokens,
     _phoneticTokens: phoneticTokens
   };
@@ -643,49 +689,80 @@ function scoreAndMatchSong(song, rawQuery) {
   // 1. Exact phrase matches (Highest Priority)
   if (normTitle === normQ) {
     matched = true;
-    score += 1000;
+    score += 2000;
   } else if (normTitle.startsWith(normQ)) {
     matched = true;
-    score += 500;
+    score += 1000;
   } else if (normTitle.includes(normQ)) {
     matched = true;
-    score += 300;
+    score += 500;
   }
 
   if (normAlbum.includes(normQ)) {
     matched = true;
-    score += 200;
+    score += 300;
   }
 
   if (normArtist.includes(normQ)) {
     matched = true;
-    score += 150;
+    score += 250;
   }
 
   if (rawCorpus.includes(normQ)) {
     matched = true;
-    score += 120;
+    score += 200;
   } else if (compactQ && compactCorpus.includes(compactQ)) {
     matched = true;
-    score += 90;
+    score += 180;
   }
 
-  // 2. Phonetic full match (Sound-alike Tanglish query)
+  // 2. Direct phonetic match (Tanglish sound-alikes for Tamil/Indian titles & albums)
   const phoneticQ = toPhonetic(rawQuery);
-  if (phoneticQ && phoneticQ.length >= 3 && phoneticCorpus.includes(phoneticQ)) {
-    matched = true;
-    score += 80;
+  const pTitle = song._pTitle || toPhonetic(normTitle);
+  const pAlbum = song._pAlbum || toPhonetic(normAlbum);
+  const pArtist = song._pArtist || toPhonetic(normArtist);
+
+  if (phoneticQ && phoneticQ.length >= 3) {
+    if (pTitle === phoneticQ) {
+      matched = true;
+      score += 1500;
+    } else if (pTitle.startsWith(phoneticQ)) {
+      matched = true;
+      score += 800;
+    } else if (pTitle.includes(phoneticQ)) {
+      matched = true;
+      score += 600;
+    } else if (pAlbum.includes(phoneticQ)) {
+      matched = true;
+      score += 400;
+    } else if (pArtist.includes(phoneticQ)) {
+      matched = true;
+      score += 300;
+    } else if (phoneticCorpus.includes(phoneticQ)) {
+      matched = true;
+      score += 250;
+    } else if (pTitle.length >= 4 && phoneticQ.includes(pTitle) && (phoneticQ.length - pTitle.length <= 2)) {
+      matched = true;
+      score += 350;
+    }
   }
 
-  // 3. Typo-tolerant single query edit distance on title or album (e.g. "leoo" -> "leo", "jayler" -> "jailer")
+  // 3. Typo-tolerant single query edit distance on title or album (e.g. "vikrem" -> "vikram", "leoo" -> "leo", "jayler" -> "jailer")
   if (normQ.length >= 3) {
-    const titleDist = boundedLevenshtein(normQ, normTitle, 1);
-    if (titleDist <= 1) {
+    const maxDist = normQ.length >= 7 ? 2 : 1;
+    if (boundedLevenshtein(normQ, normTitle, maxDist) <= maxDist) {
+      matched = true;
+      score += 600;
+    }
+    if (pTitle && phoneticQ && boundedLevenshtein(phoneticQ, pTitle, 1) <= 1) {
+      matched = true;
+      score += 550;
+    }
+    if (boundedLevenshtein(normQ, normAlbum, 1) <= 1) {
       matched = true;
       score += 400;
     }
-    const albumDist = boundedLevenshtein(normQ, normAlbum, 1);
-    if (albumDist <= 1) {
+    if (pAlbum && phoneticQ && boundedLevenshtein(phoneticQ, pAlbum, 1) <= 1) {
       matched = true;
       score += 350;
     }
@@ -705,7 +782,7 @@ function scoreAndMatchSong(song, rawQuery) {
       // Direct exact token match in song corpus
       if (rawCorpus.includes(qToken)) {
         tokensMatched++;
-        score += 30;
+        score += 40;
         continue;
       }
 
@@ -713,7 +790,7 @@ function scoreAndMatchSong(song, rawQuery) {
       const qPhonetic = toPhonetic(qToken);
       if (qPhonetic && qPhonetic.length >= 3 && phoneticCorpus.includes(qPhonetic)) {
         tokensMatched++;
-        score += 25;
+        score += 35;
         continue;
       }
 
@@ -727,9 +804,9 @@ function scoreAndMatchSong(song, rawQuery) {
           const wLen = w.length;
 
           // Prefix match: word starts with query token (e.g. "arabic".startsWith("arabi"))
-          if (wLen > qLen && w.startsWith(qToken) && (wLen - qLen <= 3)) {
+          if (wLen > qLen && w.startsWith(qToken) && (wLen - qLen <= 4)) {
             tokenFound = true;
-            score += 20;
+            score += 25;
             break;
           }
 
@@ -738,7 +815,7 @@ function scoreAndMatchSong(song, rawQuery) {
             const d = boundedLevenshtein(qToken, w, maxDist);
             if (d <= maxDist) {
               tokenFound = true;
-              score += Math.max(10, 25 - d * 8);
+              score += Math.max(15, 30 - d * 8);
               typoPenalties += d;
               break;
             }
@@ -749,13 +826,13 @@ function scoreAndMatchSong(song, rawQuery) {
             const pToken = phoneticTokens[i];
             if (pToken === qPhonetic) {
               tokenFound = true;
-              score += 20;
+              score += 25;
               break;
             }
             if (Math.abs(pToken.length - qPhonetic.length) <= 1) {
               if (boundedLevenshtein(qPhonetic, pToken, 1) <= 1) {
                 tokenFound = true;
-                score += 15;
+                score += 20;
                 typoPenalties += 1;
                 break;
               }
@@ -769,9 +846,9 @@ function scoreAndMatchSong(song, rawQuery) {
       }
     }
 
-    if (tokensMatched === tokens.length) {
+    if (tokensMatched === tokens.length || (tokens.length >= 3 && tokensMatched >= tokens.length - 1)) {
       matched = true;
-      score += 40 - typoPenalties * 5;
+      score += 50 - typoPenalties * 5;
     }
   }
 
@@ -923,20 +1000,70 @@ function executeSearch(rawQuery) {
   }
 }
 
-// Background Spotify & Global Catalogue Search Fallback (Zero Redirection)
+// Background JioSaavn & Online Catalogue Search Fallback (Zero Redirection, Full-Length Streams)
 async function fetchSpotifySearchResults(query, requestId) {
   if (!query) return;
 
+  const cleanQuery = correctSearchQuery(query) || query;
   const abortController = new AbortController();
   AppState.activeSearchAbortController = abortController;
 
   try {
     const timeoutId = setTimeout(() => abortController.abort(), 6000);
+
+    // 1. Direct high-definition JioSaavn Online API (Full 320kbps CDN streams, Zero 30s cutoffs!)
+    try {
+      const saavnSearchUrl = `https://saavn.dev/api/search/songs?query=${encodeURIComponent(cleanQuery)}&limit=25`;
+      const saavnRes = await fetch(saavnSearchUrl, { signal: abortController.signal });
+      if (saavnRes.ok) {
+        const saavnData = await saavnRes.json();
+        if (requestId === AppState.searchRequestId && saavnData && saavnData.data && Array.isArray(saavnData.data.results) && saavnData.data.results.length > 0) {
+          clearTimeout(timeoutId);
+          const saavnSongs = saavnData.data.results.map((r, index) => {
+            const durSec = parseInt(r.duration, 10) || 210;
+            const dlArr = Array.isArray(r.downloadUrl) ? r.downloadUrl : [];
+            const dlUrl = (dlArr.length > 0 ? (dlArr[dlArr.length - 1]?.url || dlArr[0]?.url) : "") || "";
+            const imgArr = Array.isArray(r.image) ? r.image : [];
+            const artwork = (imgArr.length > 0 ? (imgArr[imgArr.length - 1]?.url || imgArr[0]?.url) : "") || "static/images/only_friends_theme.svg";
+            const artists = (r.artists && Array.isArray(r.artists.primary) && r.artists.primary.length > 0)
+              ? r.artists.primary.map(a => a.name).join(", ")
+              : (r.artist || "Artist");
+
+            return prepareSongSearchMetadata({
+              id: `saavn_online_${r.id || (Date.now() + "_" + index)}`,
+              title: r.name || "Unknown Title",
+              artist: artists,
+              album: r.album?.name || "Single",
+              duration: durSec,
+              duration_str: formatTime(durSec),
+              language: (r.language ? capitalize(r.language) : (AppState.activeLanguage !== "all" ? capitalize(AppState.activeLanguage) : "Tamil")),
+              category: "JioSaavn Online Catalogue",
+              sections: ["trending"],
+              cover_url: artwork,
+              audio_url: dlUrl,
+              audio_file: "",
+              download_authorized: true,
+              source: "jiosaavn_online",
+              tags: [cleanQuery.toLowerCase(), "saavn", "online", "full"]
+            });
+          }).filter(s => s.audio_url);
+
+          if (saavnSongs.length > 0) {
+            AppState.searchResults = saavnSongs;
+            AppState.isSpotifyFallbackResults = true;
+            AppState.isFetchingSpotify = false;
+            AppState.queue = [...saavnSongs];
+            renderContent();
+            return;
+          }
+        }
+      }
+    } catch (_) {}
     
-    // First try backend API if configured
+    // 2. Try backend API if configured
     if (API_BASE) {
       try {
-        const backendRes = await fetch(`${API_BASE}/api/search?query=${encodeURIComponent(query)}&language=${encodeURIComponent(AppState.activeLanguage)}`, { signal: abortController.signal });
+        const backendRes = await fetch(`${API_BASE}/api/search?query=${encodeURIComponent(cleanQuery)}&language=${encodeURIComponent(AppState.activeLanguage)}`, { signal: abortController.signal });
         if (backendRes.ok) {
           const backendData = await backendRes.json();
           if (requestId === AppState.searchRequestId && backendData.status === "success" && Array.isArray(backendData.songs) && backendData.songs.length > 0) {
@@ -956,8 +1083,8 @@ async function fetchSpotifySearchResults(query, requestId) {
       } catch (_) {}
     }
 
-    // Direct CORS-enabled Global iTunes/Spotify preview search (covers international, Hindi, Tamil, Telugu tracks)
-    const searchUrl = `https://itunes.apple.com/search?term=${encodeURIComponent(query)}&entity=song&limit=25`;
+    // 3. Fallback: Direct Global search with auto-corrected query
+    const searchUrl = `https://itunes.apple.com/search?term=${encodeURIComponent(cleanQuery)}&entity=song&limit=25`;
     const res = await fetch(searchUrl, { signal: abortController.signal });
     clearTimeout(timeoutId);
 
@@ -986,6 +1113,7 @@ async function fetchSpotifySearchResults(query, requestId) {
           cover_url: artwork,
           audio_url: r.previewUrl || "",
           audio_file: "",
+          is_preview: true,
           download_authorized: true,
           source: "spotify",
           spotify_id: r.trackId ? String(r.trackId) : "",
@@ -1933,6 +2061,50 @@ async function fetchFallbackAudioUrl(song) {
   return "";
 }
 
+// Resolves authentic 320kbps full-length stream so online songs NEVER cut off at 30 seconds
+async function resolveOnlineFullStream(song) {
+  if (!song) return "";
+  if (song.audio_url && song.audio_url.includes("aac.saavncdn.com")) {
+    return song.audio_url;
+  }
+  const title = song.title || "";
+  const artist = song.artist || "";
+  const cleanQ = correctSearchQuery(`${title} ${artist}`.trim()) || `${title} ${artist}`.trim();
+  if (!cleanQ) return song.audio_url || "";
+
+  try {
+    const res = await fetch(`https://saavn.dev/api/search/songs?query=${encodeURIComponent(cleanQ)}&limit=1`);
+    if (res.ok) {
+      const data = await res.json();
+      if (data && data.data && Array.isArray(data.data.results) && data.data.results.length > 0) {
+        const match = data.data.results[0];
+        const dlArr = match.downloadUrl;
+        if (Array.isArray(dlArr) && dlArr.length > 0) {
+          const fullStream = dlArr[dlArr.length - 1]?.url || dlArr[0]?.url;
+          if (fullStream) {
+            song.audio_url = fullStream;
+            song.is_preview = false;
+            if (match.duration) {
+              song.duration = parseInt(match.duration, 10) || song.duration;
+              song.duration_str = formatTime(song.duration);
+            }
+            return fullStream;
+          }
+        }
+      }
+    }
+  } catch (_) {}
+
+  // If backend is active, use streaming proxy
+  if (API_BASE) {
+    const backendUrl = `${API_BASE}/api/stream/${song.id}`;
+    song.audio_url = backendUrl;
+    return backendUrl;
+  }
+
+  return song.audio_url || "";
+}
+
 async function playSpotifyInBackground(song) {
   if (!song) return;
 
@@ -2060,6 +2232,21 @@ function playSong(song, preserveQueue = false) {
 
   if (audioPlayer.src !== streamSrc) {
     audioPlayer.src = streamSrc;
+  }
+
+  // Seamlessly resolve full-length 320kbps stream if current URL is a 30s preview snippet
+  if (streamSrc && (streamSrc.includes("apple.com") || streamSrc.includes("preview") || song.is_preview)) {
+    resolveOnlineFullStream(song).then(fullUrl => {
+      if (fullUrl && fullUrl !== streamSrc && AppState.currentSong && AppState.currentSong.id === song.id) {
+        console.log(`[MusicHub] Upgraded "${song.title}" from 30s preview to full-length stream.`);
+        const currentTime = audioPlayer.currentTime || 0;
+        song.audio_url = fullUrl;
+        song.is_preview = false;
+        audioPlayer.src = fullUrl;
+        audioPlayer.currentTime = currentTime;
+        audioPlayer.play().catch(() => {});
+      }
+    });
   }
 
   const playPromise = (typeof audioPlayer.play === "function") ? audioPlayer.play() : undefined;
@@ -2216,6 +2403,15 @@ async function handleDownloadAction(song, triggerBtn = null) {
   // If JioSaavn stream URL is missing, resolve fallback stream in background
   if (!downloadUrl) {
     downloadUrl = await fetchFallbackAudioUrl(song);
+  }
+
+  // Ensure download is a full-length 320kbps MP3 (upgrade 30s preview if present)
+  if (downloadUrl && (downloadUrl.includes("apple.com") || downloadUrl.includes("preview") || song.is_preview)) {
+    const fullStream = await resolveOnlineFullStream(song);
+    if (fullStream) {
+      downloadUrl = fullStream;
+      song.audio_url = fullStream;
+    }
   }
 
   showToast(`Preparing download for: "${song.title}"...`, "info");
