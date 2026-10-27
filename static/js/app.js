@@ -717,6 +717,35 @@ function scoreAndMatchSong(song, rawQuery) {
     cleanQ = normQ;
   }
 
+  // 1980 to 2026 full catalogue queries (e.g. "1980 to 2026", "import all movice songs form 1980 to 2026", "movie songs from 1980 to 2026")
+  const is1980to2026Query = /\b(1980\s*(?:to|-|until|through)\s*2026|1980\s+2026|1980s?\s*(?:to|-)\s*2026s?)\b/i.test(normQ) ||
+    (/\b1980\b/i.test(normQ) && /\b2026\b/i.test(normQ));
+  if (is1980to2026Query) {
+    let yearRangeScore = 5500;
+    if (song.year) yearRangeScore += 200;
+    if (Array.isArray(song.sections) && song.sections.includes("trending")) yearRangeScore += 150;
+    if (Array.isArray(song.sections) && song.sections.includes("recent")) yearRangeScore += 50;
+    if (song.era === "80s") yearRangeScore += 120;
+    else if (song.era === "90s") yearRangeScore += 100;
+    else if (song.era === "2k") yearRangeScore += 90;
+    else if (song.era === "now") yearRangeScore += 80;
+    return { matched: true, score: yearRangeScore };
+  }
+
+  // Specific 4-digit Year Query (e.g. "1980", "1987", "1992", "2004", "2024", "2025", "2026")
+  const specificYearMatch = normQ.match(/\b(19[89]\d|20[0-2]\d)\b/);
+  const specificYear = specificYearMatch ? specificYearMatch[1] : null;
+  const isSpecificYearOnly = specificYear && cleanQ.replace(new RegExp(`\\b${specificYear}\\b`, 'g'), " ").trim().length === 0;
+  if (isSpecificYearOnly) {
+    const sYear = String(song.year || "");
+    const sTags = Array.isArray(song.tags) ? song.tags.map(t => String(t).toLowerCase()) : [];
+    if (sYear === specificYear || sTags.includes(specificYear) || (song.album && song.album.includes(specificYear))) {
+      let yrScore = 6500;
+      if (Array.isArray(song.sections) && song.sections.includes("trending")) yrScore += 100;
+      return { matched: true, score: yrScore };
+    }
+  }
+
   // Detect Era queries (80s, 90s, 2K, Now / Latest Movies & Songs)
   const is80s = /\b(80s|eighties|80's|1980s|1980)\b/i.test(normQ);
   const is90s = /\b(90s|nineties|90's|1990s|1990)\b/i.test(normQ);
@@ -724,7 +753,7 @@ function scoreAndMatchSong(song, rawQuery) {
   const isNow = /\b(now|latest|current|new|2010s|2020s|2024|2025|2026)\b/i.test(normQ);
   const requestedEra = is80s ? "80s" : (is90s ? "90s" : (is2k ? "2k" : (isNow ? "now" : null)));
 
-  // If the query specifically requests an era of movies or songs (e.g. "80s movie", "90s movice", "2k movies", "now movie")
+  // If the query specifically requests an era of movies or songs (e.g. "80s movie", "90s movice", "2k movies", "now movie", "latest movies")
   const eraWordRegex = /\b(80s|eighties|80's|1980s|1980|90s|nineties|90's|1990s|1990|2k|2000s|2000|twothousand|2ks|now|latest|current|new|2010s|2020s|2024|2025|2026)\b/gi;
   const remainingQuery = cleanQ.replace(eraWordRegex, " ").replace(/\s+/g, " ").trim();
   const isPureEraQuery = requestedEra && remainingQuery.length === 0;
@@ -738,6 +767,17 @@ function scoreAndMatchSong(song, rawQuery) {
     } else {
       return { matched: false, score: 0 };
     }
+  }
+
+  // Generic Movie Query without specific era (e.g. "all movie songs", "movie songs", "movice songs", "all movies", "film songs", "padam songs")
+  const isGenericMovieQuery = !requestedEra && /\b(movie|movies|movice|films|film|padam|padangal)\b/i.test(normQ) &&
+    cleanQ.replace(/\b(all|the|form|from|to|and|in|of|songs|song|sngs|sng|tracks|track|audio|audios|full|original|mp3|hits|hit)\b/gi, " ").trim().length === 0;
+  if (isGenericMovieQuery) {
+    let movieScore = 4800;
+    if (song.album && song.album.length > 0) movieScore += 200;
+    if (Array.isArray(song.sections) && song.sections.includes("trending")) movieScore += 100;
+    if (Array.isArray(song.sections) && song.sections.includes("recent")) movieScore += 50;
+    return { matched: true, score: movieScore };
   }
 
   const cleanCompactQ = normalizeCompact(cleanQ);
@@ -762,6 +802,16 @@ function scoreAndMatchSong(song, rawQuery) {
   // Era bonus when combining era with an artist or movie name (e.g. "90s rahman", "80s ilaiyaraaja", "2k vijay")
   if (requestedEra && song.era === requestedEra) {
     score += 2500;
+  }
+
+  // Year bonus when combining specific year with movie or artist name (e.g. "1987 manithan", "2004 ghilli", "2024 goat", "2025 coolie")
+  if (specificYear) {
+    const sYear = String(song.year || "");
+    const sTags = Array.isArray(song.tags) ? song.tags.map(t => String(t).toLowerCase()) : [];
+    if (sYear === specificYear || sTags.includes(specificYear) || (song.album && song.album.includes(specificYear))) {
+      score += 3500;
+      matched = true;
+    }
   }
 
   const normTitle = song._normTitle || normalizeSearchText(song.title || song.name || "");
