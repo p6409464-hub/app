@@ -106,6 +106,7 @@ const AppState = {
   activeLanguage: "all",
   activeSection: "all",
   activeAlbum: "all",
+  activeType: "all",
   currentPage: 1,        // Active pagination page
   pageSize: 24,          // Number of tracks per page chunk
   favourites: safeGetStorage("pranesh_hub_favs", []),
@@ -168,6 +169,7 @@ const DOM = {
   volumeIcon: null,
   volumeSlider: null,
   toastContainer: null,
+  typeChips: null,
   togglePlaylistBtn: null,
   playlistBadge: null,
   playlistDrawer: null,
@@ -182,6 +184,7 @@ function refreshDOMElements() {
   DOM.searchInput = document.getElementById("searchInput");
   DOM.clearSearchBtn = document.getElementById("clearSearchBtn");
   DOM.langChips = document.querySelectorAll(".lang-chip");
+  DOM.typeChips = document.querySelectorAll(".type-chip");
   DOM.sectionPills = document.querySelectorAll(".section-pill");
   DOM.contentContainer = document.getElementById("contentContainer");
   DOM.emptyState = document.getElementById("emptyState");
@@ -309,6 +312,23 @@ function setupEventListeners() {
       }
     });
   });
+
+  // Type / Mood Chips
+  if (DOM.typeChips) {
+    DOM.typeChips.forEach(chip => {
+      chip.addEventListener("click", () => {
+        DOM.typeChips.forEach(c => c.classList.remove("active"));
+        chip.classList.add("active");
+        AppState.activeType = chip.dataset.type || "all";
+        AppState.currentPage = 1;
+        if (AppState.searchQuery) {
+          executeSearch(AppState.searchQuery);
+        } else {
+          renderContent();
+        }
+      });
+    });
+  }
 
   // Section Navigation Pills (All, Trending, Recent, Favourites, History)
   DOM.sectionPills.forEach(pill => {
@@ -743,6 +763,8 @@ function scoreAndMatchSong(song, rawQuery) {
       let yrScore = 6500;
       if (Array.isArray(song.sections) && song.sections.includes("trending")) yrScore += 100;
       return { matched: true, score: yrScore };
+    } else {
+      return { matched: false, score: 0 };
     }
   }
 
@@ -780,6 +802,36 @@ function scoreAndMatchSong(song, rawQuery) {
     return { matched: true, score: movieScore };
   }
 
+  // Detect Genre / Mood / Type queries (melody, kuthu, folk, gaana, sad, devotional, rap, lofi, edm, spotify, jiosaavn)
+  const isMelodyQ = /\b(melody|melodies|love|romantic|romance|kadhal|kadhale)\b/i.test(normQ);
+  const isKuthuQ = /\b(kuthu|dance|party|fast beat|fastbeat|mass)\b/i.test(normQ);
+  const isFolkQ = /\b(folk|gaana|gana|dappankuthu|gramathu)\b/i.test(normQ);
+  const isSadQ = /\b(sad|heartbreak|pain|alone|crying|feeling|emotional)\b/i.test(normQ);
+  const isDevotionalQ = /\b(devotional|spiritual|god|bhajan|bhajans|stotram|kavasam|agaval|chalisa)\b/i.test(normQ);
+  const isRapQ = /\b(rap|hip hop|hiphop|hip-hop|indie)\b/i.test(normQ);
+  const isLofiQ = /\b(lofi|lo-fi|chill|acoustic|relax|sleep)\b/i.test(normQ);
+  const isEdmQ = /\b(edm|remix|dj|club)\b/i.test(normQ);
+  const isSpotifyQ = /\b(spotify|sportity|jiosaavn|jiosaraven|all type|all types)\b/i.test(normQ);
+  const requestedType = isMelodyQ ? "melody" : (isKuthuQ ? "kuthu" : (isFolkQ ? "folk" : (isSadQ ? "sad" : (isDevotionalQ ? "devotional" : (isRapQ ? "rap" : (isLofiQ ? "lofi" : (isEdmQ ? "edm" : (isSpotifyQ ? "spotify" : null))))))));
+
+  const isPureTypeQuery = requestedType && cleanQ.replace(/\b(melody|melodies|love|romantic|romance|kadhal|kadhale|kuthu|dance|party|fast|beat|mass|folk|gaana|gana|dappankuthu|gramathu|sad|heartbreak|pain|alone|crying|feeling|emotional|devotional|spiritual|god|bhajan|bhajans|stotram|kavasam|agaval|chalisa|rap|hip|hop|hiphop|indie|lofi|chill|acoustic|relax|sleep|edm|remix|dj|club|spotify|sportity|jiosaavn|jiosaraven|all|type|types|songs|song)\b/gi, " ").trim().length === 0;
+
+  if (isPureTypeQuery) {
+    if (requestedType === "spotify") {
+      let spScore = 5200;
+      if (Array.isArray(song.sections) && song.sections.includes("trending")) spScore += 100;
+      return { matched: true, score: spScore };
+    }
+    if (song.type === requestedType || (Array.isArray(song.tags) && song.tags.includes(requestedType))) {
+      let typeScore = 6000;
+      if (Array.isArray(song.sections) && song.sections.includes("trending")) typeScore += 100;
+      if (Array.isArray(song.sections) && song.sections.includes("recent")) typeScore += 50;
+      return { matched: true, score: typeScore };
+    } else {
+      return { matched: false, score: 0 };
+    }
+  }
+
   const cleanCompactQ = normalizeCompact(cleanQ);
   const cleanPhoneticQ = toPhonetic(cleanQ);
   const phoneticQ = toPhonetic(rawQuery);
@@ -812,6 +864,15 @@ function scoreAndMatchSong(song, rawQuery) {
       score += 3500;
       matched = true;
     }
+  }
+
+  // Type / Mood bonus when combining genre/type with artist or song name (e.g. "melody anirudh", "kuthu vijay", "sad dhanush")
+  if (requestedType && (song.type === requestedType || (Array.isArray(song.tags) && song.tags.includes(requestedType)))) {
+    score += 2200;
+    matched = true;
+  }
+  if (AppState.activeType && AppState.activeType !== "all" && (song.type === AppState.activeType || (Array.isArray(song.tags) && song.tags.includes(AppState.activeType)))) {
+    score += 500;
   }
 
   const normTitle = song._normTitle || normalizeSearchText(song.title || song.name || "");
@@ -1106,10 +1167,19 @@ function loadCatalogue() {
     ? window.CATALOGUE_SONGS
     : [];
 
-  // Combine window.CATALOGUE_SONGS (280+ tracks) with DEFAULT_STATIC_SONGS
-  const sourceList = rawCatalogue.length > 0
+  // Combine window.CATALOGUE_SONGS with DEFAULT_STATIC_SONGS and user auto-imported tracks
+  let sourceList = rawCatalogue.length > 0
     ? [...DEFAULT_STATIC_SONGS, ...rawCatalogue]
     : DEFAULT_STATIC_SONGS;
+
+  // Load any previously auto-imported online songs from localStorage
+  try {
+    const rawStored = localStorage.getItem("pmh_imported_songs");
+    const stored = rawStored ? JSON.parse(rawStored) : [];
+    if (Array.isArray(stored) && stored.length > 0) {
+      sourceList = [...stored, ...sourceList];
+    }
+  } catch (_) {}
 
   const seenIds = new Set();
   const seenKeys = new Set();
@@ -1152,6 +1222,53 @@ function loadCatalogue() {
   console.log(`[MusicHub] Catalogue loaded with ${AppState.masterSongs.length} tracks.`);
 
   renderContent();
+}
+
+// Auto-import any song found online permanently into website catalogue
+function autoImportSongToCatalogue(song) {
+  if (!song || !song.id) return;
+  const rawTitle = song.title || song.name || "";
+  const rawArtist = song.artist || song.singer || "";
+  if (!rawTitle) return;
+
+  const normTitle = normalizeSearchText(rawTitle);
+  const normArtist = normalizeSearchText(rawArtist);
+  const exists = AppState.masterSongs.some(s => s.id === song.id || (normalizeSearchText(s.title || "") === normTitle && normalizeSearchText(s.artist || "") === normArtist));
+  if (exists) return;
+
+  const prepared = prepareSongSearchMetadata({
+    ...song,
+    title: rawTitle,
+    artist: rawArtist,
+    album: song.album || song.movie || "Online Single",
+    download_authorized: true,
+    tags: [
+      normTitle,
+      normArtist,
+      (song.album || "").toLowerCase(),
+      (song.language || "tamil").toLowerCase(),
+      song.type || "melody",
+      song.era || "now",
+      "movie",
+      "movie songs",
+      "jiosaavn",
+      "spotify",
+      "imported",
+      "trending"
+    ]
+  });
+
+  AppState.masterSongs = Object.freeze([prepared, ...AppState.masterSongs]);
+  AppState.songs = [prepared, ...AppState.songs];
+
+  try {
+    const rawStored = localStorage.getItem("pmh_imported_songs");
+    const stored = rawStored ? JSON.parse(rawStored) : [];
+    if (!stored.some(s => s.id === prepared.id)) {
+      stored.unshift(prepared);
+      localStorage.setItem("pmh_imported_songs", JSON.stringify(stored.slice(0, 250)));
+    }
+  } catch (_) {}
 }
 
 // ==========================================================================
@@ -1276,6 +1393,7 @@ async function fetchSpotifySearchResults(query, requestId) {
           }).filter(s => s.audio_url);
 
           if (saavnSongs.length > 0) {
+            saavnSongs.forEach(s => autoImportSongToCatalogue(s));
             AppState.searchResults = saavnSongs;
             AppState.isSpotifyFallbackResults = true;
             AppState.isFetchingSpotify = false;
@@ -1300,6 +1418,7 @@ async function fetchSpotifySearchResults(query, requestId) {
               download_authorized: true,
               source: "spotify"
             }));
+            AppState.searchResults.forEach(s => autoImportSongToCatalogue(s));
             AppState.isSpotifyFallbackResults = true;
             AppState.isFetchingSpotify = false;
             AppState.queue = [...AppState.searchResults];
@@ -1348,6 +1467,7 @@ async function fetchSpotifySearchResults(query, requestId) {
         });
       });
 
+      spotifySongs.forEach(s => autoImportSongToCatalogue(s));
       AppState.searchResults = spotifySongs;
       AppState.isSpotifyFallbackResults = true;
       AppState.isFetchingSpotify = false;
@@ -1457,6 +1577,11 @@ function updateActivePills() {
   DOM.sectionPills.forEach(p => {
     p.classList.toggle("active", (p.dataset.section || "all") === AppState.activeSection);
   });
+  if (DOM.typeChips) {
+    DOM.typeChips.forEach(c => {
+      c.classList.toggle("active", (c.dataset.type || "all") === AppState.activeType);
+    });
+  }
 }
 
 // ==========================================================================
@@ -1654,6 +1779,11 @@ function renderContent() {
     }
   }
 
+  // Type / Mood Filter
+  if (AppState.activeType && AppState.activeType !== "all") {
+    filtered = filtered.filter(s => s.type === AppState.activeType || (Array.isArray(s.tags) && s.tags.includes(AppState.activeType)));
+  }
+
   // Section Filter
   let isFavourites = AppState.activeSection === "favourites";
   let isHistory = AppState.activeSection === "history";
@@ -1698,13 +1828,40 @@ function renderContent() {
 
   if (DOM.emptyState) DOM.emptyState.style.display = "none";
 
-  // Dedicated View for Favourites / History / Single Language
-  if (AppState.activeSection !== "all" || AppState.activeLanguage !== "all") {
+  // Dedicated View for Favourites / History / Single Language / Type
+  if (AppState.activeSection !== "all" || AppState.activeLanguage !== "all" || (AppState.activeType && AppState.activeType !== "all")) {
     let headerTitle = "Music Collection";
     let headerIcon = "🎵";
     let extraHeaderHTML = "";
 
-    if (isFavourites) {
+    if (AppState.activeType === "melody") {
+      headerTitle = "❤️ Melody & Romance Hits";
+      headerIcon = "❤️";
+    } else if (AppState.activeType === "kuthu") {
+      headerTitle = "🔥 Kuthu & Party Dance Beats";
+      headerIcon = "🔥";
+    } else if (AppState.activeType === "folk") {
+      headerTitle = "🥁 Folk & Gaana Superhits";
+      headerIcon = "🥁";
+    } else if (AppState.activeType === "sad") {
+      headerTitle = "💔 Sad & Heartbreak Melodies";
+      headerIcon = "💔";
+    } else if (AppState.activeType === "devotional") {
+      headerTitle = "🕉️ Devotional & Spiritual Songs";
+      headerIcon = "🕉️";
+    } else if (AppState.activeType === "rap") {
+      headerTitle = "🎤 Rap, Hip-Hop & Indie Tracks";
+      headerIcon = "🎤";
+    } else if (AppState.activeType === "lofi") {
+      headerTitle = "☕ Lofi & Chill Beats";
+      headerIcon = "☕";
+    } else if (AppState.activeType === "edm") {
+      headerTitle = "🎧 EDM, DJ & Party Remixes";
+      headerIcon = "🎧";
+    } else if (AppState.activeType === "spotify") {
+      headerTitle = "🌟 Spotify Global Chartbusters";
+      headerIcon = "🌟";
+    } else if (isFavourites) {
       headerTitle = "My Favourite Songs";
       headerIcon = "❤️";
       extraHeaderHTML = `
@@ -1896,6 +2053,15 @@ function renderContent() {
     { id: "era_2k", title: "💿 2K Movies & Nostalgia (2000s Hits)", icon: "💿", filter: s => s.era === "2k", sectionId: "era_2k" },
     { id: "era_90s", title: "📼 90s Movies & Evergreen Hits", icon: "📼", filter: s => s.era === "90s", sectionId: "era_90s" },
     { id: "era_80s", title: "📻 80s Movies & Golden Classics", icon: "📻", filter: s => s.era === "80s", sectionId: "era_80s" },
+    { id: "type_melody", title: "❤️ Romantic Melodies & Love Hits", icon: "❤️", filter: s => s.type === "melody", type: "melody" },
+    { id: "type_kuthu", title: "🔥 Kuthu, Mass & Party Dance Beats", icon: "🔥", filter: s => s.type === "kuthu", type: "kuthu" },
+    { id: "type_folk", title: "🥁 Folk & Gaana Superhits", icon: "🥁", filter: s => s.type === "folk", type: "folk" },
+    { id: "type_sad", title: "💔 Sad & Heartbreak Melodies", icon: "💔", filter: s => s.type === "sad", type: "sad" },
+    { id: "type_devotional", title: "🕉️ Devotional & Spiritual Songs", icon: "🕉️", filter: s => s.type === "devotional", type: "devotional" },
+    { id: "type_rap", title: "🎤 Rap, Hip-Hop & Indie Hits", icon: "🎤", filter: s => s.type === "rap", type: "rap" },
+    { id: "type_lofi", title: "☕ Lofi, Chill & Acoustic Vibes", icon: "☕", filter: s => s.type === "lofi", type: "lofi" },
+    { id: "type_edm", title: "🎧 EDM, Club & Party Remixes", icon: "🎧", filter: s => s.type === "edm", type: "edm" },
+    { id: "type_spotify", title: "🌟 Spotify Global Chartbusters", icon: "🌟", filter: s => s.type === "spotify", type: "spotify" },
     { id: "trending", title: "🔥 Trending Songs", icon: "🔥", filter: s => (s.sections || []).includes("trending"), sectionId: "trending" },
     { id: "recent", title: "🆕 Recently Added", icon: "🆕", filter: s => (s.sections || []).includes("recent"), sectionId: "recent" },
     { id: "tamil", title: "🌺 Tamil Movie Albums & Blockbusters", icon: "🌺", filter: s => s.language === "Tamil", lang: "tamil" },
@@ -1925,7 +2091,7 @@ function renderContent() {
               <h2 class="section-title">${sec.title}</h2>
               <span class="section-badge">${secSongs.length} tracks</span>
             </div>
-            <button class="section-view-all-link" data-lang="${sec.lang || ''}" data-section="${sec.sectionId || ''}">
+            <button class="section-view-all-link" data-lang="${sec.lang || ''}" data-section="${sec.sectionId || ''}" data-type="${sec.type || ''}">
               Explore All (${secSongs.length}) →
             </button>
           </div>
@@ -1989,12 +2155,19 @@ function attachSectionExploreListeners() {
     btn.addEventListener("click", () => {
       const lang = btn.dataset.lang;
       const sec = btn.dataset.section;
-      if (lang) {
+      const type = btn.dataset.type;
+      if (type) {
+        AppState.activeType = type;
+        AppState.activeLanguage = "all";
+        AppState.activeSection = "all";
+      } else if (lang) {
         AppState.activeLanguage = lang;
         AppState.activeSection = "all";
+        AppState.activeType = "all";
       } else if (sec) {
         AppState.activeSection = sec;
         AppState.activeLanguage = "all";
+        AppState.activeType = "all";
       }
       AppState.activeAlbum = "all";
       AppState.currentPage = 1;
@@ -2032,10 +2205,13 @@ function createSongCardHTML(song) {
   if (isThisLoading) playIconText = "⏳";
   else if (isThisPlaying) playIconText = "⏸";
 
-  // Action Button: Download button enabled for all audio tracks
+  // Action Button: Download & Mobile Music App buttons enabled for all audio tracks
   let actionBtnHTML = `
     <button class="download-btn card-download-trigger" data-id="${escapeAttr(song.id)}" title="Download ${escapeAttr(song.title)} MP3">
       <span>⬇️</span> Download
+    </button>
+    <button class="card-musicapp-btn card-musicapp-trigger" data-id="${escapeAttr(song.id)}" title="Open ${escapeAttr(song.title)} in Mobile Music App">
+      <span>📱</span> Music App
     </button>
   `;
 
@@ -2128,6 +2304,15 @@ function attachCardListeners(pool = []) {
       e.stopPropagation();
       const song = getSongById(btn.dataset.id);
       if (song) handleDownloadAction(song, btn);
+    });
+  });
+
+  // Mobile Default Music App triggers
+  document.querySelectorAll(".card-musicapp-trigger").forEach(btn => {
+    btn.addEventListener("click", (e) => {
+      e.stopPropagation();
+      const song = getSongById(btn.dataset.id);
+      if (song) handleOpenInMobileMusicApp(song);
     });
   });
 
@@ -2578,6 +2763,7 @@ function playSong(song, preserveQueue = false) {
         const currentTime = audioPlayer.currentTime || 0;
         song.audio_url = fullUrl;
         song.is_preview = false;
+        autoImportSongToCatalogue(song);
         audioPlayer.src = fullUrl;
         audioPlayer.currentTime = currentTime;
         audioPlayer.play().catch(() => {});

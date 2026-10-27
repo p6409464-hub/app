@@ -649,6 +649,35 @@ body {
   margin-top: auto;
   padding-top: 10px;
   border-top: 1px solid rgba(255, 255, 255, 0.06);
+  gap: 8px;
+}
+
+.card-action-right {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+
+.card-musicapp-btn {
+  background: rgba(16, 185, 129, 0.15);
+  border: 1px solid rgba(16, 185, 129, 0.35);
+  color: #34d399;
+  padding: 6px 11px;
+  border-radius: var(--radius-full);
+  font-size: 0.76rem;
+  font-weight: 700;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  transition: all 0.2s ease;
+}
+.card-musicapp-btn:hover {
+  background: rgba(16, 185, 129, 0.3);
+  color: #fff;
+  border-color: #10b981;
+  box-shadow: 0 0 12px rgba(16, 185, 129, 0.4);
 }
 
 .fav-btn {
@@ -1778,7 +1807,8 @@ body {
     min-width: 38px;
     min-height: 38px;
   }
-  .download-btn {
+  .download-btn,
+  .card-musicapp-btn {
     padding: 6px 10px;
     font-size: 0.72rem;
     min-height: 36px;

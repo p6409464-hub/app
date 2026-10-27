@@ -6,7 +6,7 @@
   <meta name="referrer" content="no-referrer" />
   <title>Pranesh Music Hub - Modern Dark Music Experience</title>
   <meta name="description" content="Stream and directly download Tamil, English, Malayalam, Instrumental, and Only Friends OST tracks in a modern, ad-free dark theme." />
-  <link rel="stylesheet" href="static/css/style.css?v=3.17.0" />
+  <link rel="stylesheet" href="static/css/style.css?v=3.18.0" />
   <!-- Google Fonts: Inter -->
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
@@ -76,7 +76,7 @@
             <span>▶</span> Listen Now
           </button>
           <span style="font-size: 0.84rem; color: var(--text-dim); display: flex; align-items: center; gap: 6px;">
-            ✨ Ad-Free Experience • ⚡ High-Speed Audio Streaming • 🎧 6,700+ Movie &amp; Album Songs (1980 - 2026)
+            ✨ Ad-Free Experience • ⚡ High-Speed Audio Streaming • 🎧 7,000+ Songs • All Types &amp; Spotify Hits
           </span>
         </div>
       </div>
@@ -113,6 +113,21 @@
         <button class="chip lang-chip" data-lang="only_friends">🎬 Only Friends OST</button>
       </div>
 
+      <!-- Type / Mood / Genre Filter Row -->
+      <div class="filter-row type-filter-row">
+        <span class="filter-label">Type / Mood:</span>
+        <button class="chip type-chip active" data-type="all">✨ All Types</button>
+        <button class="chip type-chip" data-type="melody">❤️ Melody &amp; Romance</button>
+        <button class="chip type-chip" data-type="kuthu">🔥 Kuthu &amp; Dance</button>
+        <button class="chip type-chip" data-type="folk">🥁 Folk &amp; Gaana</button>
+        <button class="chip type-chip" data-type="sad">💔 Sad &amp; Emotional</button>
+        <button class="chip type-chip" data-type="devotional">🕉️ Devotional</button>
+        <button class="chip type-chip" data-type="rap">🎤 Rap &amp; Hip-Hop</button>
+        <button class="chip type-chip" data-type="lofi">☕ Lofi &amp; Chill</button>
+        <button class="chip type-chip" data-type="edm">🎧 EDM &amp; Remix</button>
+        <button class="chip type-chip" data-type="spotify">🌟 Spotify Global</button>
+      </div>
+
       <!-- Section Navigation Row -->
       <div class="filter-row">
         <span class="filter-label">Browse:</span>
@@ -121,7 +136,7 @@
         <button class="chip section-pill" data-section="era_90s">📼 90s Movies (1990-99)</button>
         <button class="chip section-pill" data-section="era_2k">💿 2K Movies (2000-09)</button>
         <button class="chip section-pill" data-section="era_now">⚡ Now Movies (2010-2026)</button>
-        <button class="chip section-pill" data-section="full_library">📚 All Songs (6,700+)</button>
+        <button class="chip section-pill" data-section="full_library">📚 All Songs (7,000+)</button>
         <button class="chip section-pill" data-section="trending">🔥 Trending Songs</button>
         <button class="chip section-pill" data-section="recent">🆕 Recently Added</button>
       </div>
@@ -195,7 +210,7 @@
         <span>⬇️</span> Download
       </button>
 
-      <button id="playerMusicAppBtn" class="download-btn mobile-music-app-btn" title="Open with Default Mobile Music Player" style="display: none; background: rgba(59, 130, 246, 0.2); border-color: rgba(59, 130, 246, 0.4); color: #93c5fd;">
+      <button id="playerMusicAppBtn" class="download-btn mobile-music-app-btn" title="Open with Default Mobile Music Player" style="background: rgba(59, 130, 246, 0.2); border-color: rgba(59, 130, 246, 0.4); color: #93c5fd;">
         <span>📱</span> <span class="hide-mobile">Open in</span> Music App
       </button>
 
@@ -233,7 +248,7 @@
   <div id="toastContainer" class="toast-container"></div>
 
   <!-- JavaScript Application Logic -->
-  <script src="static/js/songs_data.js?v=3.17.0"></script>
-  <script src="static/js/app.js?v=3.17.0"></script>
+  <script src="static/js/songs_data.js?v=3.18.0"></script>
+  <script src="static/js/app.js?v=3.18.0"></script>
 </body>
 </html>

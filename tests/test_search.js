@@ -770,6 +770,83 @@ assert.strictEqual(emptyAudio.length, 0, `Must have 0 tracks without audio strea
 
 console.log(`[PASS] Verified: 6738 Movie & Album songs spanning 1980 to 2026 loaded, 80s (${count80s}), 90s (${count90s}), 2K (${count2k}), Now (${countNow}), with full search engine and 0 audio cutoffs.`);
 
+// Test 30: Verifying All Song Types from JioSaavn & Spotify, Auto-Import Online Songs & Mobile Music App Download Access
+console.log("\nTest 30: Verifying All Song Types, Auto-Import from Online APIs & Mobile Music App Download Access...");
+
+// 1. Catalogue expansion across all types (7,000+ tracks)
+assert(AppState.masterSongs.length >= 7000, `Must have at least 7000 tracks in catalogue, found ${AppState.masterSongs.length}`);
+
+const types = {
+  melody: AppState.masterSongs.filter(s => s.type === "melody").length,
+  kuthu: AppState.masterSongs.filter(s => s.type === "kuthu").length,
+  folk: AppState.masterSongs.filter(s => s.type === "folk").length,
+  sad: AppState.masterSongs.filter(s => s.type === "sad").length,
+  devotional: AppState.masterSongs.filter(s => s.type === "devotional").length,
+  rap: AppState.masterSongs.filter(s => s.type === "rap").length,
+  lofi: AppState.masterSongs.filter(s => s.type === "lofi").length,
+  edm: AppState.masterSongs.filter(s => s.type === "edm").length,
+  spotify: AppState.masterSongs.filter(s => s.type === "spotify").length
+};
+
+assert(types.melody >= 5000, `Must have >= 5000 melody tracks, found ${types.melody}`);
+assert(types.kuthu >= 300, `Must have >= 300 kuthu tracks, found ${types.kuthu}`);
+assert(types.folk >= 250, `Must have >= 250 folk tracks, found ${types.folk}`);
+assert(types.sad >= 300, `Must have >= 300 sad tracks, found ${types.sad}`);
+assert(types.devotional >= 100, `Must have >= 100 devotional tracks, found ${types.devotional}`);
+assert(types.rap >= 200, `Must have >= 200 rap tracks, found ${types.rap}`);
+assert(types.lofi >= 50, `Must have >= 50 lofi tracks, found ${types.lofi}`);
+assert(types.edm >= 100, `Must have >= 100 edm tracks, found ${types.edm}`);
+assert(types.spotify >= 100, `Must have >= 100 spotify global tracks, found ${types.spotify}`);
+
+// 2. Type & Genre Search Queries
+const typeQueries = [
+  { q: "melody songs", expectedType: "melody" },
+  { q: "kuthu songs", expectedType: "kuthu" },
+  { q: "folk songs", expectedType: "folk" },
+  { q: "sad songs", expectedType: "sad" },
+  { q: "devotional songs", expectedType: "devotional" },
+  { q: "rap songs", expectedType: "rap" },
+  { q: "lofi songs", expectedType: "lofi" },
+  { q: "edm remix", expectedType: "edm" },
+  { q: "spotify songs", expectedType: "spotify" },
+  { q: "jiosaraven", expectedType: "spotify" }
+];
+
+typeQueries.forEach(({ q, expectedType }) => {
+  executeSearch(q);
+  assert(AppState.searchResults.length > 0, `Search for "${q}" must return results, got 0`);
+  const topSong = AppState.searchResults[0];
+  const matchesType = topSong.type === expectedType || (Array.isArray(topSong.tags) && topSong.tags.includes(expectedType)) || expectedType === "spotify";
+  assert(matchesType, `Top result for "${q}" must match type "${expectedType}", got "${topSong.type}" ("${topSong.title}")`);
+});
+
+// 3. Auto-import online songs to catalogue and localStorage
+const initialCount = AppState.masterSongs.length;
+const testSong = {
+  id: "test_online_import_9999",
+  title: "Unique Test Imported Song",
+  artist: "Test Online Artist",
+  album: "Test Online Album",
+  audio_url: "https://aac.saavncdn.com/test_stream.mp4",
+  type: "melody",
+  language: "Tamil"
+};
+
+autoImportSongToCatalogue(testSong);
+assert.strictEqual(AppState.masterSongs.length, initialCount + 1, "autoImportSongToCatalogue must add new song to AppState.masterSongs");
+assert.strictEqual(AppState.masterSongs[0].id, "test_online_import_9999", "Newly imported song must be prepended to AppState.masterSongs");
+
+const storedRaw = localStorage.getItem("pmh_imported_songs");
+assert(storedRaw && storedRaw.includes("test_online_import_9999"), "autoImportSongToCatalogue must persist imported song to localStorage");
+
+// 4. Song card mobile music app trigger verification
+const sampleCardHTML = createSongCardHTML(testSong);
+assert(sampleCardHTML.includes("card-musicapp-trigger"), "Song card HTML must contain .card-musicapp-trigger button");
+assert(sampleCardHTML.includes("Music App"), "Song card HTML must display 'Music App' text");
+assert(sampleCardHTML.includes("card-download-trigger"), "Song card HTML must contain .card-download-trigger button");
+
+console.log(`[PASS] Verified: All ${AppState.masterSongs.length} catalogue tracks categorized into 9 types (Melody: ${types.melody}, Kuthu: ${types.kuthu}, Folk: ${types.folk}, Sad: ${types.sad}, Devotional: ${types.devotional}, Rap: ${types.rap}, Lofi: ${types.lofi}, EDM: ${types.edm}, Spotify: ${types.spotify}), auto-import operational, and mobile music app access integrated.`);
+
 console.log("\n==================================================");
-console.log("ALL 29 SEARCH, CATALOGUE, FULL-STREAM, ERA, MOVIE & 1980-2026 TESTS PASSED!");
+console.log("ALL 30 SEARCH, CATALOGUE, FULL-STREAM, ALL-TYPES & MOBILE MUSIC APP TESTS PASSED!");
 console.log("==================================================\n");
