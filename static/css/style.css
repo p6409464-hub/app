@@ -613,6 +613,36 @@ body {
   font-weight: 700;
   color: #fff;
   text-transform: uppercase;
+  z-index: 2;
+}
+
+/* Card Source Tag (JioSaavn vs Spotify) */
+.card-source-tag {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  padding: 2px 7px;
+  border-radius: var(--radius-sm);
+  font-size: 0.68rem;
+  font-weight: 700;
+  text-transform: capitalize;
+  z-index: 2;
+  letter-spacing: 0.3px;
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+}
+
+.card-source-tag.spotify-badge {
+  background: rgba(30, 215, 96, 0.92);
+  color: #031c0a;
+  box-shadow: 0 2px 8px rgba(30, 215, 96, 0.4);
+}
+
+.card-source-tag.saavn-badge {
+  background: rgba(147, 51, 234, 0.92);
+  color: #ffffff;
+  box-shadow: 0 2px 8px rgba(147, 51, 234, 0.4);
 }
 
 /* Card Info */
@@ -1014,6 +1044,47 @@ body {
   border-radius: 16px;
   margin: 24px 0;
   animation: fadeIn 0.3s ease;
+}
+
+/* Search Source Filter Row & Chips */
+.search-source-filter-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 10px 0 18px 0;
+  flex-wrap: wrap;
+}
+
+.source-filter-label {
+  font-size: 0.82rem;
+  font-weight: 600;
+  color: var(--text-muted);
+  margin-right: 4px;
+}
+
+.source-filter-chip {
+  background: rgba(255, 255, 255, 0.08);
+  border: 1px solid rgba(255, 255, 255, 0.16);
+  border-radius: 20px;
+  padding: 5px 14px;
+  font-size: 0.82rem;
+  color: var(--text-dim);
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.source-filter-chip:hover {
+  background: rgba(255, 255, 255, 0.15);
+  color: #fff;
+  border-color: rgba(255, 255, 255, 0.3);
+}
+
+.source-filter-chip.active {
+  background: linear-gradient(135deg, rgba(168, 85, 247, 0.35) 0%, rgba(59, 130, 246, 0.35) 100%);
+  border-color: var(--accent-primary);
+  color: #fff;
+  font-weight: 600;
+  box-shadow: 0 2px 8px rgba(168, 85, 247, 0.25);
 }
 
 /* Spotify Button in Player Bar */

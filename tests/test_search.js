@@ -847,6 +847,111 @@ assert(sampleCardHTML.includes("card-download-trigger"), "Song card HTML must co
 
 console.log(`[PASS] Verified: All ${AppState.masterSongs.length} catalogue tracks categorized into 9 types (Melody: ${types.melody}, Kuthu: ${types.kuthu}, Folk: ${types.folk}, Sad: ${types.sad}, Devotional: ${types.devotional}, Rap: ${types.rap}, Lofi: ${types.lofi}, EDM: ${types.edm}, Spotify: ${types.spotify}), auto-import operational, and mobile music app access integrated.`);
 
+// Test 31: Verifying Dual-API Search (JioSaavn + Spotify), Source Badges, and Full-Length Original Singer Audio Resolution
+console.log("\nTest 31: Verifying Dual-API Search (JioSaavn + Spotify), Source Badges, and Full-Length Audio Resolution...");
+
+// 1. Verify findFullLengthAudioMatch resolves original singer 320kbps streams for Spotify tracks
+const spotifyMatchTests = [
+  { rawTitle: 'Arabic Kuthu (From "Beast")', rawArtist: 'Anirudh Ravichander, Jonita Gandhi', rawAlbum: 'Beast' },
+  { rawTitle: 'Kesariya (From "Brahmāstra: Part One - Shiva")', rawArtist: 'Pritam, Arijit Singh', rawAlbum: 'Brahmastra' },
+  { rawTitle: 'Naatu Naatu (From "RRR")', rawArtist: 'Rahul Sipligunj, Kaala Bhairava', rawAlbum: 'RRR' },
+  { rawTitle: 'Badass (From "Leo")', rawArtist: 'Anirudh Ravichander', rawAlbum: 'Leo' },
+  { rawTitle: 'Aasai Machaan (From "Kodi")', rawArtist: 'Santhosh Narayanan', rawAlbum: 'Kodi' },
+  { rawTitle: 'Believer', rawArtist: 'Imagine Dragons', rawAlbum: 'Evolve' },
+  { rawTitle: 'Shape of You', rawArtist: 'Ed Sheeran', rawAlbum: '÷' }
+];
+
+spotifyMatchTests.forEach(testCase => {
+  const match = findFullLengthAudioMatch(testCase.rawTitle, testCase.rawArtist, testCase.rawAlbum);
+  assert(match, `findFullLengthAudioMatch must match "${testCase.rawTitle}"`);
+  assert(match.audio_url && match.audio_url.includes("aac.saavncdn.com"), `Match for "${testCase.rawTitle}" must have full 320kbps stream, got ${match.audio_url}`);
+  assert(!match.is_preview, `Match for "${testCase.rawTitle}" must NOT be a 30s preview snippet`);
+});
+
+// 2. Verify amateur cover & karaoke filtering
+assert.strictEqual(isAmateurCoverOrKaraoke("Arabic Kuthu (Karaoke Version)", "Karaoke Team"), true, "Must filter karaoke tracks");
+assert.strictEqual(isAmateurCoverOrKaraoke("Kesariya (Piano Cover)", "Sing2Piano"), true, "Must filter piano covers");
+assert.strictEqual(isAmateurCoverOrKaraoke("Badass (Tribute)", "Tribute Band"), true, "Must filter tribute covers");
+assert.strictEqual(isAmateurCoverOrKaraoke("Arabic Kuthu", "Anirudh Ravichander"), false, "Must keep original singer tracks");
+
+// 3. Verify song card source badges (JioSaavn & Spotify)
+const jioCardSong = {
+  id: "jio_card_test_1",
+  title: "Aasai Machaan",
+  artist: "Santhosh Narayanan",
+  album: "Kodi",
+  duration_str: "5:02",
+  source: "jiosaavn"
+};
+const spotifyCardSong = {
+  id: "spotify_card_test_1",
+  title: "Arabic Kuthu",
+  artist: "Anirudh Ravichander",
+  album: "Beast",
+  duration_str: "4:39",
+  source: "spotify"
+};
+
+const jioCardHTML = createSongCardHTML(jioCardSong);
+assert(jioCardHTML.includes("saavn-badge"), "JioSaavn song card must contain saavn-badge class");
+assert(jioCardHTML.includes("JioSaavn"), "JioSaavn song card must display JioSaavn badge text");
+
+const spotifyCardHTML = createSongCardHTML(spotifyCardSong);
+assert(spotifyCardHTML.includes("spotify-badge"), "Spotify song card must contain spotify-badge class");
+assert(spotifyCardHTML.includes("Spotify"), "Spotify song card must display Spotify badge text");
+
+// 4. Verify Dual-API Search Results & Source Filter Chips
+AppState.searchQuery = "Arabic Kuthu";
+AppState.jioResults = [prepareSongSearchMetadata({ ...jioCardSong, source: "jiosaavn" })];
+AppState.spotifyResults = [prepareSongSearchMetadata({ ...spotifyCardSong, source: "spotify" })];
+AppState.searchResults = [...AppState.jioResults, ...AppState.spotifyResults];
+AppState.searchSourceFilter = "all";
+renderContent();
+
+assert(DOM.contentContainer.innerHTML.includes("search-source-filter-row"), "Search page must render source filter row");
+assert(DOM.contentContainer.innerHTML.includes("JioSaavn (1)"), "Source filter row must display JioSaavn count");
+assert(DOM.contentContainer.innerHTML.includes("Spotify (1)"), "Source filter row must display Spotify count");
+assert(DOM.contentContainer.innerHTML.includes("saavn-badge"), "Rendered search results must include JioSaavn badge");
+assert(DOM.contentContainer.innerHTML.includes("spotify-badge"), "Rendered search results must include Spotify badge");
+
+// 5. Verify source filtering functionality
+AppState.searchSourceFilter = "jiosaavn";
+renderContent();
+assert(DOM.contentContainer.innerHTML.includes("data-id=\"jio_card_test_1\""), "JioSaavn filter must include JioSaavn songs");
+assert(!DOM.contentContainer.innerHTML.includes("data-id=\"spotify_card_test_1\""), "JioSaavn filter must exclude Spotify songs");
+
+AppState.searchSourceFilter = "spotify";
+renderContent();
+assert(DOM.contentContainer.innerHTML.includes("data-id=\"spotify_card_test_1\""), "Spotify filter must include Spotify songs");
+assert(!DOM.contentContainer.innerHTML.includes("data-id=\"jio_card_test_1\""), "Spotify filter must exclude JioSaavn songs");
+
+// Reset state
+AppState.searchSourceFilter = "all";
+AppState.searchQuery = "";
+AppState.searchResults = [];
+AppState.jioResults = [];
+AppState.spotifyResults = [];
+
+// 6. Verify instant audio upgrade on playback (Zero 30s preview cutoffs)
+const previewTrack = {
+  id: "test_preview_1",
+  title: 'Arabic Kuthu (From "Beast")',
+  artist: "Anirudh Ravichander",
+  album: "Beast",
+  duration: 30,
+  duration_str: "0:30",
+  audio_url: "https://audio-ssl.itunes.apple.com/preview_snippet.m4a",
+  is_preview: true,
+  source: "spotify"
+};
+
+playSong(previewTrack);
+assert(audioPlayer.src.includes("aac.saavncdn.com"), `playSong must upgrade 30s preview to full-length stream, got: ${audioPlayer.src}`);
+assert.strictEqual(previewTrack.is_preview, false, "previewTrack must be upgraded to is_preview: false");
+assert.strictEqual(previewTrack.duration_str, "4:39", "previewTrack must receive full song duration");
+
+console.log("[PASS] Verified: Dual-API simultaneous search (JioSaavn + Spotify), authentic original singer priority, source badges & filter tabs, and 0 30-second audio cutoffs.");
+
 console.log("\n==================================================");
-console.log("ALL 30 SEARCH, CATALOGUE, FULL-STREAM, ALL-TYPES & MOBILE MUSIC APP TESTS PASSED!");
+console.log("ALL 31 SEARCH, CATALOGUE, FULL-STREAM, DUAL-API & MOBILE MUSIC APP TESTS PASSED!");
 console.log("==================================================\n");

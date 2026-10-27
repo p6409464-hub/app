@@ -86,6 +86,9 @@ const AppState = {
   masterSongs: [],       // Immutable master catalogue (never mutated or permanently filtered)
   songs: [],             // Active browsing list
   searchResults: [],     // Current search matches
+  jioResults: [],        // JioSaavn matches for active query
+  spotifyResults: [],    // Spotify matches for active query
+  searchSourceFilter: "all", // "all" | "jiosaavn" | "spotify"
   searchQuery: "",       // Active raw search query
   normalizedQuery: "",   // Active normalized search query
   isSearching: false,
@@ -723,6 +726,88 @@ function prepareSongSearchMetadata(song) {
   };
 }
 
+// Cleans core title by removing extraneous movie tags, bracketed suffixes, and feat tags
+function cleanCoreTitle(rawTitle) {
+  if (!rawTitle) return "";
+  return rawTitle
+    .replace(/\s*\([^)]*(?:from|soundtrack|ost|version|theme|feat|ft\.)[^)]*\)/gi, " ")
+    .replace(/\s*\[[^\]]*(?:from|soundtrack|ost|version|theme|feat|ft\.)[^\]]*\]/gi, " ")
+    .replace(/\s*-\s*(?:from|soundtrack|ost|halamithi|original|lyric|audio|video|remix|reprise).*/gi, " ")
+    .replace(/[^\w\s]/g, " ")
+    .replace(/\s+/g, " ")
+    .trim()
+    .toLowerCase();
+}
+
+// Intelligently finds matching original singer / 320kbps full-length stream from JioSaavn catalogue
+function findFullLengthAudioMatch(rawTitle, rawArtist = "", rawAlbum = "") {
+  if (!rawTitle) return null;
+  const normTitle = normalizeSearchText(rawTitle);
+  const coreTitle = cleanCoreTitle(rawTitle);
+  const normAlbum = normalizeSearchText(rawAlbum);
+
+  const pool = (Array.isArray(AppState.masterSongs) && AppState.masterSongs.length > 0)
+    ? AppState.masterSongs
+    : (typeof window !== "undefined" && Array.isArray(window.CATALOGUE_SONGS) ? window.CATALOGUE_SONGS : []);
+
+  // 1. Direct exact normalized title match
+  let matched = pool.find(s => {
+    if (!s.audio_url || !s.audio_url.includes("aac.saavncdn.com")) return false;
+    const sNormTitle = s._normTitle || normalizeSearchText(s.title);
+    return sNormTitle === normTitle;
+  });
+  if (matched) return matched;
+
+  // 2. Core title match (e.g. "Arabic Kuthu" matching "Arabic Kuthu - Halamithi Habibo")
+  if (coreTitle.length >= 3) {
+    matched = pool.find(s => {
+      if (!s.audio_url || !s.audio_url.includes("aac.saavncdn.com")) return false;
+      const sCoreTitle = cleanCoreTitle(s.title);
+      const sNormTitle = s._normTitle || normalizeSearchText(s.title);
+      return sCoreTitle === coreTitle || sNormTitle.startsWith(coreTitle) || sCoreTitle.startsWith(coreTitle);
+    });
+    if (matched) return matched;
+  }
+
+  // 3. Album + Title keyword match
+  if (normAlbum && normAlbum.length >= 3 && coreTitle.length >= 3) {
+    matched = pool.find(s => {
+      if (!s.audio_url || !s.audio_url.includes("aac.saavncdn.com")) return false;
+      const sNormAlbum = s._normAlbum || normalizeSearchText(s.album);
+      const sNormTitle = s._normTitle || normalizeSearchText(s.title);
+      return (sNormAlbum === normAlbum || sNormAlbum.includes(normAlbum) || normAlbum.includes(sNormAlbum)) &&
+             (sNormTitle.includes(coreTitle) || coreTitle.includes(cleanCoreTitle(s.title)));
+    });
+    if (matched) return matched;
+  }
+
+  // 4. Substring match for longer core title
+  if (coreTitle.length >= 4) {
+    matched = pool.find(s => {
+      if (!s.audio_url || !s.audio_url.includes("aac.saavncdn.com")) return false;
+      const sNormTitle = s._normTitle || normalizeSearchText(s.title);
+      return sNormTitle.includes(coreTitle) || (s._normAlbum && s._normAlbum.includes(coreTitle));
+    });
+    if (matched) return matched;
+  }
+
+  return null;
+}
+
+// Filters out amateur covers, karaoke, and tribute remakes so original singers/movie tracks always take priority
+function isAmateurCoverOrKaraoke(title, artist) {
+  const t = (title || "").toLowerCase();
+  const a = (artist || "").toLowerCase();
+  const filterKeywords = [
+    "karaoke", "backing track", "tribute", "cover version",
+    "acoustic cover", "instrumental cover", "sing2piano", "the karaoke channel",
+    "piano cover", "lofi cover", "guitar cover", "made famous by",
+    "in the style of", "originally performed by", "hit crew", "cover artist",
+    "tribute band"
+  ];
+  return filterKeywords.some(kw => t.includes(kw) || a.includes(kw));
+}
+
 // Typo-tolerant relevance scorer & matcher
 function scoreAndMatchSong(song, rawQuery) {
   if (!rawQuery) return { matched: true, score: 0 };
@@ -1295,6 +1380,9 @@ function executeSearch(rawQuery) {
     AppState.normalizedQuery = "";
     AppState.isSearching = false;
     AppState.searchResults = [];
+    AppState.jioResults = [];
+    AppState.spotifyResults = [];
+    AppState.searchSourceFilter = "all";
     AppState.isSpotifyFallbackResults = false;
     AppState.isFetchingSpotify = false;
     if (DOM.clearSearchBtn) DOM.clearSearchBtn.style.display = "none";
@@ -1306,22 +1394,33 @@ function executeSearch(rawQuery) {
   AppState.searchQuery = trimmed;
   AppState.normalizedQuery = normalized;
   AppState.isSearching = true;
+  AppState.searchSourceFilter = "all";
   if (DOM.clearSearchBtn) DOM.clearSearchBtn.style.display = "block";
 
   // ALWAYS filter and sort from the immutable master collection using typo-tolerant fuzzy relevance scoring!
-  const localMatches = searchMasterSongs(trimmed);
+  const localMatches = searchMasterSongs(trimmed).map(s => {
+    s.source = "jiosaavn";
+    return s;
+  });
+  AppState.jioResults = [...localMatches];
+  AppState.spotifyResults = [];
 
   if (localMatches.length > 0) {
-    // Song found in JioSaavn catalogue! Display immediately with zero Spotify branding
+    // Song found in JioSaavn catalogue! Display immediately
     AppState.isSpotifyFallbackResults = false;
-    AppState.isFetchingSpotify = false;
+    AppState.isFetchingSpotify = true; // Indicates background Spotify query is underway in parallel
     AppState.searchResults = [...localMatches];
     AppState.queue = [...localMatches];
     renderContent();
 
+    // Query Spotify & Global Online catalogue in parallel so BOTH JioSaavn & Spotify results appear!
+    AppState.searchDebounceTimer = setTimeout(() => {
+      fetchSpotifySearchResults(trimmed, thisRequestId, true /* isParallel */);
+    }, 200);
+
     // If an optional external custom backend is configured, query asynchronously for extra live matches
     if (API_BASE) {
-      AppState.searchDebounceTimer = setTimeout(() => {
+      setTimeout(() => {
         fetchBackendSearchResults(trimmed, thisRequestId);
       }, 350);
     }
@@ -1334,13 +1433,13 @@ function executeSearch(rawQuery) {
     renderContent();
 
     AppState.searchDebounceTimer = setTimeout(() => {
-      fetchSpotifySearchResults(trimmed, thisRequestId);
+      fetchSpotifySearchResults(trimmed, thisRequestId, false /* isParallel */);
     }, 250);
   }
 }
 
 // Background JioSaavn & Online Catalogue Search Fallback (Zero Redirection, Full-Length Streams)
-async function fetchSpotifySearchResults(query, requestId) {
+async function fetchSpotifySearchResults(query, requestId, isParallel = false) {
   if (!query) return;
 
   const noiseRegex = /\b(movice|movies|movie|movi|moive|movei|films|film|flims|flim|filam|padangal|padam|cinema|cinemas|theatre|theatres|soundtracks|soundtrack|ost|albums|album|songs|song|sngs|sng|paatu|paattu|pattu|geetham|mp3|tracks|track|audios|audio|full|original|hits|hit|classics|classic|evergreen|golden|blockbusters|blockbuster|popular)\b/gi;
@@ -1363,14 +1462,20 @@ async function fetchSpotifySearchResults(query, requestId) {
           const backendData = await backendRes.json();
           if (requestId === AppState.searchRequestId && backendData.status === "success" && Array.isArray(backendData.songs) && backendData.songs.length > 0) {
             clearTimeout(timeoutId);
-            AppState.searchResults = backendData.songs.map(s => prepareSongSearchMetadata({
+            const backendSongs = backendData.songs.map(s => prepareSongSearchMetadata({
               ...s,
               download_authorized: true,
               source: "spotify"
             }));
-            AppState.searchResults.forEach(s => autoImportSongToCatalogue(s));
-            AppState.isSpotifyFallbackResults = true;
+            backendSongs.forEach(s => autoImportSongToCatalogue(s));
+            AppState.spotifyResults = backendSongs;
+            AppState.isSpotifyFallbackResults = !isParallel;
             AppState.isFetchingSpotify = false;
+            if (isParallel) {
+              AppState.searchResults = [...AppState.jioResults, ...backendSongs];
+            } else {
+              AppState.searchResults = backendSongs;
+            }
             AppState.queue = [...AppState.searchResults];
             renderContent();
             return;
@@ -1392,16 +1497,16 @@ async function fetchSpotifySearchResults(query, requestId) {
     if (requestId !== AppState.searchRequestId) return;
 
     if (data.results && Array.isArray(data.results) && data.results.length > 0) {
-      const spotifySongs = data.results.map((r, index) => {
+      // Filter out amateur covers, karaoke, and tribute remakes so original singers/movie tracks always take priority!
+      const filteredResults = data.results.filter(r => !isAmateurCoverOrKaraoke(r.trackName, r.artistName));
+      const poolToMap = filteredResults.length > 0 ? filteredResults : data.results;
+
+      const spotifySongs = poolToMap.map((r, index) => {
         const durSec = Math.round((r.trackTimeMillis || 210000) / 1000);
         const artwork = (r.artworkUrl100 || "").replace("100x100bb", "600x600bb") || "static/images/only_friends_theme.svg";
-        const normTrackTitle = normalizeSearchText(r.trackName || "");
 
-        // Check if full-length 320kbps JioSaavn stream is available in catalogue
-        const localMatch = AppState.masterSongs.find(s => 
-          s.audio_url && s.audio_url.includes("aac.saavncdn.com") &&
-          (s._normTitle === normTrackTitle || (normTrackTitle.length >= 4 && s._normTitle && s._normTitle.includes(normTrackTitle)))
-        );
+        // Check if authentic full-length 320kbps JioSaavn stream is available in catalogue for this original song
+        const localMatch = findFullLengthAudioMatch(r.trackName, r.artistName, r.collectionName);
 
         const hasFullAudio = localMatch && localMatch.audio_url;
         const finalAudio = hasFullAudio ? localMatch.audio_url : (r.previewUrl || "");
@@ -1430,15 +1535,26 @@ async function fetchSpotifySearchResults(query, requestId) {
       });
 
       spotifySongs.forEach(s => autoImportSongToCatalogue(s));
-      AppState.searchResults = spotifySongs;
-      AppState.isSpotifyFallbackResults = true;
-      AppState.isFetchingSpotify = false;
-      AppState.queue = [...spotifySongs];
+      AppState.spotifyResults = spotifySongs;
+
+      if (isParallel) {
+        AppState.searchResults = [...AppState.jioResults, ...spotifySongs];
+        AppState.isSpotifyFallbackResults = false;
+        AppState.isFetchingSpotify = false;
+        AppState.queue = [...AppState.searchResults];
+      } else {
+        AppState.searchResults = spotifySongs;
+        AppState.isSpotifyFallbackResults = true;
+        AppState.isFetchingSpotify = false;
+        AppState.queue = [...spotifySongs];
+      }
       renderContent();
     } else {
-      AppState.searchResults = [];
-      AppState.isSpotifyFallbackResults = false;
       AppState.isFetchingSpotify = false;
+      if (!isParallel) {
+        AppState.searchResults = [];
+        AppState.isSpotifyFallbackResults = false;
+      }
       renderContent();
     }
   } catch (err) {
@@ -1447,12 +1563,14 @@ async function fetchSpotifySearchResults(query, requestId) {
 
     console.warn("[MusicHub] Spotify & online search error:", err.message);
     AppState.isFetchingSpotify = false;
-    AppState.isSpotifyFallbackResults = false;
-    AppState.searchResults = [];
-    AppState.searchError = {
-      query: query,
-      message: "Song not found in JioSaavn or Spotify."
-    };
+    if (!isParallel) {
+      AppState.isSpotifyFallbackResults = false;
+      AppState.searchResults = [];
+      AppState.searchError = {
+        query: query,
+        message: "Song not found in JioSaavn or Spotify."
+      };
+    }
     renderContent();
   } finally {
     if (AppState.activeSearchAbortController === abortController) {
@@ -1555,8 +1673,8 @@ function renderContent() {
 
   // Search Results Mode
   if (AppState.searchQuery) {
-    // 1. If currently fetching from Spotify / online fallback
-    if (AppState.isFetchingSpotify) {
+    // 1. If currently fetching from Spotify / online fallback and have zero results yet
+    if (AppState.isFetchingSpotify && AppState.searchResults.length === 0) {
       if (DOM.emptyState) DOM.emptyState.style.display = "none";
       DOM.contentContainer.innerHTML = `
         <section class="music-section">
@@ -1579,6 +1697,41 @@ function renderContent() {
     }
 
     let displayList = [...AppState.searchResults];
+
+    // Source Filter Handling during Search: All / JioSaavn / Spotify
+    const totalAllCount = displayList.length;
+    const jioCount = displayList.filter(s => s.source !== "spotify").length;
+    const spotifyCount = displayList.filter(s => s.source === "spotify").length;
+
+    let sourceFilterHTML = "";
+    if (jioCount > 0 && spotifyCount > 0) {
+      sourceFilterHTML = `
+        <div class="search-source-filter-row">
+          <span class="source-filter-label">Filter Source:</span>
+          <button class="source-filter-chip ${AppState.searchSourceFilter === 'all' ? 'active' : ''}" data-source="all">
+            ✨ All Results (${totalAllCount})
+          </button>
+          <button class="source-filter-chip ${AppState.searchSourceFilter === 'jiosaavn' ? 'active' : ''}" data-source="jiosaavn">
+            🟣 JioSaavn (${jioCount})
+          </button>
+          <button class="source-filter-chip ${AppState.searchSourceFilter === 'spotify' ? 'active' : ''}" data-source="spotify">
+            🟢 Spotify (${spotifyCount})
+          </button>
+          ${AppState.isFetchingSpotify ? `
+            <span class="spotify-sync-badge" style="display:inline-flex; align-items:center; gap:6px; font-size:0.78rem; color:#1ed760; margin-left:8px;">
+              <span class="spinner" style="width:11px; height:11px; border-width:2px; border-color:rgba(30,215,96,0.25); border-top-color:#1ed760;"></span>
+              Syncing Spotify in parallel...
+            </span>
+          ` : ''}
+        </div>
+      `;
+    }
+
+    if (AppState.searchSourceFilter === "jiosaavn") {
+      displayList = displayList.filter(s => s.source !== "spotify");
+    } else if (AppState.searchSourceFilter === "spotify") {
+      displayList = displayList.filter(s => s.source === "spotify");
+    }
 
     // Language Filter Handling during Search
     let languageFilteredNoticeHTML = "";
@@ -1719,6 +1872,7 @@ function renderContent() {
       ${spotifyBannerHTML}
       ${errorBannerHTML}
       ${languageFilteredNoticeHTML}
+      ${sourceFilterHTML}
       ${searchWorldBannerHTML}
       <section class="music-section">
         <div class="section-header">
@@ -1737,6 +1891,13 @@ function renderContent() {
 
     attachCardListeners(visibleList);
     attachRetryListener();
+
+    document.querySelectorAll(".source-filter-chip").forEach(chip => {
+      chip.addEventListener("click", () => {
+        AppState.searchSourceFilter = chip.dataset.source;
+        renderContent();
+      });
+    });
 
     const searchGlobalBtn = document.getElementById("searchGlobalOnlineBtn");
     if (searchGlobalBtn) {
@@ -2211,12 +2372,19 @@ function createSongCardHTML(song) {
 
   const safeCover = escapeAttr(song.cover_url || "static/images/only_friends_theme.svg");
   const movieBadge = song.album ? ` • <span class="card-album-tag" title="Movie/Album: ${escapeAttr(song.album)}">${escapeHTML(song.album)}</span>` : "";
+  const isSpotify = song.source === "spotify";
+  const sourceBadgeHTML = `
+    <span class="card-source-tag ${isSpotify ? 'spotify-badge' : 'saavn-badge'}" title="Source: ${isSpotify ? 'Spotify Global Network' : 'JioSaavn Original Master'}">
+      ${isSpotify ? '🟢 Spotify' : '🟣 JioSaavn'}
+    </span>
+  `;
 
   return `
     <div class="song-card ${isThisPlaying ? 'now-playing' : ''}" data-id="${escapeAttr(song.id)}">
       <div class="card-thumb-wrap">
         <img class="card-thumb-img" src="${safeCover}" alt="${escapeAttr(song.title)}" loading="lazy" onerror="this.src='static/images/only_friends_theme.svg'" />
         <span class="card-category-tag">${escapeHTML(song.language || "Music")}</span>
+        ${sourceBadgeHTML}
         <span class="card-duration-badge">${escapeHTML(song.duration_str || "3:30")}</span>
         <div class="play-overlay">
           <button class="play-circle-btn card-play-trigger" data-id="${escapeAttr(song.id)}" aria-label="Play ${escapeAttr(song.title)}">
@@ -2558,23 +2726,16 @@ async function resolveOnlineFullStream(song) {
   if (song.audio_url && song.audio_url.includes("aac.saavncdn.com")) {
     return song.audio_url;
   }
-  const title = (song.title || "").toLowerCase();
-  const artist = (song.artist || "").toLowerCase();
 
-  // 1. Check local master catalogue first (over 7,000 verified full-length 320kbps streams!)
-  const normTitle = song._normTitle || normalizeSearchText(song.title || "");
-  const catalogueMatch = AppState.masterSongs.find(s => 
-    s.audio_url && s.audio_url.includes("aac.saavncdn.com") &&
-    (s._normTitle === normTitle || (normTitle.length >= 4 && s._normTitle && s._normTitle.includes(normTitle)) ||
-     (song.album && s._normAlbum && s._normAlbum === normalizeSearchText(song.album)))
-  );
-  if (catalogueMatch) {
-    song.audio_url = catalogueMatch.audio_url;
+  // 1. Check local master catalogue first using intelligent original singer & core title matcher
+  const match = findFullLengthAudioMatch(song.title, song.artist, song.album);
+  if (match && match.audio_url) {
+    song.audio_url = match.audio_url;
     song.is_preview = false;
-    song.duration = catalogueMatch.duration || song.duration;
-    song.duration_str = catalogueMatch.duration_str || song.duration_str;
+    song.duration = match.duration || song.duration;
+    song.duration_str = match.duration_str || song.duration_str;
     autoImportSongToCatalogue(song);
-    return catalogueMatch.audio_url;
+    return match.audio_url;
   }
 
   const cleanQ = correctSearchQuery(`${song.title || ""} ${song.artist || ""}`.trim()) || `${song.title || ""} ${song.artist || ""}`.trim();
@@ -2730,16 +2891,14 @@ function playSong(song, preserveQueue = false) {
 
   // Immediate upgrade of any 30s preview snippet before assigning src
   if (streamSrc && (streamSrc.includes("apple.com") || streamSrc.includes("preview") || song.is_preview)) {
-    const fullMatch = AppState.masterSongs.find(s => 
-      s.title.toLowerCase() === (song.title || "").toLowerCase() &&
-      s.audio_url && s.audio_url.includes("aac.saavncdn.com")
-    );
-    if (fullMatch) {
+    const fullMatch = findFullLengthAudioMatch(song.title, song.artist, song.album);
+    if (fullMatch && fullMatch.audio_url) {
       streamSrc = fullMatch.audio_url;
       song.audio_url = fullMatch.audio_url;
       song.is_preview = false;
-      song.duration = fullMatch.duration;
-      song.duration_str = fullMatch.duration_str;
+      song.duration = fullMatch.duration || song.duration;
+      song.duration_str = fullMatch.duration_str || song.duration_str;
+      autoImportSongToCatalogue(song);
     }
   }
 
@@ -2855,6 +3014,12 @@ function playPreviousSong() {
 }
 
 function handleTrackEnded() {
+  if (AppState.currentSong && (AppState.currentSong.is_preview || (audioPlayer.duration && audioPlayer.duration < 45))) {
+    // If a preview snippet ended, hand over to continuous background Spotify player
+    console.log("[MusicHub] Preview snippet finished; seamlessly continuing in background Spotify player...");
+    playSpotifyInBackground(AppState.currentSong);
+    return;
+  }
   if (AppState.isRepeat) {
     audioPlayer.currentTime = 0;
     audioPlayer.play().catch(() => {});
@@ -3024,6 +3189,12 @@ async function handleOpenInMobileMusicApp(song) {
   if (!downloadUrl && song.id) {
     const matched = AppState.masterSongs.find(s => s.id === song.id);
     if (matched) downloadUrl = matched.audio_url;
+  }
+  if (!downloadUrl || downloadUrl.includes("apple.com") || downloadUrl.includes("preview") || song.is_preview) {
+    const fullStream = await resolveOnlineFullStream(song);
+    if (fullStream) {
+      downloadUrl = fullStream;
+    }
   }
   if (!downloadUrl) return;
 
