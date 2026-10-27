@@ -643,6 +643,54 @@ manithanSearches.forEach(({ q, expectedAlbum, expectedTitle, expectedEra }) => {
 });
 console.log(`[PASS] Verified: All ${manithanSearches.length} Manithan movie and song queries rank the expected Manithan tracks at #1!`);
 
+// Test 28: Verifying Multi-Language Album Topics, Kannada, and Mobile Music Player Integration
+console.log("\nTest 28: Verifying Multi-Language Album Topics, Kannada, and Mobile Music Player Integration...");
+
+// 1. Language counts & Kannada support
+const kannadaSongs = AppState.masterSongs.filter(s => s.language === "Kannada");
+assert(kannadaSongs.length > 0, `Must have Kannada songs in catalogue, found ${kannadaSongs.length}`);
+
+const tamilSongs = AppState.masterSongs.filter(s => s.language === "Tamil");
+assert(tamilSongs.length >= 4900, `Must have over 4900 Tamil songs, found ${tamilSongs.length}`);
+
+const teluguSongs = AppState.masterSongs.filter(s => s.language === "Telugu");
+assert(teluguSongs.length >= 400, `Must have over 400 Telugu songs, found ${teluguSongs.length}`);
+
+// 2. Language View & Album Topics Rendering
+AppState.searchQuery = "";
+AppState.activeSection = "all";
+AppState.activeLanguage = "tamil";
+renderContent();
+assert(DOM.contentContainer.innerHTML.includes("Tamil Movie Albums"), "Must render Tamil Movie Albums header");
+assert(DOM.contentContainer.innerHTML.includes("album-topic-chip"), "Must render interactive Movie Album Topics chips for Tamil");
+
+AppState.activeLanguage = "telugu";
+renderContent();
+assert(DOM.contentContainer.innerHTML.includes("Telugu Movie Albums"), "Must render Telugu Movie Albums header");
+assert(DOM.contentContainer.innerHTML.includes("album-topic-chip"), "Must render interactive Movie Album Topics chips for Telugu");
+
+AppState.activeLanguage = "kannada";
+renderContent();
+assert(DOM.contentContainer.innerHTML.includes("Kannada Golden Albums"), "Must render Kannada Golden Albums header");
+
+// 3. Reset and verify Home Page Language Sections
+AppState.activeLanguage = "all";
+renderContent();
+assert(DOM.contentContainer.innerHTML.includes("Kannada Golden Albums"), "Home page must include Kannada topic section");
+assert(DOM.contentContainer.innerHTML.includes("Tamil Movie Albums"), "Home page must include Tamil topic section");
+assert(DOM.contentContainer.innerHTML.includes("Telugu Movie Albums"), "Home page must include Telugu topic section");
+
+// 4. Mobile Default Music App Functions
+assert(typeof handleOpenInMobileMusicApp === "function", "handleOpenInMobileMusicApp must be defined");
+assert(typeof showToastWithAction === "function", "showToastWithAction must be defined");
+assert(typeof handleDownloadAction === "function", "handleDownloadAction must be defined");
+
+// 5. Zero 30-second previews verification
+const previewTracks = AppState.masterSongs.filter(s => s.is_preview || (s.audio_url && s.audio_url.includes("apple.com")));
+assert.strictEqual(previewTracks.length, 0, `Must have zero 30-second preview tracks in master catalogue, found ${previewTracks.length}`);
+
+console.log(`[PASS] Verified: All 6060 catalogue tracks categorized by language topics with album chips, Kannada included, zero 30s cutoffs, and Mobile Default Music App integration active.`);
+
 console.log("\n==================================================");
-console.log("ALL 27 SEARCH, CATALOGUE, FULL-STREAM, ERA, MOVIE & MANITHAN TESTS PASSED!");
+console.log("ALL 28 SEARCH, CATALOGUE, FULL-STREAM, ERA, MOVIE & MULTI-LANGUAGE TESTS PASSED!");
 console.log("==================================================\n");

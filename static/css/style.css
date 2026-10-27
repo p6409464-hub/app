@@ -1863,3 +1863,41 @@ body {
     transform: scale(0.97);
   }
 }
+
+/* =====================================================
+   Album Topics & Mobile Default Music Player Styles
+===================================================== */
+.album-topics-wrap {
+  background: rgba(30, 20, 60, 0.45);
+  border: 1px solid rgba(168, 85, 247, 0.2);
+  border-radius: 14px;
+  padding: 12px 16px;
+  margin: 12px 0 20px 0;
+}
+.album-chips-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  overflow-x: auto;
+  padding-bottom: 2px;
+}
+.album-topic-chip {
+  font-size: 0.82rem;
+  padding: 5px 14px;
+  border-radius: 20px;
+}
+.mobile-music-app-btn {
+  transition: all 0.2s ease;
+}
+.mobile-music-app-btn:hover {
+  background: rgba(59, 130, 246, 0.35) !important;
+  color: #fff !important;
+  transform: translateY(-1px);
+}
+.toast-action-btn {
+  transition: all 0.2s ease;
+}
+.toast-action-btn:hover {
+  background: rgba(255, 255, 255, 0.35) !important;
+  transform: scale(1.04);
+}
