@@ -1355,57 +1355,7 @@ async function fetchSpotifySearchResults(query, requestId) {
   try {
     const timeoutId = setTimeout(() => abortController.abort(), 6000);
 
-    // 1. Direct high-definition JioSaavn Online API (Full 320kbps CDN streams, Zero 30s cutoffs!)
-    try {
-      const saavnSearchUrl = `https://saavn.dev/api/search/songs?query=${encodeURIComponent(cleanQuery)}&limit=25`;
-      const saavnRes = await fetch(saavnSearchUrl, { signal: abortController.signal });
-      if (saavnRes.ok) {
-        const saavnData = await saavnRes.json();
-        if (requestId === AppState.searchRequestId && saavnData && saavnData.data && Array.isArray(saavnData.data.results) && saavnData.data.results.length > 0) {
-          clearTimeout(timeoutId);
-          const saavnSongs = saavnData.data.results.map((r, index) => {
-            const durSec = parseInt(r.duration, 10) || 210;
-            const dlArr = Array.isArray(r.downloadUrl) ? r.downloadUrl : [];
-            const dlUrl = (dlArr.length > 0 ? (dlArr[dlArr.length - 1]?.url || dlArr[0]?.url) : "") || "";
-            const imgArr = Array.isArray(r.image) ? r.image : [];
-            const artwork = (imgArr.length > 0 ? (imgArr[imgArr.length - 1]?.url || imgArr[0]?.url) : "") || "static/images/only_friends_theme.svg";
-            const artists = (r.artists && Array.isArray(r.artists.primary) && r.artists.primary.length > 0)
-              ? r.artists.primary.map(a => a.name).join(", ")
-              : (r.artist || "Artist");
-
-            return prepareSongSearchMetadata({
-              id: `saavn_online_${r.id || (Date.now() + "_" + index)}`,
-              title: r.name || "Unknown Title",
-              artist: artists,
-              album: r.album?.name || "Single",
-              duration: durSec,
-              duration_str: formatTime(durSec),
-              language: (r.language ? capitalize(r.language) : (AppState.activeLanguage !== "all" ? capitalize(AppState.activeLanguage) : "Tamil")),
-              category: "JioSaavn Online Catalogue",
-              sections: ["trending"],
-              cover_url: artwork,
-              audio_url: dlUrl,
-              audio_file: "",
-              download_authorized: true,
-              source: "jiosaavn_online",
-              tags: [cleanQuery.toLowerCase(), "saavn", "online", "full"]
-            });
-          }).filter(s => s.audio_url);
-
-          if (saavnSongs.length > 0) {
-            saavnSongs.forEach(s => autoImportSongToCatalogue(s));
-            AppState.searchResults = saavnSongs;
-            AppState.isSpotifyFallbackResults = true;
-            AppState.isFetchingSpotify = false;
-            AppState.queue = [...saavnSongs];
-            renderContent();
-            return;
-          }
-        }
-      }
-    } catch (_) {}
-    
-    // 2. Try backend API if configured
+    // 1. Try backend API if configured
     if (API_BASE) {
       try {
         const backendRes = await fetch(`${API_BASE}/api/search?query=${encodeURIComponent(cleanQuery)}&language=${encodeURIComponent(AppState.activeLanguage)}`, { signal: abortController.signal });
@@ -1429,8 +1379,8 @@ async function fetchSpotifySearchResults(query, requestId) {
       } catch (_) {}
     }
 
-    // 3. Fallback: Direct Global search with auto-corrected query
-    const searchUrl = `https://itunes.apple.com/search?term=${encodeURIComponent(cleanQuery)}&entity=song&limit=25`;
+    // 2. Direct Global World Catalogue Search (JioSaavn & Spotify Global Network)
+    const searchUrl = `https://itunes.apple.com/search?term=${encodeURIComponent(cleanQuery)}&entity=song&limit=30`;
     const res = await fetch(searchUrl, { signal: abortController.signal });
     clearTimeout(timeoutId);
 
@@ -1445,25 +1395,37 @@ async function fetchSpotifySearchResults(query, requestId) {
       const spotifySongs = data.results.map((r, index) => {
         const durSec = Math.round((r.trackTimeMillis || 210000) / 1000);
         const artwork = (r.artworkUrl100 || "").replace("100x100bb", "600x600bb") || "static/images/only_friends_theme.svg";
+        const normTrackTitle = normalizeSearchText(r.trackName || "");
+
+        // Check if full-length 320kbps JioSaavn stream is available in catalogue
+        const localMatch = AppState.masterSongs.find(s => 
+          s.audio_url && s.audio_url.includes("aac.saavncdn.com") &&
+          (s._normTitle === normTrackTitle || (normTrackTitle.length >= 4 && s._normTitle && s._normTitle.includes(normTrackTitle)))
+        );
+
+        const hasFullAudio = localMatch && localMatch.audio_url;
+        const finalAudio = hasFullAudio ? localMatch.audio_url : (r.previewUrl || "");
+        const finalDuration = hasFullAudio && localMatch.duration ? localMatch.duration : durSec;
+        const finalDurationStr = hasFullAudio && localMatch.duration_str ? localMatch.duration_str : formatTime(durSec);
 
         return prepareSongSearchMetadata({
           id: `spotify_${r.trackId || (Date.now() + "_" + index)}`,
           title: r.trackName || "Unknown Title",
           artist: r.artistName || "Unknown Artist",
           album: r.collectionName || "Single",
-          duration: durSec,
-          duration_str: formatTime(durSec),
-          language: AppState.activeLanguage !== "all" ? capitalize(AppState.activeLanguage) : "Global",
-          category: "Spotify & Global Catalogue",
+          duration: finalDuration,
+          duration_str: finalDurationStr,
+          language: AppState.activeLanguage !== "all" ? capitalize(AppState.activeLanguage) : (r.primaryGenreName || "Global"),
+          category: "JioSaavn & Spotify Global Catalogue",
           sections: ["trending"],
           cover_url: artwork,
-          audio_url: r.previewUrl || "",
+          audio_url: finalAudio,
           audio_file: "",
-          is_preview: true,
+          is_preview: !hasFullAudio,
           download_authorized: true,
           source: "spotify",
           spotify_id: r.trackId ? String(r.trackId) : "",
-          tags: ["spotify", "online", normalizeSearchText(r.trackName || ""), normalizeSearchText(r.artistName || "")]
+          tags: ["spotify", "jiosaavn", "online", "global", normalizeSearchText(r.trackName || ""), normalizeSearchText(r.artistName || "")]
         });
       });
 
@@ -1731,12 +1693,33 @@ function renderContent() {
       `;
     }
 
+    // World Catalogue Search Banner (Empowers user to fetch any song in the world from JioSaavn & Spotify)
+    let searchWorldBannerHTML = "";
+    if (!AppState.isSpotifyFallbackResults && AppState.searchQuery) {
+      searchWorldBannerHTML = `
+        <div class="search-global-bar" style="margin-bottom:18px; padding:12px 18px; background:linear-gradient(135deg, rgba(30,215,96,0.12) 0%, rgba(59,130,246,0.12) 100%); border:1px solid rgba(30,215,96,0.35); border-radius:14px; display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:12px;">
+          <div>
+            <strong style="color:#fff; font-size:0.94rem; display:flex; align-items:center; gap:6px;">
+              <span>🌐</span> Search JioSaavn &amp; Spotify World Catalogue
+            </strong>
+            <span style="display:block; font-size:0.82rem; color:var(--text-muted); margin-top:2px;">
+              Looking for international hits, new releases, or songs across the world? Take from JioSaavn &amp; Spotify directly.
+            </span>
+          </div>
+          <button id="searchGlobalOnlineBtn" class="btn btn-pill" style="padding:8px 22px; font-size:0.84rem; font-weight:700; background:#1ed760; color:#000; border:none; cursor:pointer; border-radius:30px; box-shadow:0 4px 14px rgba(30,215,96,0.35);">
+            <span>🟢</span> Search World Catalogue
+          </button>
+        </div>
+      `;
+    }
+
     if (DOM.emptyState) DOM.emptyState.style.display = "none";
 
     DOM.contentContainer.innerHTML = `
       ${spotifyBannerHTML}
       ${errorBannerHTML}
       ${languageFilteredNoticeHTML}
+      ${searchWorldBannerHTML}
       <section class="music-section">
         <div class="section-header">
           <div class="section-title-wrap">
@@ -1754,6 +1737,17 @@ function renderContent() {
 
     attachCardListeners(visibleList);
     attachRetryListener();
+
+    const searchGlobalBtn = document.getElementById("searchGlobalOnlineBtn");
+    if (searchGlobalBtn) {
+      searchGlobalBtn.addEventListener("click", () => {
+        AppState.isSpotifyFallbackResults = false;
+        AppState.isFetchingSpotify = true;
+        renderContent();
+        fetchSpotifySearchResults(AppState.searchQuery, ++AppState.searchRequestId);
+      });
+    }
+
     const resetLangBtn = document.getElementById("searchResetLangFilterBtn");
     if (resetLangBtn) {
       resetLangBtn.addEventListener("click", () => {
@@ -2567,16 +2561,19 @@ async function resolveOnlineFullStream(song) {
   const title = (song.title || "").toLowerCase();
   const artist = (song.artist || "").toLowerCase();
 
-  // 1. Check local master catalogue first (over 6,000 verified full-length 320kbps streams!)
+  // 1. Check local master catalogue first (over 7,000 verified full-length 320kbps streams!)
+  const normTitle = song._normTitle || normalizeSearchText(song.title || "");
   const catalogueMatch = AppState.masterSongs.find(s => 
     s.audio_url && s.audio_url.includes("aac.saavncdn.com") &&
-    (s.title.toLowerCase() === title || s.title.toLowerCase().startsWith(title) || (title.length >= 4 && s.title.toLowerCase().includes(title)))
+    (s._normTitle === normTitle || (normTitle.length >= 4 && s._normTitle && s._normTitle.includes(normTitle)) ||
+     (song.album && s._normAlbum && s._normAlbum === normalizeSearchText(song.album)))
   );
   if (catalogueMatch) {
     song.audio_url = catalogueMatch.audio_url;
     song.is_preview = false;
     song.duration = catalogueMatch.duration || song.duration;
     song.duration_str = catalogueMatch.duration_str || song.duration_str;
+    autoImportSongToCatalogue(song);
     return catalogueMatch.audio_url;
   }
 
