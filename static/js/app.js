@@ -1532,76 +1532,183 @@ async function fetchSpotifySearchResults(query, requestId, isParallel = false) {
       } catch (_) {}
     }
 
-    // 2. Direct Global World Catalogue Search (JioSaavn & Spotify Global Network)
-    const searchUrl = `https://itunes.apple.com/search?term=${encodeURIComponent(cleanQuery)}&entity=song&limit=30`;
-    const res = await fetch(searchUrl, { signal: abortController.signal });
+    // 2. Direct Dual-API Search (JioSaavn Live 320kbps Streams + Spotify/iTunes Global Network)
+    const jioMirrors = [
+      "https://jiosaavn-api-sage.vercel.app/api/search/songs?query=",
+      "https://jiosaavn-api-nine.vercel.app/api/search/songs?query="
+    ];
+
+    let liveJioSongs = [];
+    for (const mirror of jioMirrors) {
+      try {
+        const jioRes = await fetch(mirror + encodeURIComponent(cleanQuery), { signal: abortController.signal });
+        if (jioRes.ok) {
+          const jioData = await jioRes.json();
+          if (jioData && jioData.data && Array.isArray(jioData.data.results) && jioData.data.results.length > 0) {
+            liveJioSongs = jioData.data.results.map((r, index) => {
+              const dl = r.downloadUrl && (r.downloadUrl.find(u => u.quality === "320kbps") || r.downloadUrl[r.downloadUrl.length - 1]);
+              const img = r.image && (r.image.find(u => u.quality === "500x500") || r.image[r.image.length - 1]);
+              const durSec = parseInt(r.duration, 10) || 220;
+              const primaryArtists = (r.artists && r.artists.primary) ? r.artists.primary.map(a => a.name).join(", ") : "";
+              const albumName = r.album ? r.album.name : "";
+
+              return prepareSongSearchMetadata({
+                id: `saavn_${r.id || (Date.now() + "_" + index)}`,
+                title: r.name || "Unknown Title",
+                artist: primaryArtists || albumName || "Original Soundtrack",
+                album: albumName || r.name || "Single",
+                year: r.year || "2024",
+                duration: durSec,
+                duration_str: formatTime(durSec),
+                language: r.language ? capitalize(r.language) : (AppState.activeLanguage !== "all" ? capitalize(AppState.activeLanguage) : "Global"),
+                category: "JioSaavn Live Global Stream",
+                sections: ["trending"],
+                cover_url: img ? img.url : "static/images/only_friends_theme.svg",
+                audio_url: dl ? dl.url : "",
+                audio_file: "",
+                is_preview: false,
+                download_authorized: true,
+                source: "jiosaavn",
+                tags: [
+                  normalizeSearchText(r.name || ""),
+                  normalizeSearchText(primaryArtists || ""),
+                  normalizeSearchText(albumName || ""),
+                  "jiosaavn",
+                  "online"
+                ]
+              });
+            }).filter(s => s.audio_url && s.duration >= 60);
+
+            if (liveJioSongs.length > 0) break;
+          }
+        }
+      } catch (_) {}
+    }
+
+    // Query Spotify & iTunes Global Network in parallel
+    let itunesSongs = [];
+    try {
+      const searchUrl = `https://itunes.apple.com/search?term=${encodeURIComponent(cleanQuery)}&entity=song&limit=30`;
+      const res = await fetch(searchUrl, { signal: abortController.signal });
+      if (res.ok) {
+        const data = await res.json();
+        if (data.results && Array.isArray(data.results) && data.results.length > 0) {
+          const filteredResults = data.results.filter(r => !isAmateurCoverOrKaraoke(r.trackName, r.artistName));
+          const poolToMap = filteredResults.length > 0 ? filteredResults : data.results;
+
+          itunesSongs = poolToMap.map((r, index) => {
+            const durSec = Math.round((r.trackTimeMillis || 210000) / 1000);
+            const artwork = (r.artworkUrl100 || "").replace("100x100bb", "600x600bb") || "static/images/only_friends_theme.svg";
+
+            // Check if authentic full-length 320kbps JioSaavn stream is available in catalogue or live results
+            const localMatch = findFullLengthAudioMatch(r.trackName, r.artistName, r.collectionName) ||
+              liveJioSongs.find(j => {
+                const jCore = cleanCoreTitle(j.title);
+                const rCore = cleanCoreTitle(r.trackName);
+                return jCore && rCore && (jCore === rCore || jCore.includes(rCore) || rCore.includes(jCore));
+              });
+
+            const hasFullAudio = localMatch && localMatch.audio_url && !localMatch.audio_url.includes("apple.com");
+            const finalAudio = hasFullAudio ? localMatch.audio_url : (r.previewUrl || "");
+            const finalDuration = hasFullAudio && localMatch.duration ? localMatch.duration : durSec;
+            const finalDurationStr = hasFullAudio && localMatch.duration_str ? localMatch.duration_str : formatTime(durSec);
+
+            return prepareSongSearchMetadata({
+              id: `spotify_${r.trackId || (Date.now() + "_" + index)}`,
+              title: r.trackName || "Unknown Title",
+              artist: r.artistName || "Unknown Artist",
+              album: r.collectionName || "Single",
+              duration: finalDuration,
+              duration_str: finalDurationStr,
+              language: AppState.activeLanguage !== "all" ? capitalize(AppState.activeLanguage) : (r.primaryGenreName || "Global"),
+              category: "JioSaavn & Spotify Global Catalogue",
+              sections: ["trending"],
+              cover_url: artwork,
+              audio_url: finalAudio,
+              audio_file: "",
+              is_preview: !hasFullAudio,
+              download_authorized: true,
+              source: "spotify",
+              spotify_id: r.trackId ? String(r.trackId) : "",
+              tags: ["spotify", "jiosaavn", "online", "global", normalizeSearchText(r.trackName || ""), normalizeSearchText(r.artistName || "")]
+            });
+          });
+        }
+      }
+    } catch (_) {}
+
     clearTimeout(timeoutId);
 
     if (requestId !== AppState.searchRequestId) return;
 
-    if (!res.ok) throw new Error(`HTTP ${res.status}`);
-    const data = await res.json();
+    // Merge and deduplicate results
+    const combinedOnline = [];
+    const seenOnline = new Set();
 
-    if (requestId !== AppState.searchRequestId) return;
+    // Prefer live JioSaavn full-length 320kbps tracks first
+    for (const s of liveJioSongs) {
+      const key = cleanCoreTitle(s.title) + "_" + normalizeSearchText(s.artist);
+      if (!seenOnline.has(key)) {
+        seenOnline.add(key);
+        combinedOnline.push(s);
+      }
+    }
 
-    if (data.results && Array.isArray(data.results) && data.results.length > 0) {
-      // Filter out amateur covers, karaoke, and tribute remakes so original singers/movie tracks always take priority!
-      const filteredResults = data.results.filter(r => !isAmateurCoverOrKaraoke(r.trackName, r.artistName));
-      const poolToMap = filteredResults.length > 0 ? filteredResults : data.results;
+    // Add Spotify tracks
+    for (const s of itunesSongs) {
+      const key = cleanCoreTitle(s.title) + "_" + normalizeSearchText(s.artist);
+      if (!seenOnline.has(key)) {
+        seenOnline.add(key);
+        combinedOnline.push(s);
+      } else {
+        // Track already exists from JioSaavn; ensure Spotify badge exists in spotifyResults
+        const existing = combinedOnline.find(x => cleanCoreTitle(x.title) + "_" + normalizeSearchText(x.artist) === key);
+        if (existing && !existing.audio_url && s.audio_url) {
+          existing.audio_url = s.audio_url;
+        }
+      }
+    }
 
-      const spotifySongs = poolToMap.map((r, index) => {
-        const durSec = Math.round((r.trackTimeMillis || 210000) / 1000);
-        const artwork = (r.artworkUrl100 || "").replace("100x100bb", "600x600bb") || "static/images/only_friends_theme.svg";
-
-        // Check if authentic full-length 320kbps JioSaavn stream is available in catalogue for this original song
-        const localMatch = findFullLengthAudioMatch(r.trackName, r.artistName, r.collectionName);
-
-        const hasFullAudio = localMatch && localMatch.audio_url;
-        const finalAudio = hasFullAudio ? localMatch.audio_url : (r.previewUrl || "");
-        const finalDuration = hasFullAudio && localMatch.duration ? localMatch.duration : durSec;
-        const finalDurationStr = hasFullAudio && localMatch.duration_str ? localMatch.duration_str : formatTime(durSec);
-
-        return prepareSongSearchMetadata({
-          id: `spotify_${r.trackId || (Date.now() + "_" + index)}`,
-          title: r.trackName || "Unknown Title",
-          artist: r.artistName || "Unknown Artist",
-          album: r.collectionName || "Single",
-          duration: finalDuration,
-          duration_str: finalDurationStr,
-          language: AppState.activeLanguage !== "all" ? capitalize(AppState.activeLanguage) : (r.primaryGenreName || "Global"),
-          category: "JioSaavn & Spotify Global Catalogue",
-          sections: ["trending"],
-          cover_url: artwork,
-          audio_url: finalAudio,
-          audio_file: "",
-          is_preview: !hasFullAudio,
-          download_authorized: true,
-          source: "spotify",
-          spotify_id: r.trackId ? String(r.trackId) : "",
-          tags: ["spotify", "jiosaavn", "online", "global", normalizeSearchText(r.trackName || ""), normalizeSearchText(r.artistName || "")]
-        });
-      });
-
-      // Sort Spotify results so the authentic original track is at the top
-      spotifySongs.sort((a, b) => {
+    if (combinedOnline.length > 0) {
+      // Sort so authentic original song is ranked #1
+      combinedOnline.sort((a, b) => {
         const scoreB = scoreAndMatchSong(b, query).score;
         const scoreA = scoreAndMatchSong(a, query).score;
         return scoreB - scoreA;
       });
 
-      spotifySongs.forEach(s => autoImportSongToCatalogue(s));
-      AppState.spotifyResults = spotifySongs;
+      combinedOnline.forEach(s => autoImportSongToCatalogue(s));
+      AppState.spotifyResults = itunesSongs.length > 0 ? itunesSongs : combinedOnline.filter(s => s.source === "spotify");
+      if (AppState.spotifyResults.length === 0) {
+        AppState.spotifyResults = combinedOnline.map(s => ({ ...s, source: "spotify" }));
+      }
 
       if (isParallel) {
-        AppState.searchResults = [...AppState.jioResults, ...spotifySongs];
+        // Merge with local JioSaavn results
+        const seenCombined = new Set();
+        const mergedAll = [];
+        for (const s of [...AppState.jioResults, ...combinedOnline]) {
+          const key = cleanCoreTitle(s.title) + "_" + normalizeSearchText(s.artist);
+          if (!seenCombined.has(key)) {
+            seenCombined.add(key);
+            mergedAll.push(s);
+          }
+        }
+        mergedAll.sort((a, b) => {
+          const scoreB = scoreAndMatchSong(b, query).score;
+          const scoreA = scoreAndMatchSong(a, query).score;
+          return scoreB - scoreA;
+        });
+
+        AppState.searchResults = mergedAll;
         AppState.isSpotifyFallbackResults = false;
         AppState.isFetchingSpotify = false;
-        AppState.queue = [...AppState.searchResults];
+        AppState.queue = [...mergedAll];
       } else {
-        AppState.searchResults = spotifySongs;
+        AppState.searchResults = combinedOnline;
         AppState.isSpotifyFallbackResults = true;
         AppState.isFetchingSpotify = false;
-        AppState.queue = [...spotifySongs];
+        AppState.queue = [...combinedOnline];
       }
       renderContent();
     } else {
@@ -2751,40 +2858,27 @@ let bgSpotifyCurrentTime = 0;
 
 async function fetchFallbackAudioUrl(song) {
   if (!song) return "";
-  if (song.audio_url && song.audio_url.startsWith("http")) return song.audio_url;
+  if (song.audio_url && song.audio_url.startsWith("http") && !song.audio_url.includes("apple.com") && !song.is_preview) {
+    return song.audio_url;
+  }
   if (API_BASE) return `${API_BASE}/api/stream/${song.id}`;
 
-  const query = `${song.title || ""} ${song.artist || ""}`.trim();
-  if (!query) return "";
+  const resolved = await resolveOnlineFullStream(song);
+  if (resolved) return resolved;
 
-  try {
-    const url = `https://itunes.apple.com/search?term=${encodeURIComponent(query)}&entity=song&limit=3`;
-    const res = await fetch(url);
-    if (res.ok) {
-      const data = await res.json();
-      if (data.results && data.results.length > 0) {
-        const match = data.results.find(r => r.previewUrl) || data.results[0];
-        if (match && match.previewUrl) {
-          return match.previewUrl;
-        }
-      }
-    }
-  } catch (err) {
-    console.warn("[MusicHub] Online audio fallback lookup notice:", err.message);
-  }
-  return "";
+  return song.audio_url || "";
 }
 
 // Resolves authentic 320kbps full-length stream so online songs NEVER cut off at 30 seconds
 async function resolveOnlineFullStream(song) {
   if (!song) return "";
-  if (song.audio_url && song.audio_url.includes("aac.saavncdn.com")) {
+  if (song.audio_url && song.audio_url.includes("aac.saavncdn.com") && !song.audio_url.includes("_p.mp4") && (!song.duration || song.duration >= 60)) {
     return song.audio_url;
   }
 
   // 1. Check local master catalogue first using intelligent original singer & core title matcher
   const match = findFullLengthAudioMatch(song.title, song.artist, song.album);
-  if (match && match.audio_url) {
+  if (match && match.audio_url && !match.audio_url.includes("apple.com")) {
     song.audio_url = match.audio_url;
     song.is_preview = false;
     song.duration = match.duration || song.duration;
@@ -2801,6 +2895,35 @@ async function resolveOnlineFullStream(song) {
     const backendUrl = `${API_BASE}/api/stream/${song.id}`;
     song.audio_url = backendUrl;
     return backendUrl;
+  }
+
+  // 3. Resolve directly from high-speed JioSaavn Global mirrors (Zero 30s cutoffs!)
+  const mirrors = [
+    "https://jiosaavn-api-sage.vercel.app/api/search/songs?query=",
+    "https://jiosaavn-api-nine.vercel.app/api/search/songs?query="
+  ];
+
+  for (const mirror of mirrors) {
+    try {
+      const res = await fetch(mirror + encodeURIComponent(cleanQ));
+      if (res.ok) {
+        const data = await res.json();
+        if (data && data.data && Array.isArray(data.data.results) && data.data.results.length > 0) {
+          const best = data.data.results.find(r => r.duration >= 90) || data.data.results[0];
+          const dl = best.downloadUrl && (best.downloadUrl.find(u => u.quality === "320kbps") || best.downloadUrl[best.downloadUrl.length - 1]);
+          if (dl && dl.url) {
+            song.audio_url = dl.url;
+            song.is_preview = false;
+            if (best.duration) {
+              song.duration = parseInt(best.duration, 10);
+              song.duration_str = formatTime(song.duration);
+            }
+            autoImportSongToCatalogue(song);
+            return dl.url;
+          }
+        }
+      }
+    } catch (_) {}
   }
 
   return song.audio_url || "";
@@ -2945,9 +3068,9 @@ function playSong(song, preserveQueue = false) {
   };
 
   // Immediate upgrade of any 30s preview snippet before assigning src
-  if (streamSrc && (streamSrc.includes("apple.com") || streamSrc.includes("preview") || song.is_preview)) {
+  if (streamSrc && (streamSrc.includes("apple.com") || streamSrc.includes("preview") || song.is_preview || (song.duration && song.duration <= 45))) {
     const fullMatch = findFullLengthAudioMatch(song.title, song.artist, song.album);
-    if (fullMatch && fullMatch.audio_url) {
+    if (fullMatch && fullMatch.audio_url && !fullMatch.audio_url.includes("apple.com") && !fullMatch.audio_url.includes("preview")) {
       streamSrc = fullMatch.audio_url;
       song.audio_url = fullMatch.audio_url;
       song.is_preview = false;
@@ -2967,9 +3090,9 @@ function playSong(song, preserveQueue = false) {
   }
 
   // Seamlessly resolve full-length 320kbps stream if current URL is a 30s preview snippet
-  if (streamSrc && (streamSrc.includes("apple.com") || streamSrc.includes("preview") || song.is_preview)) {
+  if (streamSrc && (streamSrc.includes("apple.com") || streamSrc.includes("preview") || song.is_preview || (song.duration && song.duration <= 45))) {
     resolveOnlineFullStream(song).then(fullUrl => {
-      if (fullUrl && fullUrl !== streamSrc && AppState.currentSong && AppState.currentSong.id === song.id) {
+      if (fullUrl && fullUrl !== streamSrc && !fullUrl.includes("apple.com") && !fullUrl.includes("preview") && AppState.currentSong && AppState.currentSong.id === song.id) {
         console.log(`[MusicHub] Upgraded "${song.title}" from 30s preview to full-length stream.`);
         const currentTime = audioPlayer.currentTime || 0;
         song.audio_url = fullUrl;
@@ -3070,9 +3193,19 @@ function playPreviousSong() {
 
 function handleTrackEnded() {
   if (AppState.currentSong && (AppState.currentSong.is_preview || (audioPlayer.duration && audioPlayer.duration < 45))) {
-    // If a preview snippet ended, hand over to continuous background Spotify player
-    console.log("[MusicHub] Preview snippet finished; seamlessly continuing in background Spotify player...");
-    playSpotifyInBackground(AppState.currentSong);
+    console.log("[MusicHub] Preview snippet finished; attempting seamless continuation with full-length stream...");
+    resolveOnlineFullStream(AppState.currentSong).then(fullUrl => {
+      if (fullUrl && fullUrl !== audioPlayer.src && !fullUrl.includes("apple.com") && !fullUrl.includes("preview")) {
+        console.log("[MusicHub] Seamlessly resuming playback from full-length stream...");
+        AppState.currentSong.audio_url = fullUrl;
+        AppState.currentSong.is_preview = false;
+        audioPlayer.src = fullUrl;
+        audioPlayer.currentTime = 30; // Seamlessly continue from the 30s mark!
+        audioPlayer.play().catch(() => playNextSong());
+        return;
+      }
+      playSpotifyInBackground(AppState.currentSong);
+    }).catch(() => playNextSong());
     return;
   }
   if (AppState.isRepeat) {
@@ -3142,9 +3275,9 @@ async function handleDownloadAction(song, triggerBtn = null) {
   }
 
   // Ensure download is a full-length 320kbps stream (upgrade 30s preview if present)
-  if (!downloadUrl || downloadUrl.includes("apple.com") || downloadUrl.includes("preview") || song.is_preview) {
+  if (!downloadUrl || downloadUrl.includes("apple.com") || downloadUrl.includes("preview") || song.is_preview || (song.duration && song.duration <= 45)) {
     const fullStream = await resolveOnlineFullStream(song);
-    if (fullStream) {
+    if (fullStream && !fullStream.includes("apple.com") && !fullStream.includes("preview")) {
       downloadUrl = fullStream;
       song.audio_url = fullStream;
       song.is_preview = false;
@@ -3245,10 +3378,12 @@ async function handleOpenInMobileMusicApp(song) {
     const matched = AppState.masterSongs.find(s => s.id === song.id);
     if (matched) downloadUrl = matched.audio_url;
   }
-  if (!downloadUrl || downloadUrl.includes("apple.com") || downloadUrl.includes("preview") || song.is_preview) {
+  if (!downloadUrl || downloadUrl.includes("apple.com") || downloadUrl.includes("preview") || song.is_preview || (song.duration && song.duration <= 45)) {
     const fullStream = await resolveOnlineFullStream(song);
-    if (fullStream) {
+    if (fullStream && !fullStream.includes("apple.com") && !fullStream.includes("preview")) {
       downloadUrl = fullStream;
+      song.audio_url = fullStream;
+      song.is_preview = false;
     }
   }
   if (!downloadUrl) return;

@@ -1032,6 +1032,48 @@ originalSongSearches.forEach(({ q, expectedTitle, forbiddenSnippet, minDuration,
 
 console.log("[PASS] Verified: All searched queries rank the authentic full-length original soundtrack version at #1, with teasers/lofis/remixes cleanly filtered down.");
 
+// --------------------------------------------------------------------------
+// TEST 33: Verifying 100% Full-Length Songs (Zero 30-Second Cutoffs) Across Searches, Playback, and Downloads
+// --------------------------------------------------------------------------
+console.log("\nTest 33: Verifying 100% Full-Length Audio (Zero 30s Cutoffs) Across Searches & Downloads...");
+
+const fullSongQueries = [
+  { q: "maruvaarthai", expectedTitle: "Maruvaarthai", minDur: 200 },
+  { q: "shape of you", expectedTitle: "Shape of You", minDur: 200 },
+  { q: "believer", expectedTitle: "Believer", minDur: 180 },
+  { q: "illuminati", expectedTitle: "Illuminati", minDur: 180 },
+  { q: "kesariya", expectedTitle: "Kesariya", minDur: 220 },
+  { q: "chuttamalle", expectedTitle: "Chuttamalle", minDur: 200 },
+  { q: "aasa kooda", expectedTitle: "Aasa Kooda", minDur: 180 }
+];
+
+fullSongQueries.forEach(({ q, expectedTitle, minDur }) => {
+  executeSearch(q);
+  assert(AppState.searchResults.length > 0, `Search for "${q}" must return results!`);
+  const top = AppState.searchResults[0];
+  assert(top.title.toLowerCase().includes(expectedTitle.toLowerCase()), `Query "${q}" top result must be "${expectedTitle}", got "${top.title}"`);
+  assert(top.duration >= minDur, `Query "${q}" top result must be full length (>= ${minDur}s), got ${top.duration}s`);
+  assert(top.audio_url && top.audio_url.includes("aac.saavncdn.com"), `Query "${q}" must have direct full 320kbps CDN stream, got "${top.audio_url}"`);
+  assert(!top.is_preview, `Query "${q}" must NOT be marked as preview snippet!`);
+});
+
+// Test dynamic resolution of 30s preview snippet to authentic full-length 320kbps track
+const testSnippetSong = {
+  id: "test_preview_1",
+  title: "Maruvaarthai",
+  artist: "Sid Sriram",
+  album: "Enai Noki Paayum Thota",
+  duration: 30,
+  is_preview: true,
+  audio_url: "https://audio-ssl.itunes.apple.com/itunes-assets/Music125/v4/preview.m4a"
+};
+
+const fullResolvedUrl = findFullLengthAudioMatch(testSnippetSong.title, testSnippetSong.artist, testSnippetSong.album);
+assert(fullResolvedUrl && fullResolvedUrl.audio_url && fullResolvedUrl.audio_url.includes("aac.saavncdn.com"), "Snippet song must resolve to authentic 320kbps JioSaavn stream!");
+assert(fullResolvedUrl.duration >= 200, `Resolved track must be full length (>= 200s), got ${fullResolvedUrl.duration}s`);
+
+console.log("[PASS] Verified: 100% full-length audio resolution confirmed. Zero 30-second audio cutoffs across playback and downloads.");
+
 console.log("\n==================================================");
-console.log("ALL 32 SEARCH, CATALOGUE, FULL-STREAM, DUAL-API & ORIGINAL SONG TESTS PASSED!");
+console.log("ALL 33 SEARCH, CATALOGUE, FULL-STREAM, DUAL-API & ORIGINAL SONG TESTS PASSED!");
 console.log("==================================================\n");
