@@ -1074,6 +1074,91 @@ assert(fullResolvedUrl.duration >= 200, `Resolved track must be full length (>= 
 
 console.log("[PASS] Verified: 100% full-length audio resolution confirmed. Zero 30-second audio cutoffs across playback and downloads.");
 
+// --------------------------------------------------------------------------
+// TEST 34: Verifying Strict Genuine Search Matching, Album Track Separation & Zero Random Results
+// --------------------------------------------------------------------------
+console.log("\nTest 34: Verifying Strict Genuine Search Matching, Album Track Separation & Zero Random Results...");
+
+// 1. Gibberish / Random Queries must return 0 results and display clean "No matching songs found" empty state
+const gibberishQueries = ["xyzrandomquery123", "asdfghjkl", "qwertyyuiop99", "zzzzxxxxcccc"];
+gibberishQueries.forEach(gibberish => {
+  const results = searchMasterSongs(gibberish);
+  assert.strictEqual(results.length, 0, `Random/gibberish query "${gibberish}" must return 0 results, got ${results.length}!`);
+  
+  // Verify UI render displays the clean "No matching songs found" empty state
+  AppState.searchQuery = gibberish;
+  AppState.isSearching = true;
+  AppState.searchResults = [];
+  AppState.isFetchingSpotify = false;
+  renderContent();
+
+  const emptyStateDiv = document.getElementById("emptyState");
+  assert.strictEqual(emptyStateDiv.style.display, "block", `Empty state div must be visible (display: 'block') for "${gibberish}"`);
+  const emptySearchQuery = document.getElementById("emptySearchQuery");
+  assert(emptySearchQuery.textContent.includes(gibberish), `emptySearchQuery must contain query "${gibberish}"`);
+});
+console.log("[PASS] Verified: Gibberish/random queries return 0 results and display clean 'No matching songs found'.");
+
+// 2. Album Searches return all album tracks displayed separately with individual cards and metadata
+const albumQueries = [
+  { q: "Ghilli", expectedAlbum: "ghilli", minTracks: 2 },
+  { q: "Leo", expectedAlbum: "leo", minTracks: 6 },
+  { q: "Jailer", expectedAlbum: "jailer", minTracks: 5 },
+  { q: "Aashiqui 2", expectedAlbum: "aashiqui 2", minTracks: 4 },
+  { q: "Manithan", expectedAlbum: "manithan", minTracks: 4 },
+  { q: "Amaran", expectedAlbum: "amaran", minTracks: 4 },
+  { q: "Vikram", expectedAlbum: "vikram", minTracks: 5 }
+];
+
+albumQueries.forEach(({ q, expectedAlbum, minTracks }) => {
+  executeSearch(q);
+  assert(AppState.searchResults.length >= minTracks, `Search for album "${q}" must return at least ${minTracks} tracks, got ${AppState.searchResults.length}`);
+  
+  // Verify album tracks are present and displayed separately
+  const matchingAlbumTracks = AppState.searchResults.filter(s => {
+    const alb = (s.album || "").toLowerCase();
+    return alb.includes(expectedAlbum);
+  });
+  assert(matchingAlbumTracks.length >= minTracks, `Album "${q}" must contain at least ${minTracks} tracks belonging to the album, got ${matchingAlbumTracks.length}`);
+
+  // Verify each track is separate and has valid titles, artists, and authorized CDN audio stream
+  const distinctTitles = new Set(matchingAlbumTracks.map(t => t.title.toLowerCase()));
+  assert(distinctTitles.size >= minTracks, `Tracks in album "${q}" must have distinct titles displayed separately, got ${distinctTitles.size}`);
+
+  matchingAlbumTracks.forEach(track => {
+    assert(track.title && track.title.trim().length > 0, `Track in album "${q}" must have valid title!`);
+    assert(track.artist && track.artist.trim().length > 0, `Track "${track.title}" must have valid artist!`);
+    assert(track.album && track.album.trim().length > 0, `Track "${track.title}" must have valid album!`);
+    assert(track.audio_url && track.audio_url.includes("aac.saavncdn.com"), `Track "${track.title}" must stream from authorized JioSaavn CDN!`);
+    assert(!track.is_preview, `Track "${track.title}" must be full length, not preview!`);
+  });
+});
+console.log("[PASS] Verified: Album searches return all album tracks displayed separately with authorized streams and complete metadata.");
+
+// 3. Precision matching: Ensure no unrelated tracks with marginal scores appear
+const precisionChecks = [
+  { q: "Arabic Kuthu", expectedTitle: "Arabic Kuthu" },
+  { q: "Vaathi Coming", expectedTitle: "Vaathi Coming" },
+  { q: "Hukum", expectedTitle: "Hukum" },
+  { q: "Naatu Naatu", expectedTitle: "Naatu Naatu" }
+];
+
+precisionChecks.forEach(({ q, expectedTitle }) => {
+  executeSearch(q);
+  assert(AppState.searchResults.length > 0, `Search for "${q}" must return results!`);
+  const top = AppState.searchResults[0];
+  assert(top.title.toLowerCase().includes(expectedTitle.toLowerCase()), `Search for "${q}" top result must be "${expectedTitle}", got "${top.title}"`);
+  
+  // Every single result returned must genuinely relate to the query
+  AppState.searchResults.forEach(res => {
+    const text = `${(res.title || "")} ${(res.album || "")} ${(res.artist || "")}`.toLowerCase();
+    const queryWords = q.toLowerCase().split(" ").filter(w => w.length >= 3);
+    const hasWord = queryWords.some(w => text.includes(w));
+    assert(hasWord, `Returned track "${res.title}" by "${res.artist}" must genuinely match query "${q}"!`);
+  });
+});
+console.log("[PASS] Verified: Zero random songs; all search results genuinely match song titles, albums, or artists.");
+
 console.log("\n==================================================");
-console.log("ALL 33 SEARCH, CATALOGUE, FULL-STREAM, DUAL-API & ORIGINAL SONG TESTS PASSED!");
+console.log("ALL 34 SEARCH, CATALOGUE, FULL-STREAM, DUAL-API, ALBUM SEPARATION & ZERO-RANDOM TESTS PASSED!");
 console.log("==================================================\n");
