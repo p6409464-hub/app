@@ -752,6 +752,34 @@ body {
   box-shadow: 0 0 12px rgba(59, 130, 246, 0.4);
 }
 
+/* Download Memory Mode & Quality Toggle */
+.dl-quality-btn {
+  background: rgba(56, 189, 248, 0.15);
+  border: 1px solid rgba(56, 189, 248, 0.35);
+  color: #38bdf8;
+  padding: 6px 12px;
+  border-radius: var(--radius-full);
+  font-size: 0.76rem;
+  font-weight: 700;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  transition: all 0.2s ease;
+  white-space: nowrap;
+  user-select: none;
+}
+.dl-quality-btn:hover {
+  background: rgba(56, 189, 248, 0.28);
+  border-color: #38bdf8;
+  color: #fff;
+  box-shadow: 0 0 12px rgba(56, 189, 248, 0.35);
+  transform: translateY(-1px);
+}
+.dl-quality-btn:active {
+  transform: scale(0.96);
+}
+
 .official-link-btn {
   background: rgba(168, 85, 247, 0.15);
   border: 1px solid rgba(168, 85, 247, 0.35);
@@ -1879,7 +1907,8 @@ body {
     min-height: 38px;
   }
   .download-btn,
-  .card-musicapp-btn {
+  .card-musicapp-btn,
+  .dl-quality-btn {
     padding: 6px 10px;
     font-size: 0.72rem;
     min-height: 36px;

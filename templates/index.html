@@ -6,7 +6,7 @@
   <meta name="referrer" content="no-referrer" />
   <title>Pranesh Music Hub - Modern Dark Music Experience</title>
   <meta name="description" content="Stream and directly download Tamil, English, Malayalam, Instrumental, and Only Friends OST tracks in a modern, ad-free dark theme." />
-  <link rel="stylesheet" href="static/css/style.css?v=3.23.0" />
+  <link rel="stylesheet" href="static/css/style.css?v=3.25.0" />
   <!-- Google Fonts: Inter -->
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
@@ -206,6 +206,11 @@
         <input type="range" id="volumeSlider" class="volume-slider" min="0" max="1" step="0.05" value="0.85" />
       </div>
 
+      <!-- Memory-Saver Download Quality Mode -->
+      <button id="dlQualityBtn" class="dl-quality-btn" title="Download Quality &amp; Memory Mode (Click to switch)">
+        <span id="dlQualityIcon">⚡</span> <span id="dlQualityText">160k (Save 50% RAM)</span>
+      </button>
+
       <button id="playerDownloadBtn" class="download-btn" title="Download Authorized Audio">
         <span>⬇️</span> Download
       </button>
@@ -249,6 +254,6 @@
 
   <!-- JavaScript Application Logic -->
   <script src="static/js/songs_data.js?v=3.23.0"></script>
-  <script src="static/js/app.js?v=3.24.0"></script>
+  <script src="static/js/app.js?v=3.25.0"></script>
 </body>
 </html>
