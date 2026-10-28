@@ -627,6 +627,36 @@ function boundedLevenshtein(a, b, maxDist) {
   return prev[lb];
 }
 
+// Collapses doubled consonants and trailing vowels (a/e)
+function normalizeTamilWord(str) {
+  if (!str) return "";
+  return String(str).toLowerCase()
+    .replace(/aa+/g, "a")
+    .replace(/ee+/g, "i")
+    .replace(/oo+/g, "u")
+    .replace(/ii+/g, "i")
+    .replace(/uu+/g, "u")
+    .replace(/ai|ay/g, "a")
+    .replace(/([a-z])\1+/g, "$1") // collapse doubled consonants (kk -> k, nn -> n, ll -> l, tt -> t, pp -> p)
+    .replace(/[ae]+$/, "");       // only normalize trailing a/e endings (e.g. kulla/kulle, nikkira/nikkire)
+}
+
+// Flexible token matching against target words (exact regex, transliteration normalized, or Levenshtein <= 1)
+function checkTokenInTarget(token, tokenRegex, target, targetWords) {
+  if (!token) return true;
+  if (tokenRegex && tokenRegex.test(target)) return true;
+  const normTok = normalizeTamilWord(token);
+  const words = Array.isArray(targetWords) ? targetWords : (target || "").split(" ").filter(Boolean);
+  for (const w of words) {
+    if (w === token) return true;
+    if (token[0] !== w[0]) continue; // First letter must match to prevent unrelated words from matching
+    const normW = normalizeTamilWord(w);
+    if (normTok && normW && normTok === normW) return true;
+    if (token.length >= 6 && w.length >= 6 && boundedLevenshtein(token, w, 1) <= 1) return true;
+  }
+  return false;
+}
+
 // Pre-cleans common Tamil/Indian transliteration typos before online search
 function correctSearchQuery(q) {
   if (!q) return "";
@@ -677,6 +707,21 @@ function correctSearchQuery(q) {
     "doktar": "doctor",
     "amaram": "amaran",
     "amram": "amaran",
+    "kannukulla nikkira": "kannukulla nikkira",
+    "kannukulla nikkura": "kannukulla nikkira",
+    "kannukkulla nikkira": "kannukulla nikkira",
+    "kannukulle nikkira": "kannukulla nikkira",
+    "kannukulla nikkire": "kannukulla nikkira",
+    "kannukulla": "kannukulla",
+    "kannukkulla": "kannukulla",
+    "kannukulle": "kannukulle",
+    "kannukkulle": "kannukulle",
+    "sa rajkumar": "s a rajkumar",
+    "s.a.rajkumar": "s a rajkumar",
+    "unnikrishnan": "p unnikrishnan",
+    "unni menon": "unni menon",
+    "pennin manathai thottu": "pennin manathai thottu",
+    "pennin manathai": "pennin manathai thottu",
     "beest": "beast",
     "leoo": "leo",
     "vetaiyan": "vettaiyan",
@@ -948,7 +993,7 @@ function buildQueryContext(rawQuery) {
 function scoreSongWithContext(song, ctx) {
   const {
     normQ, cleanQ, compactQ, cleanPhoneticQ, phoneticQ,
-    qPhonetics, coreQ, qForDist, tokenRegexes,
+    qPhonetics, coreQ, qForDist, tokens, tokenRegexes,
     is1980to2026Query, specificYear, isSpecificYearOnly,
     requestedEra, isPureEraQuery, isGenericMovieQuery, isMovieWordInQuery,
     requestedType, isPureTypeQuery
@@ -1026,8 +1071,18 @@ function scoreSongWithContext(song, ctx) {
 
   const compound1 = song._compound1 || `${normTitle} ${normAlbum}`;
   const compound2 = song._compound2 || `${normAlbum} ${normTitle}`;
+  const rawTags = song._normTags || [];
 
-  // 0. Compound title + album match
+  // 0a. Direct alias or tag match (e.g. "kannukulla nikkira" in song tags for "Kannukkulle")
+  for (const tag of rawTags) {
+    if (tag === normQ || tag === cleanQ || (normQ.length >= 6 && tag === normQ)) {
+      matched = true;
+      score += 9500;
+      break;
+    }
+  }
+
+  // 0b. Compound title + album match
   if (cleanQ === compound1 || cleanQ === compound2 || normQ === compound1 || normQ === compound2) {
     matched = true;
     score += 8500;
@@ -1163,22 +1218,41 @@ function scoreSongWithContext(song, ctx) {
     }
   }
 
-  // 6. Multi-token phrase matching across Title / Album / Artist
+  // 6. Multi-token phrase matching across Title / Album / Artist / Tags with Tamil transliteration support
   if (tokenRegexes && tokenRegexes.length >= 2) {
-    const target = song._targetText || `${normTitle} ${normAlbum} ${normArtist}`;
+    const target = song._targetText || `${normTitle} ${normAlbum} ${normArtist} ${rawTags.join(" ")}`;
+    const targetWords = (song._targetWords || target.split(" ")).filter(Boolean);
     let allTokensPresent = true;
+    const usedWordIndices = new Set();
     for (let i = 0; i < tokenRegexes.length; i++) {
-      if (!tokenRegexes[i].test(target)) {
+      const tok = (tokens && tokens[i]) || "";
+      const normTok = normalizeTamilWord(tok);
+      let foundIndex = -1;
+      for (let j = 0; j < targetWords.length; j++) {
+        if (usedWordIndices.has(j)) continue;
+        const w = targetWords[j];
+        if (w === tok) { foundIndex = j; break; }
+        if (tok[0] !== w[0]) continue;
+        const normW = normalizeTamilWord(w);
+        if (normTok && normW && normTok === normW) { foundIndex = j; break; }
+        if (tok.length >= 6 && w.length >= 6 && boundedLevenshtein(tok, w, 1) <= 1) { foundIndex = j; break; }
+      }
+      if (foundIndex !== -1) {
+        usedWordIndices.add(foundIndex);
+      } else {
         allTokensPresent = false;
         break;
       }
     }
     if (allTokensPresent) {
       matched = true;
-      score += 3500;
+      score += 4500;
       let allInTitle = true;
+      const titleWords = (song._titleTokens || normTitle.split(" ")).filter(Boolean);
       for (let i = 0; i < tokenRegexes.length; i++) {
-        if (!tokenRegexes[i].test(normTitle)) {
+        const tok = (tokens && tokens[i]) || "";
+        const reg = tokenRegexes[i];
+        if (!checkTokenInTarget(tok, reg, normTitle, titleWords)) {
           allInTitle = false;
           break;
         }
@@ -1510,6 +1584,48 @@ function mapJioSongResult(r, index, fallbackCategory = "JioSaavn Live Global Str
   });
 }
 
+// Generates alternate transliteration variants (vowels, double consonants, common Tamil song aliases)
+function getSearchQueryVariants(cleanQuery) {
+  const variants = new Set();
+  const lower = (cleanQuery || "").toLowerCase().trim();
+  if (!lower) return [];
+  variants.add(cleanQuery);
+
+  // 1. Common Tamil song & chorus aliases (e.g. Kannukulla Nikkira -> Kannukulla Nikkire, Kannukkulle, Pennin Manathai Thottu)
+  if (lower.includes("kannukulla") || lower.includes("kannukkulla") || lower.includes("kannukulle") || lower.includes("kannukkulle")) {
+    if (lower.includes("nikki") || lower.includes("nikku") || lower.includes("nikire")) {
+      variants.add("kannukulla nikkire");
+      variants.add("kannukkulle");
+      variants.add("pennin manathai thottu");
+    } else {
+      variants.add("kannukkulle");
+      variants.add("kannukulla");
+    }
+  }
+
+  // 2. Trailing vowel variations (a <-> e, e <-> a, a <-> u)
+  if (/\b\w+a\b/.test(lower)) {
+    variants.add(lower.replace(/\b(\w+)a\b/g, "$1e"));
+  }
+  if (/\b\w+e\b/.test(lower)) {
+    variants.add(lower.replace(/\b(\w+)e\b/g, "$1a"));
+  }
+
+  // 3. Double vs single consonants (kk <-> k, ll <-> l, nn <-> n, tt <-> t, pp <-> p)
+  const singleConsonants = lower.replace(/([klnpt])\1+/g, "$1");
+  if (singleConsonants !== lower) variants.add(singleConsonants);
+
+  // 4. Tamil "zh" <-> "l"
+  if (lower.includes("zh")) variants.add(lower.replace(/zh/g, "l"));
+  if (lower.includes("l") && !lower.includes("zh")) variants.add(lower.replace(/l/g, "zh"));
+
+  // 5. "th" <-> "dh"
+  if (lower.includes("dh")) variants.add(lower.replace(/dh/g, "th"));
+  if (lower.includes("th")) variants.add(lower.replace(/th/g, "dh"));
+
+  return Array.from(variants).slice(0, 4);
+}
+
 // Background JioSaavn & Online Catalogue Search Fallback (Zero Redirection, Full-Length Streams)
 async function fetchSpotifySearchResults(query, requestId, isParallel = false) {
   if (!query) return;
@@ -1556,26 +1672,38 @@ async function fetchSpotifySearchResults(query, requestId, isParallel = false) {
       } catch (_) {}
     }
 
-    // 2. Direct Dual-API Search (JioSaavn Live 320kbps Streams + Album Track Separation + Spotify/iTunes Global Network)
+    // 2. Direct Dual-API Search (JioSaavn Live 320kbps Streams + Album Track Separation + Spotify/iTunes India Global Network)
     const yearMatch = cleanQuery.match(/\b(19\d\d|20[0-2]\d)\b/);
     const isYearOnly = /^(19\d\d|20[0-2]\d)$/.test(cleanQuery.trim());
     const apiSongQuery = isYearOnly ? `Tamil hits ${yearMatch[1]}` : cleanQuery;
     const apiAlbumQuery = isYearOnly ? `Tamil ${yearMatch[1]}` : cleanQuery;
 
+    const queryVariants = getSearchQueryVariants(cleanQuery);
+    const songEndpoints = [
+      `/api/search/songs?query=${encodeURIComponent(apiSongQuery)}&limit=30`
+    ];
+    for (const v of queryVariants) {
+      if (v !== cleanQuery && v !== apiSongQuery) {
+        songEndpoints.push(`/api/search/songs?query=${encodeURIComponent(v)}&limit=15`);
+      }
+    }
+
     let liveJioSongs = [];
 
-    // Fetch songs and albums in parallel across failover mirrors
+    // Fetch songs across query variants and albums in parallel across failover mirrors
     try {
-      const [songData, albumData] = await Promise.all([
-        fetchJioMirrorApi(`/api/search/songs?query=${encodeURIComponent(apiSongQuery)}&limit=30`, abortController.signal),
-        fetchJioMirrorApi(`/api/search/albums?query=${encodeURIComponent(apiAlbumQuery)}&limit=4`, abortController.signal)
-      ]);
+      const songPromises = songEndpoints.map(ep => fetchJioMirrorApi(ep, abortController.signal));
+      const albumPromise = fetchJioMirrorApi(`/api/search/albums?query=${encodeURIComponent(apiAlbumQuery)}&limit=4`, abortController.signal);
 
-      if (songData && songData.data && Array.isArray(songData.data.results)) {
-        const mappedSongs = songData.data.results
-          .map((r, idx) => mapJioSongResult(r, idx, "JioSaavn Live Global Stream"))
-          .filter(s => s.audio_url && s.duration >= 60);
-        liveJioSongs.push(...mappedSongs);
+      const [albumData, ...songResults] = await Promise.all([albumPromise, ...songPromises]);
+
+      for (const songData of songResults) {
+        if (songData && songData.data && Array.isArray(songData.data.results)) {
+          const mappedSongs = songData.data.results
+            .map((r, idx) => mapJioSongResult(r, idx, "JioSaavn Live Global Stream"))
+            .filter(s => s.audio_url && s.duration >= 60);
+          liveJioSongs.push(...mappedSongs);
+        }
       }
 
       // If albums matched, fetch all tracks of each matching album dynamically so every song is an individual result
@@ -1596,10 +1724,10 @@ async function fetchSpotifySearchResults(query, requestId, isParallel = false) {
       }
     } catch (_) {}
 
-    // Query Spotify & iTunes Global Network in parallel
+    // Query Spotify & iTunes India Global Network in parallel (country=IN for complete Tamil catalog 1980-2026)
     let itunesSongs = [];
     try {
-      const searchUrl = `https://itunes.apple.com/search?term=${encodeURIComponent(cleanQuery)}&entity=song&limit=30`;
+      const searchUrl = `https://itunes.apple.com/search?term=${encodeURIComponent(cleanQuery)}&country=IN&entity=song&limit=40`;
       const res = await fetch(searchUrl, { signal: abortController.signal });
       if (res.ok) {
         const data = await res.json();

@@ -1285,6 +1285,72 @@ multiEraSearches.forEach(({ q, expectedSnippet, expectedEraMatches }) => {
 
 console.log("[PASS] Verified: Dynamic Tamil album search (1980 to 2026), HTML entity decoding, and album track separation fully validated.");
 
+// --------------------------------------------------------------------------
+// TEST 37: Verifying Missing Tamil Songs ("Kannukulla Nikkira"), Transliterations, and Broader Dynamic Metadata
+// --------------------------------------------------------------------------
+console.log("\nTest 37: Verifying Missing Tamil Songs ('Kannukulla Nikkira'), Transliterations, and Broader Metadata...");
+
+// 1. Verify "Kannukulla Nikkira" and transliteration variants match and return individual tracks
+const kannukullaQueries = [
+  "Kannukulla Nikkira",
+  "kannukkulla nikkira",
+  "kannukulla nikkura",
+  "kannukulle nikkira",
+  "kannukulla nikkire"
+];
+
+kannukullaQueries.forEach(query => {
+  executeSearch(query);
+  assert(AppState.searchResults.length > 0, `Search for "${query}" must return matching results!`);
+
+  const hasOriginal = AppState.searchResults.some(s => 
+    s.title.toLowerCase().includes("kannukku") && s.album.toLowerCase().includes("pennin manathai thottu")
+  );
+  assert(hasOriginal, `Search for "${query}" must include original "Kannukkulle" from Pennin Manathai Thottu`);
+
+  // Verify all returned results have authentic audio, metadata, and are individual tracks
+  AppState.searchResults.forEach(track => {
+    assert(track.title && track.title.trim().length > 0, "Track must have valid title");
+    assert(track.artist && track.artist.trim().length > 0, "Track must have valid artist");
+    assert(track.album && track.album.trim().length > 0, "Track must have valid album");
+    assert(track.audio_url && track.audio_url.includes("aac.saavncdn.com"), "Track must stream from authorized JioSaavn CDN");
+    assert.strictEqual(track.download_authorized, true, "Track must be authorized for download");
+  });
+});
+console.log("[PASS] Verified: 'Kannukulla Nikkira' and all transliteration variants return genuine matching tracks.");
+
+// 2. Verify movie album search "Pennin Manathai Thottu" returns all album tracks separately
+executeSearch("Pennin Manathai Thottu");
+assert(AppState.searchResults.length >= 5, `Search for "Pennin Manathai Thottu" must return all album tracks, got ${AppState.searchResults.length}`);
+const pmtTrackTitles = AppState.searchResults.map(s => s.title);
+assert(pmtTrackTitles.some(t => t.includes("Kannukkulle")), "Must contain Kannukkulle");
+assert(pmtTrackTitles.some(t => t.includes("Kallurivaanil")), "Must contain Kallurivaanil");
+assert(pmtTrackTitles.some(t => t.includes("Naan Salttukotta")), "Must contain Naan Salttukotta");
+assert(pmtTrackTitles.some(t => t.includes("Thiyagarajarin")), "Must contain Thiyagarajarin");
+assert(pmtTrackTitles.some(t => t.includes("Uthattukkum")), "Must contain Uthattukkum");
+console.log("[PASS] Verified: Movie album 'Pennin Manathai Thottu' displays all album tracks individually.");
+
+// 3. Verify composer and singer searches return matching tracks
+executeSearch("Unni Menon");
+assert(AppState.searchResults.length > 0, "Search for singer 'Unni Menon' must return results");
+assert(AppState.searchResults.some(s => s.artist.toLowerCase().includes("unni menon")), "Must include songs sung by Unni Menon");
+
+executeSearch("S.A. Rajkumar");
+assert(AppState.searchResults.length > 0, "Search for composer 'S.A. Rajkumar' must return results");
+assert(AppState.searchResults.some(s => s.artist.toLowerCase().includes("rajkumar")), "Must include songs composed by S.A. Rajkumar");
+console.log("[PASS] Verified: Singer ('Unni Menon') and Composer ('S.A. Rajkumar') searches return authentic matching tracks.");
+
+// 4. Verify getSearchQueryVariants produces accurate transliterations
+const variants = getSearchQueryVariants("Kannukulla Nikkira");
+assert(variants.includes("Kannukulla Nikkira"), "Variants must include original query");
+assert(variants.some(v => v.includes("kannukkulle") || v.includes("kannukulla nikkire")), "Variants must include transliteration alternates");
+console.log("[PASS] Verified: Query variant generator produces accurate transliterations for broader live API querying.");
+
+// 5. Verify Zero Fake Results: Unrelated queries never return random songs
+executeSearch("RandomQueryThatDoesNotExist999");
+assert.strictEqual(AppState.searchResults.length, 0, "Non-existent song query must return 0 results, not fake/random songs");
+console.log("[PASS] Verified: Non-matching queries return 0 results and never claim a song is available when it cannot be found.");
+
 console.log("\n==================================================");
-console.log("ALL 36 SEARCH, CATALOGUE, FULL-STREAM, DUAL-API, ALBUM SEPARATION & LOW-MEMORY DOWNLOAD TESTS PASSED!");
+console.log("ALL 37 SEARCH, CATALOGUE, FULL-STREAM, DUAL-API, ALBUM SEPARATION, TRANSLITERATION & LOW-MEMORY DOWNLOAD TESTS PASSED!");
 console.log("==================================================\n");
