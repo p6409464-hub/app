@@ -558,7 +558,7 @@ console.log("\nTest 25: Verifying Movie & Film searches (including typos like 'm
 const movieSearches = [
   { q: "leo movice", expectedAlbum: "leo" },
   { q: "leo movie", expectedAlbum: "leo" },
-  { q: "ghilli movie", expectedAlbum: "gilli" },
+  { q: "ghilli movie", expectedAlbum: "ghilli" },
   { q: "kummi paattu movie", expectedAlbum: "kummi paattu" },
   { q: "en aasai machan movie", expectedAlbum: "en aasai machan" },
   { q: "master film", expectedAlbum: "master" },
@@ -952,6 +952,86 @@ assert.strictEqual(previewTrack.duration_str, "4:39", "previewTrack must receive
 
 console.log("[PASS] Verified: Dual-API simultaneous search (JioSaavn + Spotify), authentic original singer priority, source badges & filter tabs, and 0 30-second audio cutoffs.");
 
+// Test 32: Verifying Original Song Search Accuracy (Elimination of Teasers, Lofis, Sped-up, and Remixes at #1)
+console.log("\nTest 32: Verifying Original Song Search Accuracy (Authentic Original Soundtracks Rank #1)...");
+
+const originalSongSearches = [
+  {
+    q: "kesariya",
+    expectedTitle: "Kesariya",
+    forbiddenSnippet: "Teaser",
+    minDuration: 120,
+    expectedArtistSnippet: "Pritam"
+  },
+  {
+    q: "chuttamalle",
+    expectedTitle: "Chuttamalle",
+    forbiddenSnippet: "Lofi",
+    minDuration: 180,
+    expectedArtistSnippet: "Anirudh"
+  },
+  {
+    q: "channa mereya",
+    expectedTitle: "Channa Mereya",
+    forbiddenSnippet: "Slowed",
+    minDuration: 180,
+    expectedArtistSnippet: "Pritam"
+  },
+  {
+    q: "believer",
+    expectedTitle: "Believer",
+    forbiddenSnippet: "Remix",
+    minDuration: 180,
+    expectedAlbum: "Evolve"
+  },
+  {
+    q: "aasai machaan",
+    expectedTitle: "Aasai Machaan",
+    forbiddenSnippet: "Solo",
+    minDuration: 240,
+    expectedArtistSnippet: "Swarnalatha"
+  },
+  {
+    q: "arabic kuthu",
+    expectedTitle: "Arabic Kuthu",
+    forbiddenSnippet: "Remix",
+    minDuration: 240,
+    expectedArtistSnippet: "Anirudh"
+  },
+  {
+    q: "tum hi ho",
+    expectedTitle: "Tum Hi Ho",
+    forbiddenSnippet: "Remix",
+    minDuration: 200,
+    maxTotalMatches: 50 // Ensures short tokens "tum", "hi", "ho" don't match 6,800+ random songs
+  }
+];
+
+originalSongSearches.forEach(({ q, expectedTitle, forbiddenSnippet, minDuration, expectedArtistSnippet, expectedAlbum, maxTotalMatches }) => {
+  executeSearch(q);
+  assert(AppState.searchResults.length > 0, `Search for "${q}" must return results!`);
+  const top = AppState.searchResults[0];
+
+  assert(top.title.toLowerCase().startsWith(expectedTitle.toLowerCase()), `Query "${q}" must rank "${expectedTitle}" at #1, got "${top.title}"`);
+  if (forbiddenSnippet) {
+    assert(!top.title.toLowerCase().includes(forbiddenSnippet.toLowerCase()), `Query "${q}" #1 song must NOT contain "${forbiddenSnippet}", got "${top.title}"`);
+  }
+  if (minDuration) {
+    assert(top.duration >= minDuration, `Query "${q}" #1 song must be full-length (>= ${minDuration}s), got ${top.duration}s ("${top.title}")`);
+  }
+  if (expectedArtistSnippet) {
+    assert((top.artist || "").toLowerCase().includes(expectedArtistSnippet.toLowerCase()), `Query "${q}" #1 song artist must include "${expectedArtistSnippet}", got "${top.artist}"`);
+  }
+  if (expectedAlbum) {
+    assert((top.album || "").toLowerCase().includes(expectedAlbum.toLowerCase()), `Query "${q}" #1 song album must include "${expectedAlbum}", got "${top.album}"`);
+  }
+  if (maxTotalMatches) {
+    assert(AppState.searchResults.length <= maxTotalMatches, `Query "${q}" must be clean (< ${maxTotalMatches} results), got ${AppState.searchResults.length}`);
+  }
+});
+
+console.log("[PASS] Verified: All searched queries rank the authentic full-length original soundtrack version at #1, with teasers/lofis/remixes cleanly filtered down.");
+
 console.log("\n==================================================");
-console.log("ALL 31 SEARCH, CATALOGUE, FULL-STREAM, DUAL-API & MOBILE MUSIC APP TESTS PASSED!");
+console.log("ALL 32 SEARCH, CATALOGUE, FULL-STREAM, DUAL-API & ORIGINAL SONG TESTS PASSED!");
 console.log("==================================================\n");

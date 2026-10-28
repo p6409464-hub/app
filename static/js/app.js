@@ -750,62 +750,61 @@ function findFullLengthAudioMatch(rawTitle, rawArtist = "", rawAlbum = "") {
     ? AppState.masterSongs
     : (typeof window !== "undefined" && Array.isArray(window.CATALOGUE_SONGS) ? window.CATALOGUE_SONGS : []);
 
-  // 1. Direct exact normalized title match
-  let matched = pool.find(s => {
-    if (!s.audio_url || !s.audio_url.includes("aac.saavncdn.com")) return false;
+  const candidates = [];
+
+  for (const s of pool) {
+    if (!s.audio_url || !s.audio_url.includes("aac.saavncdn.com")) continue;
+
     const sNormTitle = s._normTitle || normalizeSearchText(s.title);
-    return sNormTitle === normTitle;
-  });
-  if (matched) return matched;
+    const sCoreTitle = cleanCoreTitle(s.title);
+    const sNormAlbum = s._normAlbum || normalizeSearchText(s.album);
 
-  // 2. Core title match (e.g. "Arabic Kuthu" matching "Arabic Kuthu - Halamithi Habibo")
-  if (coreTitle.length >= 3) {
-    matched = pool.find(s => {
-      if (!s.audio_url || !s.audio_url.includes("aac.saavncdn.com")) return false;
-      const sCoreTitle = cleanCoreTitle(s.title);
-      const sNormTitle = s._normTitle || normalizeSearchText(s.title);
-      return sCoreTitle === coreTitle || sNormTitle.startsWith(coreTitle) || sCoreTitle.startsWith(coreTitle);
-    });
-    if (matched) return matched;
+    let matchQuality = 0;
+
+    // 1. Exact normalized title match
+    if (sNormTitle === normTitle) matchQuality += 10000;
+    // 2. Exact core title match
+    else if (coreTitle && sCoreTitle === coreTitle) matchQuality += 8000;
+    // 3. Album match + Core title match
+    else if (normAlbum && sNormAlbum === normAlbum && (sCoreTitle.includes(coreTitle) || coreTitle.includes(sCoreTitle))) matchQuality += 7000;
+    // 4. Starts with core title
+    else if (coreTitle && coreTitle.length >= 3 && (sCoreTitle.startsWith(coreTitle) || sNormTitle.startsWith(coreTitle))) matchQuality += 4000;
+    // 5. Substring match
+    else if (coreTitle && coreTitle.length >= 4 && sNormTitle.includes(coreTitle)) matchQuality += 2000;
+
+    if (matchQuality > 0) {
+      const sFull = `${(s.title || "").toLowerCase()} ${(s.album || "").toLowerCase()}`;
+      const isTeaser = /\b(audio teaser|teaser|promo|trailer|glimpse|dialogue promo)\b/i.test(sFull) || (s.duration && s.duration < 65);
+      const isRemix = /\b(remix|dj|lofi|lo-fi|flip|slowed|sped up)\b/i.test(sFull);
+
+      // Severe penalty for teasers, snippets, remixes when matching original full audio
+      if (isTeaser) matchQuality -= 6000;
+      if (isRemix) matchQuality -= 3000;
+      if (s.duration >= 90) matchQuality += 1500; // Prefer full-length 2-6 min track
+
+      candidates.push({ song: s, quality: matchQuality });
+    }
   }
 
-  // 3. Album + Title keyword match
-  if (normAlbum && normAlbum.length >= 3 && coreTitle.length >= 3) {
-    matched = pool.find(s => {
-      if (!s.audio_url || !s.audio_url.includes("aac.saavncdn.com")) return false;
-      const sNormAlbum = s._normAlbum || normalizeSearchText(s.album);
-      const sNormTitle = s._normTitle || normalizeSearchText(s.title);
-      return (sNormAlbum === normAlbum || sNormAlbum.includes(normAlbum) || normAlbum.includes(sNormAlbum)) &&
-             (sNormTitle.includes(coreTitle) || coreTitle.includes(cleanCoreTitle(s.title)));
-    });
-    if (matched) return matched;
-  }
-
-  // 4. Substring match for longer core title
-  if (coreTitle.length >= 4) {
-    matched = pool.find(s => {
-      if (!s.audio_url || !s.audio_url.includes("aac.saavncdn.com")) return false;
-      const sNormTitle = s._normTitle || normalizeSearchText(s.title);
-      return sNormTitle.includes(coreTitle) || (s._normAlbum && s._normAlbum.includes(coreTitle));
-    });
-    if (matched) return matched;
-  }
-
-  return null;
+  if (candidates.length === 0) return null;
+  candidates.sort((a, b) => b.quality - a.quality);
+  return candidates[0].song;
 }
 
 // Filters out amateur covers, karaoke, and tribute remakes so original singers/movie tracks always take priority
-function isAmateurCoverOrKaraoke(title, artist) {
+function isAmateurCoverOrKaraoke(title, artist = "", album = "") {
   const t = (title || "").toLowerCase();
   const a = (artist || "").toLowerCase();
+  const alb = (album || "").toLowerCase();
+  const full = `${t} ${a} ${alb}`;
   const filterKeywords = [
     "karaoke", "backing track", "tribute", "cover version",
     "acoustic cover", "instrumental cover", "sing2piano", "the karaoke channel",
     "piano cover", "lofi cover", "guitar cover", "made famous by",
     "in the style of", "originally performed by", "hit crew", "cover artist",
-    "tribute band"
+    "tribute band", "remix cover", "lofi flip", "slowed reverb", "ringtone"
   ];
-  return filterKeywords.some(kw => t.includes(kw) || a.includes(kw));
+  return filterKeywords.some(kw => full.includes(kw));
 }
 
 // Typo-tolerant relevance scorer & matcher
@@ -963,6 +962,9 @@ function scoreAndMatchSong(song, rawQuery) {
   const normTitle = song._normTitle || normalizeSearchText(song.title || song.name || "");
   const normAlbum = song._normAlbum || normalizeSearchText(song.album || song.movie || "");
   const normArtist = song._normArtist || normalizeSearchText(song.artist || song.singer || "");
+  const coreTitle = cleanCoreTitle(song.title);
+  const coreQ = cleanCoreTitle(rawQuery);
+  const coreAlbum = cleanCoreTitle(song.album);
   const pTitle = song._pTitle || toPhonetic(normTitle);
   const pAlbum = song._pAlbum || toPhonetic(normAlbum);
   const pArtist = song._pArtist || toPhonetic(normArtist);
@@ -984,13 +986,19 @@ function scoreAndMatchSong(song, rawQuery) {
     score += 7500;
   }
 
-  // 1. EXACT SONG TITLE MATCH (Highest Single-Track Priority)
-  if (normTitle === normQ || (cleanQ && normTitle === cleanQ)) {
+  // 1. EXACT SONG TITLE MATCH (Highest Priority for the Authentic Original Song)
+  if (coreQ && coreTitle === coreQ) {
     matched = true;
-    score += 4000;
+    score += 12000;
+  } else if (normTitle === normQ || (cleanQ && normTitle === cleanQ)) {
+    matched = true;
+    score += 10000;
+  } else if (coreQ && coreTitle.startsWith(coreQ)) {
+    matched = true;
+    score += 5000;
   } else if (normTitle.startsWith(normQ) || (cleanQ && normTitle.startsWith(cleanQ))) {
     matched = true;
-    score += 3200;
+    score += 3500;
   } else if (cleanQ && normTitle && normTitle.length >= 3 && cleanQ.startsWith(normTitle + " ")) {
     // Query starts with full song title followed by more keywords (e.g. "aval manithan", "badass anirudh")
     const remainder = cleanQ.slice(normTitle.length).trim();
@@ -1007,9 +1015,12 @@ function scoreAndMatchSong(song, rawQuery) {
   }
 
   // 2. EXACT MOVIE / ALBUM MATCH (Guarantees ALL songs from the movie rank first when searching for a movie!)
-  if (normAlbum === normQ || (cleanQ && normAlbum === cleanQ)) {
+  if (normAlbum === normQ || (cleanQ && normAlbum === cleanQ) || (coreQ && coreAlbum === coreQ)) {
     matched = true;
-    score += 2800;
+    score += 4000;
+    if (coreTitle.includes(coreQ) || normTitle.includes(normQ)) {
+      score += 8500; // Title track from same named movie! (e.g. Manithan Manithan in Manithan)
+    }
   } else if (normAlbum.startsWith(normQ) || (cleanQ && normAlbum.startsWith(cleanQ))) {
     matched = true;
     score += 2600;
@@ -1141,17 +1152,25 @@ function scoreAndMatchSong(song, rawQuery) {
   if (tokens.length > 0) {
     let tokensMatched = 0;
     let typoPenalties = 0;
-    const wordTokens = song._wordTokens || rawCorpus.split(" ").filter(w => w.length >= 2);
+    const wordTokens = song._wordTokens || rawCorpus.split(" ").filter(w => w.length >= 1);
     const phoneticTokens = song._phoneticTokens || wordTokens.map(w => toPhonetic(w)).filter(Boolean);
 
     for (const qToken of tokens) {
       const qLen = qToken.length;
 
-      // Direct exact token match in song corpus
-      if (rawCorpus.includes(qToken)) {
-        tokensMatched++;
-        score += 40;
-        continue;
+      // Short tokens (length <= 3) must match actual whole word tokens to prevent matching random substrings
+      if (qLen <= 3) {
+        if (wordTokens.includes(qToken)) {
+          tokensMatched++;
+          score += 60;
+          continue;
+        }
+      } else {
+        if (wordTokens.includes(qToken) || rawCorpus.includes(qToken)) {
+          tokensMatched++;
+          score += 40;
+          continue;
+        }
       }
 
       // Direct phonetic token match
@@ -1214,9 +1233,38 @@ function scoreAndMatchSong(song, rawQuery) {
       }
     }
 
-    if (tokensMatched === tokens.length || (tokens.length >= 3 && tokensMatched >= tokens.length - 1)) {
+    const allTokensAreLong = tokens.every(t => t.length >= 4);
+    if (tokensMatched === tokens.length || (allTokensAreLong && tokens.length >= 3 && tokensMatched >= tokens.length - 1)) {
       matched = true;
       score += 50 - typoPenalties * 5;
+    }
+  }
+
+  // 7. ORIGINAL SONG RECOGNITION & NON-ORIGINAL PENALTIES
+  if (matched) {
+    const tFull = `${(song.title || "").toLowerCase()} ${(song.album || "").toLowerCase()} ${(song.artist || "").toLowerCase()}`;
+    const queryWantsTeaser = /\b(teaser|promo|trailer|glimpse|dialogue|dialog)\b/i.test(normQ);
+    const queryWantsRemix = /\b(remix|mix|dj|club|flip|mashup)\b/i.test(normQ);
+    const queryWantsLofi = /\b(lofi|lo-fi|chill|acoustic|slowed|sped|speed|reverb)\b/i.test(normQ);
+    const queryWantsKaraoke = /\b(karaoke|instrumental|backing)\b/i.test(normQ);
+    const queryWantsCover = /\b(cover|tribute|remake)\b/i.test(normQ);
+
+    const hasTeaser = /\b(audio teaser|teaser|trailer|promo|dialogue promo|dialogue|glimpse|snippet|sample)\b/i.test(tFull) || (song.duration && song.duration < 65 && !normTitle.includes("intro"));
+    const hasRemix = /\b(remix|dj\s|dj-|club mix|edm mix|flip|party mix|dance mix)\b/i.test(tFull);
+    const hasLofi = /\b(lofi|lo-fi|slowed|sped up|speed up|reverb|ambient)\b/i.test(tFull);
+    const hasKaraoke = /\b(karaoke|instrumental|backing track|minus one|off vocal)\b/i.test(tFull);
+    const hasCover = /\b(cover|tribute|made famous by|in the style of)\b/i.test(tFull);
+
+    if (!queryWantsTeaser && hasTeaser) score -= 7000;
+    if (!queryWantsRemix && hasRemix) score -= 6000;
+    if (!queryWantsLofi && hasLofi) score -= 6000;
+    if (!queryWantsKaraoke && hasKaraoke) score -= 6000;
+    if (!queryWantsCover && hasCover) score -= 6000;
+
+    // Authentic original master track bonus (full duration & no remix/teaser indicators)
+    if (!hasTeaser && !hasRemix && !hasLofi && !hasKaraoke && !hasCover) {
+      score += 2000;
+      if (song.duration >= 90) score += 1500;
     }
   }
 
@@ -1532,6 +1580,13 @@ async function fetchSpotifySearchResults(query, requestId, isParallel = false) {
           spotify_id: r.trackId ? String(r.trackId) : "",
           tags: ["spotify", "jiosaavn", "online", "global", normalizeSearchText(r.trackName || ""), normalizeSearchText(r.artistName || "")]
         });
+      });
+
+      // Sort Spotify results so the authentic original track is at the top
+      spotifySongs.sort((a, b) => {
+        const scoreB = scoreAndMatchSong(b, query).score;
+        const scoreA = scoreAndMatchSong(a, query).score;
+        return scoreB - scoreA;
       });
 
       spotifySongs.forEach(s => autoImportSongToCatalogue(s));
