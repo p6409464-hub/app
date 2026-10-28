@@ -1052,15 +1052,25 @@ function scoreAndMatchSong(song, rawQuery) {
   }
 
   // General Corpus Substring Matches
-  if (rawCorpus.includes(normQ) || (cleanQ && rawCorpus.includes(cleanQ))) {
-    matched = true;
-    score += 200;
-  } else if (compactQ && compactCorpus.includes(compactQ)) {
-    matched = true;
-    score += 180;
-  } else if (cleanCompactQ && compactCorpus.includes(cleanCompactQ)) {
-    matched = true;
-    score += 180;
+  if (normQ.length >= 4) {
+    if (rawCorpus.includes(normQ) || (cleanQ && rawCorpus.includes(cleanQ))) {
+      matched = true;
+      score += 200;
+    } else if (compactQ && compactCorpus.includes(compactQ)) {
+      matched = true;
+      score += 180;
+    } else if (cleanCompactQ && compactCorpus.includes(cleanCompactQ)) {
+      matched = true;
+      score += 180;
+    }
+  } else {
+    // For short queries (length <= 3 like "one", "leo", "bad", "1"):
+    // Require exact whole word match in corpus to prevent false positive explosion
+    const wordRegex = new RegExp(`\\b${normQ.replace(/[-/\\^$*+?.()|[\]{}]/g, "\\$&")}\\b`, "i");
+    if (wordRegex.test(rawCorpus)) {
+      matched = true;
+      score += 350;
+    }
   }
 
   // 4. PHONETIC MATCHES (Tanglish sound-alikes for Tamil/Indian titles & movie albums)
@@ -1181,8 +1191,8 @@ function scoreAndMatchSong(song, rawQuery) {
         continue;
       }
 
-      // Fuzzy / typo check against word tokens
-      if (qLen >= 3) {
+      // Fuzzy / typo check against word tokens (requires >= 4 chars to prevent short token false-positives)
+      if (qLen >= 4) {
         const maxDist = qLen >= 6 ? 2 : 1;
         let tokenFound = false;
 
@@ -1300,17 +1310,18 @@ function loadCatalogue() {
     ? window.CATALOGUE_SONGS
     : [];
 
-  // Combine window.CATALOGUE_SONGS with DEFAULT_STATIC_SONGS and user auto-imported tracks
+  // Combine window.CATALOGUE_SONGS with DEFAULT_STATIC_SONGS (curated master collection takes priority)
   let sourceList = rawCatalogue.length > 0
     ? [...DEFAULT_STATIC_SONGS, ...rawCatalogue]
     : DEFAULT_STATIC_SONGS;
 
-  // Load any previously auto-imported online songs from localStorage
+  // Append verified user-played online tracks after master catalogue
   try {
     const rawStored = localStorage.getItem("pmh_imported_songs");
     const stored = rawStored ? JSON.parse(rawStored) : [];
     if (Array.isArray(stored) && stored.length > 0) {
-      sourceList = [...stored, ...sourceList];
+      const validStored = stored.filter(s => s && s.id && (s.audio_url || s.audio_file) && (s.title || s.name));
+      sourceList = [...sourceList, ...validStored];
     }
   } catch (_) {}
 
@@ -1677,34 +1688,37 @@ async function fetchSpotifySearchResults(query, requestId, isParallel = false) {
         return scoreB - scoreA;
       });
 
-      combinedOnline.forEach(s => autoImportSongToCatalogue(s));
+      // DO NOT mass auto-import unverified search results! Only import when played
       AppState.spotifyResults = itunesSongs.length > 0 ? itunesSongs : combinedOnline.filter(s => s.source === "spotify");
       if (AppState.spotifyResults.length === 0) {
         AppState.spotifyResults = combinedOnline.map(s => ({ ...s, source: "spotify" }));
       }
 
       if (isParallel) {
-        // Merge with local JioSaavn results
+        // AppState.jioResults ALREADY contains the authentic local matches!
+        // The #1 local match must NEVER be displaced or re-sorted down by online results!
         const seenCombined = new Set();
-        const mergedAll = [];
-        for (const s of [...AppState.jioResults, ...combinedOnline]) {
+        for (const s of AppState.jioResults) {
+          const key = cleanCoreTitle(s.title) + "_" + normalizeSearchText(s.artist);
+          seenCombined.add(key);
+        }
+
+        const newOnlineTracks = [];
+        for (const s of combinedOnline) {
           const key = cleanCoreTitle(s.title) + "_" + normalizeSearchText(s.artist);
           if (!seenCombined.has(key)) {
             seenCombined.add(key);
-            mergedAll.push(s);
+            newOnlineTracks.push(s);
           }
         }
-        mergedAll.sort((a, b) => {
-          const scoreB = scoreAndMatchSong(b, query).score;
-          const scoreA = scoreAndMatchSong(a, query).score;
-          return scoreB - scoreA;
-        });
 
-        AppState.searchResults = mergedAll;
+        // Local catalogue matches stay locked in their exact relevance order at the top!
+        AppState.searchResults = [...AppState.jioResults, ...newOnlineTracks];
         AppState.isSpotifyFallbackResults = false;
         AppState.isFetchingSpotify = false;
-        AppState.queue = [...mergedAll];
+        AppState.queue = [...AppState.searchResults];
       } else {
+        // Local catalogue had no matches! Online results are the primary results
         AppState.searchResults = combinedOnline;
         AppState.isSpotifyFallbackResults = true;
         AppState.isFetchingSpotify = false;
