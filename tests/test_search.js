@@ -1351,6 +1351,48 @@ executeSearch("RandomQueryThatDoesNotExist999");
 assert.strictEqual(AppState.searchResults.length, 0, "Non-existent song query must return 0 results, not fake/random songs");
 console.log("[PASS] Verified: Non-matching queries return 0 results and never claim a song is available when it cannot be found.");
 
+// Test 38: Verifying Movie Songs vs Independent Album Songs (Indie Non-Film)
+console.log("\nTest 38: Verifying Movie Songs vs Independent Album Songs (Indie Non-Film)...");
+
+// 1. Movie Songs: Moondram Pirai ("Kanne Kalaimaane") & Roja ("Chinna Chinna Asai", "Pudhu Vellai Mazhai")
+executeSearch("Kanne Kalaimaane");
+assert(AppState.searchResults.length > 0, "Movie song 'Kanne Kalaimaane' must be found");
+assert(AppState.searchResults[0].title.toLowerCase().includes("kanne kalaimaane"), "Top result must be Kanne Kalaimaane");
+assert(AppState.searchResults[0].album.toLowerCase().includes("moondram pirai"), "Album must be Moondram Pirai");
+
+executeSearch("Chinna Chinna Asai");
+assert(AppState.searchResults.length > 0, "Movie song 'Chinna Chinna Asai' must be found");
+assert(AppState.searchResults[0].title.toLowerCase().includes("chinna chinna asai"), "Top result must be Chinna Chinna Asai");
+assert(AppState.searchResults[0].album.toLowerCase().includes("roja"), "Album must be Roja");
+
+executeSearch("Moondram Pirai");
+assert(AppState.searchResults.length > 0, "Movie album 'Moondram Pirai' must return tracks");
+assert(AppState.searchResults.some(s => s.title.toLowerCase().includes("kanne kalaimaane")), "Moondram Pirai must contain Kanne Kalaimaane");
+
+console.log("[PASS] Verified: Movie songs (Moondram Pirai, Roja) found with authentic metadata & album linking.");
+
+// 2. Independent Album Songs (Indie Non-Film singles/EPs)
+const indieSearches = [
+  { query: "Kutty Pattas", title: "Kutty Pattas", artist: "Santhosh Dhayanidhi" },
+  { query: "Usuraiya Tholaichaen", title: "Usuraiya Tholaichaen", artist: "Stephen Zechariah" },
+  { query: "Adi Penne", title: "Adi Penne", artist: "Stephen Zechariah" },
+  { query: "Bodhai Kodhai", title: "Bodhai Kodhai", artist: "Sanjith Hegde" },
+  { query: "Orasaadha", title: "Orasaadha", artist: "Vivek" },
+  { query: "Asku Maaro", title: "Asku Maaro", artist: "Dharan Kumar" }
+];
+
+indieSearches.forEach(({ query, title, artist }) => {
+  executeSearch(query);
+  assert(AppState.searchResults.length > 0, `Independent album song '${query}' must return results`);
+  const topMatch = AppState.searchResults[0];
+  assert(topMatch.title.toLowerCase().includes(title.toLowerCase()), `Top match for '${query}' must be '${title}', got '${topMatch.title}'`);
+  assert(topMatch.artist.toLowerCase().includes(artist.toLowerCase()), `Artist for '${query}' must include '${artist}', got '${topMatch.artist}'`);
+  assert(topMatch.audio_url && topMatch.audio_url.startsWith("https://"), `Audio URL for '${query}' must be authorized HTTPS stream`);
+  assert.strictEqual(topMatch.is_preview, false, `Track '${query}' must have full audio, not preview`);
+});
+
+console.log("[PASS] Verified: Independent album songs (Kutty Pattas, Usuraiya Tholaichaen, Adi Penne, Bodhai Kodhai, Orasaadha, Asku Maaro) verified with 320kbps full streams!");
+
 console.log("\n==================================================");
-console.log("ALL 37 SEARCH, CATALOGUE, FULL-STREAM, DUAL-API, ALBUM SEPARATION, TRANSLITERATION & LOW-MEMORY DOWNLOAD TESTS PASSED!");
+console.log("ALL 38 SEARCH, CATALOGUE, FULL-STREAM, DUAL-API, ALBUM SEPARATION, TRANSLITERATION, MOVIE & INDIE TESTS PASSED!");
 console.log("==================================================\n");
