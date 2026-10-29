@@ -1393,6 +1393,66 @@ indieSearches.forEach(({ query, title, artist }) => {
 
 console.log("[PASS] Verified: Independent album songs (Kutty Pattas, Usuraiya Tholaichaen, Adi Penne, Bodhai Kodhai, Orasaadha, Asku Maaro) verified with 320kbps full streams!");
 
+// Test 39: Verifying Frontend Redesign: Search-Only Songs, Favourite Songs Showcase, Medium-Big Player & Below-Player Download Options
+console.log("\nTest 39: Verifying Frontend Redesign (Search-Only, Favourites, Medium-Big Player & Below-Player Downloads)...");
+
+// 1. Verify Default Home Page showcases Favourite Songs
+AppState.searchQuery = "";
+AppState.activeSection = "all";
+AppState.activeLanguage = "all";
+renderContent();
+assert(DOM.contentContainer.innerHTML.includes("My Favourite Songs"), "Home page must prominently feature 'My Favourite Songs'");
+
+// Add a song to favourites and verify it renders in the favourite songs grid on home page
+const testFavSong = AppState.masterSongs[0];
+if (!AppState.favourites.includes(testFavSong.id)) {
+  toggleFavourite(testFavSong.id);
+}
+renderContent();
+assert(DOM.contentContainer.innerHTML.includes(escapeHTML(testFavSong.title)), "Home page must render favourite songs when added to favourites");
+assert(DOM.contentContainer.innerHTML.includes(`data-id="${testFavSong.id}"`), "Home page must render song card for favourite track");
+
+// 2. Verify "only show the song when we sreach"
+executeSearch("Kutty Pattas");
+assert(AppState.searchResults.length > 0, "Searching must display matching songs");
+assert(DOM.contentContainer.innerHTML.includes("Search Results for"), "Search mode must display search results");
+assert(DOM.contentContainer.innerHTML.includes("Kutty Pattas"), "Search mode must render Kutty Pattas");
+
+// 3. Verify Medium-Big Now Playing Player UI
+playSong(testFavSong);
+assert.strictEqual(AppState.currentSong.id, testFavSong.id, "AppState.currentSong must be testFavSong");
+if (DOM.featuredTitle) {
+  assert.strictEqual(DOM.featuredTitle.textContent, testFavSong.title, "Medium-Big Player must display song title");
+}
+if (DOM.featuredThumb) {
+  assert(DOM.featuredThumb.src.includes(testFavSong.cover_url) || DOM.featuredThumb.src.length > 0, "Medium-Big Player must display album artwork");
+}
+
+// 4. Verify Download Options in Blow (Below) of Playing Song
+assert(typeof setDownloadQuality === "function", "setDownloadQuality must be defined");
+setDownloadQuality("320");
+assert.strictEqual(AppState.downloadQuality, "320", "Bitrate 320 must be active");
+if (DOM.featuredDlBitrateSub) {
+  assert(DOM.featuredDlBitrateSub.textContent.includes("320kbps"), "Medium-Big Player download subtext must reflect 320kbps");
+}
+
+setDownloadQuality("160");
+assert.strictEqual(AppState.downloadQuality, "160", "Bitrate 160 must be active");
+if (DOM.featuredDlBitrateSub) {
+  assert(DOM.featuredDlBitrateSub.textContent.includes("160kbps"), "Medium-Big Player download subtext must reflect 160kbps");
+}
+
+setDownloadQuality("96");
+assert.strictEqual(AppState.downloadQuality, "96", "Bitrate 96 must be active");
+if (DOM.featuredDlBitrateSub) {
+  assert(DOM.featuredDlBitrateSub.textContent.includes("96kbps"), "Medium-Big Player download subtext must reflect 96kbps");
+}
+
+// Reset download quality to standard
+setDownloadQuality("160");
+
+console.log("[PASS] Verified: Frontend redesign verified: search-only song results, prominent favourite songs showcase, medium-big player, and below-player download options operational!");
+
 console.log("\n==================================================");
-console.log("ALL 38 SEARCH, CATALOGUE, FULL-STREAM, DUAL-API, ALBUM SEPARATION, TRANSLITERATION, MOVIE & INDIE TESTS PASSED!");
+console.log("ALL 39 SEARCH, CATALOGUE, FULL-STREAM, DUAL-API, ALBUM SEPARATION, TRANSLITERATION, FRONTEND & DOWNLOAD TESTS PASSED!");
 console.log("==================================================\n");

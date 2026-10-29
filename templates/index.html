@@ -6,7 +6,7 @@
   <meta name="referrer" content="no-referrer" />
   <title>Pranesh Music Hub - Modern Dark Music Experience</title>
   <meta name="description" content="Stream and directly download Tamil, English, Malayalam, Instrumental, and Only Friends OST tracks in a modern, ad-free dark theme." />
-  <link rel="stylesheet" href="static/css/style.css?v=3.27.0" />
+  <link rel="stylesheet" href="static/css/style.css?v=3.28.0" />
   <!-- Google Fonts: Inter -->
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
@@ -55,40 +55,111 @@
   </header>
 
   <!-- ========================================================================
-       Hero Spotlight Banner
+       Featured Medium-Big Player & Download Options Hub
        ======================================================================== -->
-  <div class="hero-banner">
-    <div class="hero-card">
-      <div class="hero-glow-overlay"></div>
-      
-      <div class="hero-content">
-        <div class="hero-tag">
-          <span>✨</span> Trending Feature
+  <div id="featuredPlayerSection" class="featured-player-section">
+    <div class="featured-player-card">
+      <div class="featured-glow-overlay"></div>
+
+      <!-- Top Status Pill -->
+      <div class="featured-status-bar">
+        <div class="featured-status-pill">
+          <span class="status-pulse-dot"></span>
+          <span id="featuredPlayerStatus">READY TO PLAY</span>
         </div>
-        <h2 class="hero-title">Experience Pure Sound with Pranesh Music Hub</h2>
-        <p class="hero-desc">
-          High-definition 320kbps streaming, authorized 1-click downloads with Default Mobile Music App integration, and zero interruptions. 
-          Enjoy complete movie albums and blockbusters across Tamil, Telugu, Hindi, Malayalam, Kannada, English, and Only Friends OST.
-        </p>
-        
-        <div class="hero-buttons">
-          <button id="heroPlayBtn" class="btn btn-primary">
-            <span>▶</span> Listen Now
-          </button>
-          <span style="font-size: 0.84rem; color: var(--text-dim); display: flex; align-items: center; gap: 6px;">
-            ✨ Ad-Free Experience • ⚡ High-Speed Audio Streaming • 🎧 7,000+ Songs • All Types &amp; Spotify Hits
-          </span>
+        <span class="featured-format-badge">🎵 Full 320kbps Audio • No 30s Cutoffs</span>
+      </div>
+
+      <!-- Main Player (Artwork + Details + Controls) -->
+      <div class="featured-player-body">
+        <!-- Medium-Big Album Artwork -->
+        <div class="featured-artwork-container">
+          <img id="featuredThumb" class="featured-thumb-img" src="static/images/only_friends_theme.svg" alt="Cover Art" />
+          <div id="featuredSoundwave" class="featured-soundwave-bars">
+            <span class="sw-bar"></span>
+            <span class="sw-bar"></span>
+            <span class="sw-bar"></span>
+            <span class="sw-bar"></span>
+            <span class="sw-bar"></span>
+          </div>
+        </div>
+
+        <!-- Song Info, Seekbar & Medium-Big Controls -->
+        <div class="featured-info-controls">
+          <div class="featured-track-header">
+            <div class="featured-track-meta">
+              <h2 id="featuredTitle" class="featured-title">Select or Search a Song</h2>
+              <div class="featured-artist-wrap">
+                <span id="featuredArtist" class="featured-artist">Pranesh Music Hub</span>
+                <span class="featured-meta-separator">•</span>
+                <span id="featuredAlbum" class="featured-album">All Tamil &amp; Global Hits (1980-2026)</span>
+              </div>
+            </div>
+            <button id="featuredFavBtn" class="featured-fav-btn" title="Toggle Favourite">🤍</button>
+          </div>
+
+          <!-- Medium-Big Seekbar -->
+          <div class="featured-seekbar-container">
+            <span id="featuredCurrentTime" class="f-time-display">0:00</span>
+            <input type="range" id="featuredSeekbar" class="featured-seekbar-slider" min="0" max="100" value="0" step="0.1" />
+            <span id="featuredDurationTime" class="f-time-display">0:00</span>
+          </div>
+
+          <!-- Medium-Big Controls -->
+          <div class="featured-buttons-row">
+            <button id="featuredShuffleBtn" class="f-ctrl-btn" title="Shuffle Playback">🔀</button>
+            <button id="featuredPrevBtn" class="f-ctrl-btn" title="Previous Track">⏮</button>
+            <button id="featuredPlayPauseBtn" class="f-play-pause-btn" title="Play / Pause (Spacebar)">
+              <span id="featuredPlayIcon">▶</span>
+            </button>
+            <button id="featuredNextBtn" class="f-ctrl-btn" title="Next Track">⏭</button>
+            <button id="featuredRepeatBtn" class="f-ctrl-btn" title="Repeat Track">🔁</button>
+            <button id="heroPlayBtn" style="display:none;" aria-hidden="true"></button>
+          </div>
         </div>
       </div>
 
-      <div class="hero-visual">
-        <div class="soundwave-anim">
-          <div class="wave-bar"></div>
-          <div class="wave-bar"></div>
-          <div class="wave-bar"></div>
-          <div class="wave-bar"></div>
-          <div class="wave-bar"></div>
-          <div class="wave-bar"></div>
+      <!-- Download Options (IN BLOW / BELOW OF PLAYING SONG) -->
+      <div class="featured-download-options">
+        <div class="dl-options-header">
+          <span class="dl-header-title">📥 Download Options (Direct MP3 • Memory-Saver)</span>
+          <span class="dl-header-badge">⚡ Memory-Optimized Single-Pass Download</span>
+        </div>
+
+        <div class="dl-options-body">
+          <!-- Main Direct Download Button -->
+          <button id="featuredDownloadBtn" class="btn-featured-download" title="Download Audio">
+            <span class="btn-dl-icon">⬇️</span>
+            <div class="btn-dl-text-wrap">
+              <span class="btn-dl-title">Download Song (MP3)</span>
+              <span id="featuredDlBitrateSub" class="btn-dl-sub">160kbps • Saves 50% RAM</span>
+            </div>
+          </button>
+
+          <!-- Quality / Bitrate Selector Buttons -->
+          <div class="bitrate-selector-group">
+            <span class="bitrate-select-label">Quality:</span>
+            <div class="bitrate-chips-wrap">
+              <button class="bitrate-chip" data-quality="320" title="Studio High Quality (320 kbps)">
+                💎 320k Studio
+              </button>
+              <button class="bitrate-chip active" data-quality="160" title="Standard Quality (160 kbps - Saves 50% RAM)">
+                ⚡ 160k (Save 50% RAM)
+              </button>
+              <button class="bitrate-chip" data-quality="96" title="Eco Quality (96 kbps - Saves 70% RAM)">
+                🍃 96k (Save 70% RAM)
+              </button>
+            </div>
+          </div>
+
+          <!-- Open in Mobile Music App Button -->
+          <button id="featuredMusicAppBtn" class="btn-featured-mobile-app" title="Open with Default Mobile Music Player">
+            <span class="btn-dl-icon">📱</span>
+            <div class="btn-dl-text-wrap">
+              <span class="btn-dl-title">Music App</span>
+              <span class="btn-dl-sub">Open in Mobile Player</span>
+            </div>
+          </button>
         </div>
       </div>
     </div>
@@ -253,7 +324,7 @@
   <div id="toastContainer" class="toast-container"></div>
 
   <!-- JavaScript Application Logic -->
-  <script src="static/js/songs_data.js?v=3.27.0"></script>
-  <script src="static/js/app.js?v=3.27.0"></script>
+  <script src="static/js/songs_data.js?v=3.28.0"></script>
+  <script src="static/js/app.js?v=3.28.0"></script>
 </body>
 </html>

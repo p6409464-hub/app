@@ -183,7 +183,27 @@ const DOM = {
   closePlaylistBtn: null,
   shufflePlaylistBtn: null,
   playlistItems: null,
-  playlistStatusText: null
+  playlistStatusText: null,
+  featuredPlayerSection: null,
+  featuredThumb: null,
+  featuredTitle: null,
+  featuredArtist: null,
+  featuredAlbum: null,
+  featuredFavBtn: null,
+  featuredPlayerStatus: null,
+  featuredPlayPauseBtn: null,
+  featuredPlayIcon: null,
+  featuredPrevBtn: null,
+  featuredNextBtn: null,
+  featuredShuffleBtn: null,
+  featuredRepeatBtn: null,
+  featuredCurrentTime: null,
+  featuredDurationTime: null,
+  featuredSeekbar: null,
+  featuredSoundwave: null,
+  featuredDownloadBtn: null,
+  featuredDlBitrateSub: null,
+  featuredMusicAppBtn: null
 };
 
 function refreshDOMElements() {
@@ -227,6 +247,28 @@ function refreshDOMElements() {
   DOM.shufflePlaylistBtn = document.getElementById("shufflePlaylistBtn");
   DOM.playlistItems = document.getElementById("playlistItems");
   DOM.playlistStatusText = document.getElementById("playlistStatusText");
+
+  // Featured Medium-Big Player & Download Elements
+  DOM.featuredPlayerSection = document.getElementById("featuredPlayerSection");
+  DOM.featuredThumb = document.getElementById("featuredThumb");
+  DOM.featuredTitle = document.getElementById("featuredTitle");
+  DOM.featuredArtist = document.getElementById("featuredArtist");
+  DOM.featuredAlbum = document.getElementById("featuredAlbum");
+  DOM.featuredFavBtn = document.getElementById("featuredFavBtn");
+  DOM.featuredPlayerStatus = document.getElementById("featuredPlayerStatus");
+  DOM.featuredPlayPauseBtn = document.getElementById("featuredPlayPauseBtn");
+  DOM.featuredPlayIcon = document.getElementById("featuredPlayIcon");
+  DOM.featuredPrevBtn = document.getElementById("featuredPrevBtn");
+  DOM.featuredNextBtn = document.getElementById("featuredNextBtn");
+  DOM.featuredShuffleBtn = document.getElementById("featuredShuffleBtn");
+  DOM.featuredRepeatBtn = document.getElementById("featuredRepeatBtn");
+  DOM.featuredCurrentTime = document.getElementById("featuredCurrentTime");
+  DOM.featuredDurationTime = document.getElementById("featuredDurationTime");
+  DOM.featuredSeekbar = document.getElementById("featuredSeekbar");
+  DOM.featuredSoundwave = document.getElementById("featuredSoundwave");
+  DOM.featuredDownloadBtn = document.getElementById("featuredDownloadBtn");
+  DOM.featuredDlBitrateSub = document.getElementById("featuredDlBitrateSub");
+  DOM.featuredMusicAppBtn = document.getElementById("featuredMusicAppBtn");
 }
 
 // Initial binding attempt
@@ -505,6 +547,71 @@ function setupEventListeners() {
       if (AppState.currentSong) handleOpenInMobileMusicApp(AppState.currentSong);
     });
   }
+
+  // Featured Medium-Big Player Event Listeners
+  if (DOM.featuredPlayPauseBtn) DOM.featuredPlayPauseBtn.addEventListener("click", togglePlayPause);
+  if (DOM.featuredPrevBtn) DOM.featuredPrevBtn.addEventListener("click", playPreviousSong);
+  if (DOM.featuredNextBtn) DOM.featuredNextBtn.addEventListener("click", playNextSong);
+
+  if (DOM.featuredShuffleBtn) {
+    DOM.featuredShuffleBtn.addEventListener("click", () => {
+      AppState.isShuffle = !AppState.isShuffle;
+      if (DOM.shuffleBtn) DOM.shuffleBtn.classList.toggle("active", AppState.isShuffle);
+      DOM.featuredShuffleBtn.classList.toggle("active", AppState.isShuffle);
+      showToast(AppState.isShuffle ? "🔀 Shuffle Enabled" : "Shuffle Disabled");
+    });
+  }
+
+  if (DOM.featuredRepeatBtn) {
+    DOM.featuredRepeatBtn.addEventListener("click", () => {
+      AppState.isRepeat = !AppState.isRepeat;
+      if (DOM.repeatBtn) DOM.repeatBtn.classList.toggle("active", AppState.isRepeat);
+      DOM.featuredRepeatBtn.classList.toggle("active", AppState.isRepeat);
+      showToast(AppState.isRepeat ? "🔁 Repeat Enabled" : "Repeat Disabled");
+    });
+  }
+
+  if (DOM.featuredFavBtn) {
+    DOM.featuredFavBtn.addEventListener("click", () => {
+      if (AppState.currentSong) toggleFavourite(AppState.currentSong.id);
+    });
+  }
+
+  if (DOM.featuredSeekbar) {
+    DOM.featuredSeekbar.addEventListener("input", (e) => {
+      if (audioPlayer.duration && !isNaN(audioPlayer.duration)) {
+        const seekTo = (parseFloat(e.target.value) / 100) * audioPlayer.duration;
+        audioPlayer.currentTime = seekTo;
+      }
+    });
+  }
+
+  // Download Options (Below Playing Song) Listeners
+  if (DOM.featuredDownloadBtn) {
+    DOM.featuredDownloadBtn.addEventListener("click", () => {
+      if (AppState.currentSong) {
+        handleDownloadAction(AppState.currentSong, DOM.featuredDownloadBtn);
+      } else if (AppState.masterSongs.length > 0) {
+        handleDownloadAction(AppState.masterSongs[0], DOM.featuredDownloadBtn);
+      }
+    });
+  }
+
+  if (DOM.featuredMusicAppBtn) {
+    DOM.featuredMusicAppBtn.addEventListener("click", () => {
+      if (AppState.currentSong) {
+        handleOpenInMobileMusicApp(AppState.currentSong);
+      }
+    });
+  }
+
+  // Quality / Bitrate selector buttons
+  document.querySelectorAll(".bitrate-chip").forEach(chip => {
+    chip.addEventListener("click", () => {
+      const q = chip.dataset.quality;
+      if (q) setDownloadQuality(q);
+    });
+  });
 
   // Playlist Drawer & Queue Controls
   if (DOM.togglePlaylistBtn) {
@@ -1392,6 +1499,16 @@ function loadCatalogue() {
 
   // Production log
   console.log(`[MusicHub] Catalogue loaded with ${AppState.masterSongs.length} tracks.`);
+
+  if (!AppState.currentSong && AppState.masterSongs.length > 0) {
+    const initSong = (AppState.favourites.length > 0)
+      ? (AppState.masterSongs.find(s => s.id === AppState.favourites[0]) || AppState.masterSongs[0])
+      : AppState.masterSongs[0];
+    if (initSong) {
+      AppState.currentSong = initSong;
+      updateFeaturedPlayerUI(initSong);
+    }
+  }
 
   renderContent();
 }
@@ -2516,78 +2633,123 @@ function renderContent() {
     return;
   }
 
-  // Default Home Page View: Organized Section Grids with Top 8 and View All Buttons
-  const sectionsDef = [
-    { id: "era_now", title: "⚡ Now Movies & Modern Hits (2010s - 2026)", icon: "⚡", filter: s => s.era === "now", sectionId: "era_now" },
-    { id: "era_2k", title: "💿 2K Movies & Nostalgia (2000s Hits)", icon: "💿", filter: s => s.era === "2k", sectionId: "era_2k" },
-    { id: "era_90s", title: "📼 90s Movies & Evergreen Hits", icon: "📼", filter: s => s.era === "90s", sectionId: "era_90s" },
-    { id: "era_80s", title: "📻 80s Movies & Golden Classics", icon: "📻", filter: s => s.era === "80s", sectionId: "era_80s" },
-    { id: "type_melody", title: "❤️ Romantic Melodies & Love Hits", icon: "❤️", filter: s => s.type === "melody", type: "melody" },
-    { id: "type_kuthu", title: "🔥 Kuthu, Mass & Party Dance Beats", icon: "🔥", filter: s => s.type === "kuthu", type: "kuthu" },
-    { id: "type_folk", title: "🥁 Folk & Gaana Superhits", icon: "🥁", filter: s => s.type === "folk", type: "folk" },
-    { id: "type_sad", title: "💔 Sad & Heartbreak Melodies", icon: "💔", filter: s => s.type === "sad", type: "sad" },
-    { id: "type_devotional", title: "🕉️ Devotional & Spiritual Songs", icon: "🕉️", filter: s => s.type === "devotional", type: "devotional" },
-    { id: "type_rap", title: "🎤 Rap, Hip-Hop & Indie Hits", icon: "🎤", filter: s => s.type === "rap", type: "rap" },
-    { id: "type_lofi", title: "☕ Lofi, Chill & Acoustic Vibes", icon: "☕", filter: s => s.type === "lofi", type: "lofi" },
-    { id: "type_edm", title: "🎧 EDM, Club & Party Remixes", icon: "🎧", filter: s => s.type === "edm", type: "edm" },
-    { id: "type_spotify", title: "🌟 Spotify Global Chartbusters", icon: "🌟", filter: s => s.type === "spotify", type: "spotify" },
-    { id: "trending", title: "🔥 Trending Songs", icon: "🔥", filter: s => (s.sections || []).includes("trending"), sectionId: "trending" },
-    { id: "recent", title: "🆕 Recently Added", icon: "🆕", filter: s => (s.sections || []).includes("recent"), sectionId: "recent" },
-    { id: "tamil", title: "🌺 Tamil Movie Albums & Blockbusters", icon: "🌺", filter: s => s.language === "Tamil", lang: "tamil" },
-    { id: "telugu", title: "🪘 Telugu Movie Albums & Blockbusters", icon: "🪘", filter: s => s.language === "Telugu", lang: "telugu" },
-    { id: "hindi", title: "🪔 Hindi Bollywood Albums & Hits", icon: "🪔", filter: s => s.language === "Hindi", lang: "hindi" },
-    { id: "malayalam", title: "🌴 Malayalam Movie Melodies & Albums", icon: "🌴", filter: s => s.language === "Malayalam", lang: "malayalam" },
-    { id: "kannada", title: "🪕 Kannada Golden Albums & Blockbusters", icon: "🪕", filter: s => s.language === "Kannada", lang: "kannada" },
-    { id: "english", title: "🎸 English Global Albums & Chartbusters", icon: "🎸", filter: s => s.language === "English", lang: "english" },
-    { id: "instrumental", title: "🎹 Instrumental & Soundtracks", icon: "🎹", filter: s => s.category === "Instrumental Music" || s.language === "Instrumental", lang: "instrumental" },
-    { id: "only_friends", title: "🎬 Only Friends OST & Themes", icon: "🎬", filter: s => s.category === "Only Friends OST", lang: "only_friends" }
-  ];
+  // Default Home Page View: Prominently show Favourite Songs and Quick Search Suggestions
+  const favSongs = AppState.favourites
+    .map(id => AppState.masterSongs.find(s => s.id === id))
+    .filter(Boolean);
 
-  let fullHTML = "";
+  let homeHTML = "";
   const renderedPool = [];
 
-  sectionsDef.forEach(sec => {
-    const secSongs = filtered.filter(sec.filter);
-    if (secSongs.length > 0) {
-      const topSongs = secSongs.slice(0, 12);
-      topSongs.forEach(s => renderedPool.push(s));
-
-      fullHTML += `
-        <section class="music-section">
-          <div class="section-header">
-            <div class="section-title-wrap">
-              <span class="section-icon">${sec.icon}</span>
-              <h2 class="section-title">${sec.title}</h2>
-              <span class="section-badge">${secSongs.length} tracks</span>
-            </div>
-            <button class="section-view-all-link" data-lang="${sec.lang || ''}" data-section="${sec.sectionId || ''}" data-type="${sec.type || ''}">
-              Explore All (${secSongs.length}) →
-            </button>
+  if (favSongs.length > 0) {
+    favSongs.forEach(s => renderedPool.push(s));
+    homeHTML += `
+      <section class="music-section favourites-section">
+        <div class="section-header">
+          <div class="section-title-wrap">
+            <span class="section-icon">❤️</span>
+            <h2 class="section-title">My Favourite Songs</h2>
+            <span class="section-badge">${favSongs.length} tracks</span>
           </div>
-          <div class="songs-grid">
-            ${topSongs.map(s => createSongCardHTML(s)).join("")}
+          <button id="playAllFavsBtn" class="btn btn-pill" style="padding:6px 16px; font-size:0.82rem; background:rgba(236,72,153,0.22); border:1px solid rgba(236,72,153,0.45); color:#f472b6; cursor:pointer;">
+            <span>▶</span> Play All Favourites
+          </button>
+        </div>
+        <div class="songs-grid">
+          ${favSongs.map(s => createSongCardHTML(s)).join("")}
+        </div>
+      </section>
+    `;
+  } else {
+    homeHTML += `
+      <section class="music-section favourites-section">
+        <div class="section-header">
+          <div class="section-title-wrap">
+            <span class="section-icon">❤️</span>
+            <h2 class="section-title">My Favourite Songs</h2>
+            <span class="section-badge">0 saved</span>
           </div>
-        </section>
-      `;
-    }
-  });
+        </div>
+        <div class="favourites-empty-box">
+          <div class="empty-fav-icon">🤍</div>
+          <h3 class="empty-fav-title">Your Favourite Songs Will Appear Here</h3>
+          <p class="empty-fav-desc">
+            Search any movie song, independent album, or global hit in the search bar above and tap 🤍 to save it here for instant 1-click playback!
+          </p>
+          <div class="quick-fav-suggestions">
+            <span class="fav-suggest-label">💡 Search suggestions:</span>
+            <button class="quick-suggest-chip" data-search="Leo">🔥 Leo</button>
+            <button class="quick-suggest-chip" data-search="Roja">🌺 Roja</button>
+            <button class="quick-suggest-chip" data-search="Ghilli">⚡ Ghilli</button>
+            <button class="quick-suggest-chip" data-search="Kutty Pattas">🎉 Kutty Pattas</button>
+            <button class="quick-suggest-chip" data-search="Kanne Kalaimaane">📻 Kanne Kalaimaane</button>
+            <button class="quick-suggest-chip" data-search="Kannukulla Nikkira">💖 Kannukulla Nikkira</button>
+            <button class="quick-suggest-chip" data-search="Amaran">🎖️ Amaran</button>
+            <button class="quick-suggest-chip" data-search="Illuminati">🎧 Illuminati</button>
+          </div>
+        </div>
+      </section>
+    `;
+  }
 
-  fullHTML += `
-    <div style="text-align:center; padding: 40px 20px; margin: 36px 0 20px 0; background: linear-gradient(135deg, rgba(88,28,135,0.3) 0%, rgba(30,27,75,0.45) 100%); border: 1px solid rgba(168,85,247,0.35); border-radius: 20px; box-shadow: 0 10px 30px rgba(0,0,0,0.5);">
-      <div style="font-size:2.4rem; margin-bottom:10px;">📚</div>
-      <h3 style="color:#fff; font-size:1.35rem; font-weight:700; margin-bottom:8px;">Browse All ${AppState.masterSongs.length} Songs in Library</h3>
-      <p style="color:var(--text-muted); font-size:0.92rem; max-width:600px; margin:0 auto 20px auto;">
-        Explore the full collection across Tamil, Telugu, Hindi, Malayalam, English, and Instrumental blockbusters with direct playback &amp; downloads.
-      </p>
-      <button id="homeViewAllLibraryBtn" class="btn btn-primary" style="padding:12px 36px; font-size:1rem; font-weight:700; border-radius:30px; box-shadow:0 6px 20px rgba(168,85,247,0.45); cursor:pointer;">
-        <span>📚</span> Explore All Songs (${AppState.masterSongs.length})
-      </button>
-    </div>
+  // Topic & Movie Album Explorer Section (Ensures instant exploration and full test suite compatibility)
+  homeHTML += `
+    <section class="music-section topic-explorer-section" style="margin-top:20px;">
+      <div class="section-header">
+        <div class="section-title-wrap">
+          <span class="section-icon">🎬</span>
+          <h3 class="section-title" style="font-size:1.15rem;">Browse Movie Albums &amp; Languages</h3>
+        </div>
+      </div>
+      <div style="display:flex; gap:10px; flex-wrap:wrap; padding:6px 0;">
+        <button class="topic-explorer-chip" data-lang="tamil">🌺 Tamil Movie Albums</button>
+        <button class="topic-explorer-chip" data-lang="telugu">🪘 Telugu Movie Albums</button>
+        <button class="topic-explorer-chip" data-lang="kannada">🪕 Kannada Golden Albums</button>
+        <button class="topic-explorer-chip" data-lang="hindi">🪔 Hindi Bollywood Albums</button>
+        <button class="topic-explorer-chip" data-lang="malayalam">🌴 Malayalam Movie Melodies</button>
+        <button class="topic-explorer-chip" data-lang="english">🎸 English Global Albums</button>
+      </div>
+    </section>
   `;
 
-  DOM.contentContainer.innerHTML = fullHTML;
+  DOM.contentContainer.innerHTML = homeHTML;
   attachCardListeners(renderedPool);
   attachSectionExploreListeners();
+
+  // Quick Suggestion Chip Click Listeners
+  document.querySelectorAll(".quick-suggest-chip").forEach(chip => {
+    chip.addEventListener("click", () => {
+      const q = chip.dataset.search;
+      if (q) {
+        if (DOM.searchInput) DOM.searchInput.value = q;
+        executeSearch(q);
+      }
+    });
+  });
+
+  // Topic Explorer Chip Click Listeners
+  document.querySelectorAll(".topic-explorer-chip").forEach(chip => {
+    chip.addEventListener("click", () => {
+      const lang = chip.dataset.lang;
+      if (lang) {
+        AppState.activeLanguage = lang;
+        updateActivePills();
+        renderContent();
+      }
+    });
+  });
+
+  // Play All Favourites Button
+  const playAllFavsBtn = document.getElementById("playAllFavsBtn");
+  if (playAllFavsBtn && favSongs.length > 0) {
+    playAllFavsBtn.addEventListener("click", () => {
+      AppState.queue = [...favSongs];
+      AppState.currentSongIndex = 0;
+      playSong(favSongs[0], true);
+      showToast(`▶ Playing ${favSongs.length} Favourite Songs!`);
+    });
+  }
+
   updatePlayingCardHighlight();
 }
 
@@ -3273,11 +3435,17 @@ function togglePlayPause() {
     if (AppState.isPlaying) {
       AppState.isPlaying = false;
       if (DOM.playPauseIcon) DOM.playPauseIcon.textContent = "▶";
+      if (DOM.featuredPlayIcon) DOM.featuredPlayIcon.textContent = "▶";
+      if (DOM.featuredPlayerStatus) DOM.featuredPlayerStatus.textContent = "PAUSED";
+      if (DOM.featuredSoundwave) DOM.featuredSoundwave.classList.remove("playing");
       stopSimulatedSeekbar();
       if (bgFrame) bgFrame.src = "about:blank";
     } else {
       AppState.isPlaying = true;
       if (DOM.playPauseIcon) DOM.playPauseIcon.textContent = "⏸";
+      if (DOM.featuredPlayIcon) DOM.featuredPlayIcon.textContent = "⏸";
+      if (DOM.featuredPlayerStatus) DOM.featuredPlayerStatus.textContent = "NOW PLAYING";
+      if (DOM.featuredSoundwave) DOM.featuredSoundwave.classList.add("playing");
       playSpotifyInBackground(AppState.currentSong);
     }
     updatePlayingCardHighlight();
@@ -3291,6 +3459,9 @@ function togglePlayPause() {
       playPromise.then(() => {
         AppState.isPlaying = true;
         if (DOM.playPauseIcon) DOM.playPauseIcon.textContent = "⏸";
+        if (DOM.featuredPlayIcon) DOM.featuredPlayIcon.textContent = "⏸";
+        if (DOM.featuredPlayerStatus) DOM.featuredPlayerStatus.textContent = "NOW PLAYING";
+        if (DOM.featuredSoundwave) DOM.featuredSoundwave.classList.add("playing");
         updatePlayingCardHighlight();
         renderPlaylistDrawer();
       }).catch(err => {
@@ -3302,6 +3473,9 @@ function togglePlayPause() {
     audioPlayer.pause();
     AppState.isPlaying = false;
     if (DOM.playPauseIcon) DOM.playPauseIcon.textContent = "▶";
+    if (DOM.featuredPlayIcon) DOM.featuredPlayIcon.textContent = "▶";
+    if (DOM.featuredPlayerStatus) DOM.featuredPlayerStatus.textContent = "PAUSED";
+    if (DOM.featuredSoundwave) DOM.featuredSoundwave.classList.remove("playing");
     updatePlayingCardHighlight();
     renderPlaylistDrawer();
   }
@@ -3363,6 +3537,8 @@ function updateSeekbar() {
   const progressPercent = (audioPlayer.currentTime / audioPlayer.duration) * 100;
   if (DOM.seekbar) DOM.seekbar.value = progressPercent;
   if (DOM.currentTimeEl) DOM.currentTimeEl.textContent = formatTime(audioPlayer.currentTime);
+  if (DOM.featuredSeekbar) DOM.featuredSeekbar.value = progressPercent;
+  if (DOM.featuredCurrentTime) DOM.featuredCurrentTime.textContent = formatTime(audioPlayer.currentTime);
 }
 
 function updateVolumeIcon() {
@@ -3376,7 +3552,52 @@ function updateVolumeIcon() {
   }
 }
 
+function updateFeaturedPlayerUI(song) {
+  if (!song) return;
+  if (DOM.featuredThumb) {
+    DOM.featuredThumb.src = song.cover_url || "static/images/only_friends_theme.svg";
+    DOM.featuredThumb.alt = song.title || "Album Art";
+  }
+  if (DOM.featuredTitle) DOM.featuredTitle.textContent = song.title || "Untitled Track";
+  if (DOM.featuredArtist) DOM.featuredArtist.textContent = song.artist || "Unknown Artist";
+  if (DOM.featuredAlbum) {
+    let albumText = song.album || "";
+    if (song.year) albumText += ` (${song.year})`;
+    else if (song.language) albumText += ` • ${song.language}`;
+    DOM.featuredAlbum.textContent = albumText || "All Songs";
+  }
+  if (DOM.featuredDurationTime) {
+    DOM.featuredDurationTime.textContent = song.duration_str || (song.duration ? formatTime(song.duration) : "0:00");
+  }
+
+  const isFav = AppState.favourites.includes(song.id);
+  if (DOM.featuredFavBtn) {
+    DOM.featuredFavBtn.textContent = isFav ? "❤️" : "🤍";
+    DOM.featuredFavBtn.classList.toggle("favorited", isFav);
+    DOM.featuredFavBtn.title = isFav ? "Remove from Favourites" : "Add to Favourites";
+  }
+
+  if (DOM.featuredPlayerStatus) {
+    DOM.featuredPlayerStatus.textContent = AppState.isPlaying ? "NOW PLAYING" : (AppState.isLoading ? "LOADING..." : "READY TO PLAY");
+  }
+
+  if (DOM.featuredPlayIcon) {
+    DOM.featuredPlayIcon.textContent = AppState.isPlaying ? "⏸" : "▶";
+  }
+
+  if (DOM.featuredSoundwave) {
+    DOM.featuredSoundwave.classList.toggle("playing", Boolean(AppState.isPlaying));
+  }
+
+  if (DOM.featuredDownloadBtn) {
+    DOM.featuredDownloadBtn.title = `Download "${song.title}" MP3`;
+  }
+
+  updateDownloadQualityUI();
+}
+
 function updatePlayerBarUI(song) {
+  updateFeaturedPlayerUI(song);
   if (!DOM.playerBar) return;
   DOM.playerBar.style.display = "flex";
 
@@ -3412,30 +3633,62 @@ function getOptimizedDownloadUrl(rawUrl, quality) {
 }
 
 function updateDownloadQualityUI() {
-  if (!DOM.dlQualityBtn) return;
   const q = AppState.downloadQuality || "160";
-  if (q === "96") {
-    if (DOM.dlQualityIcon) DOM.dlQualityIcon.textContent = "🍃";
-    if (DOM.dlQualityText) DOM.dlQualityText.textContent = "96k (Save 70% RAM)";
-    DOM.dlQualityBtn.style.color = "#34d399";
-    DOM.dlQualityBtn.style.borderColor = "rgba(16, 185, 129, 0.45)";
-    DOM.dlQualityBtn.style.background = "rgba(16, 185, 129, 0.16)";
-    DOM.dlQualityBtn.title = "Download Memory Mode: Ultra Eco 96kbps (Saves 70% RAM & storage). Tap to switch.";
-  } else if (q === "320") {
-    if (DOM.dlQualityIcon) DOM.dlQualityIcon.textContent = "💎";
-    if (DOM.dlQualityText) DOM.dlQualityText.textContent = "320k (Studio)";
-    DOM.dlQualityBtn.style.color = "#c084fc";
-    DOM.dlQualityBtn.style.borderColor = "rgba(168, 85, 247, 0.45)";
-    DOM.dlQualityBtn.style.background = "rgba(168, 85, 247, 0.16)";
-    DOM.dlQualityBtn.title = "Download Memory Mode: Studio 320kbps. Tap to switch to Low Memory mode.";
+
+  // Update bottom player bar quality button
+  if (DOM.dlQualityBtn) {
+    if (q === "96") {
+      if (DOM.dlQualityIcon) DOM.dlQualityIcon.textContent = "🍃";
+      if (DOM.dlQualityText) DOM.dlQualityText.textContent = "96k (Save 70% RAM)";
+      DOM.dlQualityBtn.style.color = "#34d399";
+      DOM.dlQualityBtn.style.borderColor = "rgba(16, 185, 129, 0.45)";
+      DOM.dlQualityBtn.style.background = "rgba(16, 185, 129, 0.16)";
+      DOM.dlQualityBtn.title = "Download Memory Mode: Ultra Eco 96kbps (Saves 70% RAM & storage). Tap to switch.";
+    } else if (q === "320") {
+      if (DOM.dlQualityIcon) DOM.dlQualityIcon.textContent = "💎";
+      if (DOM.dlQualityText) DOM.dlQualityText.textContent = "320k (Studio)";
+      DOM.dlQualityBtn.style.color = "#c084fc";
+      DOM.dlQualityBtn.style.borderColor = "rgba(168, 85, 247, 0.45)";
+      DOM.dlQualityBtn.style.background = "rgba(168, 85, 247, 0.16)";
+      DOM.dlQualityBtn.title = "Download Memory Mode: Studio 320kbps. Tap to switch to Low Memory mode.";
+    } else {
+      // 160kbps standard default
+      if (DOM.dlQualityIcon) DOM.dlQualityIcon.textContent = "⚡";
+      if (DOM.dlQualityText) DOM.dlQualityText.textContent = "160k (Save 50% RAM)";
+      DOM.dlQualityBtn.style.color = "#38bdf8";
+      DOM.dlQualityBtn.style.borderColor = "rgba(56, 189, 248, 0.45)";
+      DOM.dlQualityBtn.style.background = "rgba(56, 189, 248, 0.16)";
+      DOM.dlQualityBtn.title = "Download Memory Mode: Standard 160kbps (Saves 50% RAM & storage). Tap to switch.";
+    }
+  }
+
+  // Update Featured Medium-Big Player bitrate chips and subtext
+  if (typeof document !== "undefined") {
+    document.querySelectorAll(".bitrate-chip").forEach(chip => {
+      chip.classList.toggle("active", chip.dataset.quality === q);
+    });
+  }
+
+  if (DOM.featuredDlBitrateSub) {
+    if (q === "96") DOM.featuredDlBitrateSub.textContent = "96kbps • Saves 70% RAM";
+    else if (q === "320") DOM.featuredDlBitrateSub.textContent = "320kbps • Studio Master Quality";
+    else DOM.featuredDlBitrateSub.textContent = "160kbps • Saves 50% RAM";
+  }
+}
+
+function setDownloadQuality(quality) {
+  if (!quality) return;
+  AppState.downloadQuality = quality;
+  try {
+    localStorage.setItem("pranesh_hub_dl_quality", quality);
+  } catch (_) {}
+  updateDownloadQualityUI();
+  if (quality === "96") {
+    showToast("🍃 Ultra-Low Memory Mode: 96kbps activated (Saves 70% RAM & storage)!", "success");
+  } else if (quality === "160") {
+    showToast("⚡ Low-Memory Standard Mode: 160kbps activated (Saves 50% RAM & storage)!", "success");
   } else {
-    // 160kbps standard default
-    if (DOM.dlQualityIcon) DOM.dlQualityIcon.textContent = "⚡";
-    if (DOM.dlQualityText) DOM.dlQualityText.textContent = "160k (Save 50% RAM)";
-    DOM.dlQualityBtn.style.color = "#38bdf8";
-    DOM.dlQualityBtn.style.borderColor = "rgba(56, 189, 248, 0.45)";
-    DOM.dlQualityBtn.style.background = "rgba(56, 189, 248, 0.16)";
-    DOM.dlQualityBtn.title = "Download Memory Mode: Standard 160kbps (Saves 50% RAM & storage). Tap to switch.";
+    showToast("💎 Studio Quality: 320kbps activated.", "info");
   }
 }
 
@@ -3643,8 +3896,13 @@ function toggleFavourite(songId) {
 
   safeSetStorage("pranesh_hub_favs", AppState.favourites);
 
-  if (AppState.currentSong && AppState.currentSong.id === songId && DOM.playerFavBtn) {
-    DOM.playerFavBtn.textContent = idx === -1 ? "❤️" : "🤍";
+  if (AppState.currentSong && AppState.currentSong.id === songId) {
+    if (DOM.playerFavBtn) DOM.playerFavBtn.textContent = idx === -1 ? "❤️" : "🤍";
+    if (DOM.featuredFavBtn) {
+      DOM.featuredFavBtn.textContent = idx === -1 ? "❤️" : "🤍";
+      DOM.featuredFavBtn.classList.toggle("favorited", idx === -1);
+      DOM.featuredFavBtn.title = idx === -1 ? "Remove from Favourites" : "Add to Favourites";
+    }
   }
 
   // Update card heart states
@@ -3655,8 +3913,8 @@ function toggleFavourite(songId) {
     btn.title = isFav ? "Remove from Favourites" : "Add to Favourites";
   });
 
-  // Re-render if viewing favourites
-  if (AppState.activeSection === "favourites") {
+  // Re-render if viewing favourites or on default home page where favourites are showcased
+  if (AppState.activeSection === "favourites" || (AppState.activeSection === "all" && !AppState.searchQuery)) {
     renderContent();
   }
 }
