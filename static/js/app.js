@@ -650,6 +650,17 @@ function setupEventListeners() {
       togglePlayPause();
     }
   });
+
+  // Sticky Player Scroll Listener (Keeps Play Button in Same Place when scrolling)
+  window.addEventListener("scroll", () => {
+    if (!DOM.featuredPlayerSection) return;
+    const isScrolled = (typeof window !== "undefined" && (window.pageYOffset || (document.documentElement && document.documentElement.scrollTop) || 0) > 30);
+    if (isScrolled) {
+      DOM.featuredPlayerSection.classList.add("is-scrolled");
+    } else {
+      DOM.featuredPlayerSection.classList.remove("is-scrolled");
+    }
+  }, { passive: true });
 }
 
 // ==========================================================================
@@ -819,6 +830,23 @@ function correctSearchQuery(q) {
     "kannukkulla nikkira": "kannukulla nikkira",
     "kannukulle nikkira": "kannukulla nikkira",
     "kannukulla nikkire": "kannukulla nikkira",
+    "kannukula": "kannukulla",
+    "kannukula nikka": "kannukulla nikkira",
+    "kannukula nikka ye kadhaliye": "kannukulla nikkira en kadhaliye",
+    "kannukulla nikkira ye kadhaliye": "kannukulla nikkira en kadhaliye",
+    "kannukula nikkire": "kannukulla nikkira",
+    "kadhaliye": "kadhaliye",
+    "ye kadhaliye": "en kadhaliye",
+    "ennavalle": "ennavale",
+    "ennavalle eannai maramthathu": "ennavale ennai maranthathu",
+    "ennavale eannai maramthathu": "ennavale ennai maranthathu",
+    "eannai maramthathu": "ennai maranthathu",
+    "maramthathu": "maranthathu",
+    "maramthatha": "maranthathu",
+    "ennavalle ennai maranthathu": "ennavale ennai maranthathu",
+    "ennavale ennai marandhadhu": "ennavale ennai maranthathu",
+    "ennavale ennai maranthathu yeno": "ennavale ennai maranthathu",
+    "dhilip varman": "dhilip varman",
     "kannukulla": "kannukulla",
     "kannukkulla": "kannukulla",
     "kannukulle": "kannukulle",
@@ -1708,15 +1736,27 @@ function getSearchQueryVariants(cleanQuery) {
   if (!lower) return [];
   variants.add(cleanQuery);
 
-  // 1. Common Tamil song & chorus aliases (e.g. Kannukulla Nikkira -> Kannukulla Nikkire, Kannukkulle, Pennin Manathai Thottu)
-  if (lower.includes("kannukulla") || lower.includes("kannukkulla") || lower.includes("kannukulle") || lower.includes("kannukkulle")) {
-    if (lower.includes("nikki") || lower.includes("nikku") || lower.includes("nikire")) {
+  // 1. Common Tamil song & chorus aliases (e.g. Kannukulla Nikkira -> Kannukulla Nikkire, Kannukkulle, Pennin Manathai Thottu, Thanimai Kadhal)
+  if (lower.includes("kannukula") || lower.includes("kannukulla") || lower.includes("kannukkulla") || lower.includes("kannukulle") || lower.includes("kannukkulle")) {
+    if (lower.includes("nikki") || lower.includes("nikka") || lower.includes("nikku") || lower.includes("nikire") || lower.includes("kadhal")) {
+      variants.add("kannukulla nikkira en kadhaliye");
+      variants.add("thanimai kadhal");
       variants.add("kannukulla nikkire");
       variants.add("kannukkulle");
       variants.add("pennin manathai thottu");
     } else {
       variants.add("kannukkulle");
       variants.add("kannukulla");
+    }
+  }
+
+  // 1b. Ennavale Ennai Maranthathu Yeno / Dhilip Varman aliases
+  if (lower.includes("ennavale") || lower.includes("ennavalle")) {
+    if (lower.includes("maran") || lower.includes("maram") || lower.includes("eannai") || lower.includes("ennai") || lower.includes("dhilip")) {
+      variants.add("ennavale ennai maranthathu");
+      variants.add("ennavaley");
+      variants.add("saran z ennavaley");
+      variants.add("dhilip varman");
     }
   }
 

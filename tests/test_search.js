@@ -19,8 +19,21 @@ const vm = require("vm");
 // 1. Mock Browser Environment
 global.window = {
   location: { search: "" },
-  addEventListener() {},
-  removeEventListener() {}
+  listeners: {},
+  addEventListener(event, fn) {
+    if (!this.listeners[event]) this.listeners[event] = [];
+    this.listeners[event].push(fn);
+  },
+  removeEventListener(event, fn) {
+    if (this.listeners[event]) {
+      this.listeners[event] = this.listeners[event].filter(f => f !== fn);
+    }
+  },
+  dispatchEvent(event, data) {
+    if (this.listeners[event]) {
+      this.listeners[event].forEach(fn => fn(data || { target: this }));
+    }
+  }
 };
 global.Audio = function() {
   return {
@@ -1453,6 +1466,94 @@ setDownloadQuality("160");
 
 console.log("[PASS] Verified: Frontend redesign verified: search-only song results, prominent favourite songs showcase, medium-big player, and below-player download options operational!");
 
+// Test 40: Verifying Sticky Player (Play Button in Same Place when Scrolling) & Original Song Imports (Kannukulla Nikkira & Ennavale Ennai Maranthathu)
+console.log("\nTest 40: Verifying Sticky Player (Play Button in Same Place) & Original Song Imports...");
+
+// 1. Verify Sticky Player and is-scrolled class toggling
+assert(DOM.featuredPlayerSection, "featuredPlayerSection DOM element must exist");
+assert(DOM.featuredPlayPauseBtn, "featuredPlayPauseBtn DOM element must exist");
+
+// Simulate scroll > 30px
+global.window.pageYOffset = 100;
+global.window.dispatchEvent("scroll");
+assert(DOM.featuredPlayerSection.classList.contains("is-scrolled"), "featuredPlayerSection must gain 'is-scrolled' class when scrolled");
+
+// Simulate scroll back to top (0px)
+global.window.pageYOffset = 0;
+global.window.dispatchEvent("scroll");
+assert(!DOM.featuredPlayerSection.classList.contains("is-scrolled"), "featuredPlayerSection must remove 'is-scrolled' class when at top");
+
+// 2. Verify Original "Kannukulla Nikkira En Kadhaliye" (Thanimai Kadhal)
+const kannukulaQueries = [
+  "kannukula nikka ye kadhaliye",
+  "kannukula nikka",
+  "kannukulla nikkira en kadhaliye",
+  "kannukulla nikkira",
+  "ye kadhaliye"
+];
+
+for (const q of kannukulaQueries) {
+  const matches = searchMasterSongs(q);
+  assert(matches.length > 0, `Search for '${q}' must return matching songs`);
+  const topSong = matches[0];
+  const isMatch = topSong.title.toLowerCase().includes("kannuk") || 
+                  topSong.album.toLowerCase().includes("thanimai kadhal") ||
+                  topSong.tags.some(t => t.includes("kannuk") || t.includes("kadhaliye"));
+  assert(isMatch, `Top match for '${q}' must be 'Kannukulla Nikkira' (found: ${topSong.title})`);
+  assert(topSong.audio_url && topSong.audio_url.startsWith("https://"), `Stream URL for '${q}' must be authorized 320kbps HTTPS`);
+  assert.strictEqual(topSong.is_preview, false, `Track '${topSong.title}' must be full length`);
+}
+
+// Verify exact original studio version exists
+const origKannukulla = AppState.masterSongs.find(s => s.id === "indie_kannukulla_nikkira_orig_2017");
+assert(origKannukulla, "Original 2017 studio track 'indie_kannukulla_nikkira_orig_2017' must exist in master catalogue");
+assert.strictEqual(origKannukulla.artist, "Lovely Rapper Shridhar, Nj Nishanth, Felix", "Artist must match original release");
+assert.strictEqual(origKannukulla.album, "Thanimai Kadhal", "Album must be Thanimai Kadhal");
+
+// 3. Verify Original "Ennavale Ennai Maranthathu Yeno" (Dhilip Varman)
+const ennavaleQueries = [
+  "ennavalle eannai maramthathu",
+  "ennavale ennai maranthathu",
+  "ennavalle ennai maranthathu",
+  "ennavale ennai maranthathu yeno",
+  "ennavalle",
+  "dhilip varman ennavale"
+];
+
+for (const q of ennavaleQueries) {
+  const matches = searchMasterSongs(q);
+  assert(matches.length > 0, `Search for '${q}' must return matching songs`);
+  const topSong = matches[0];
+  const isMatch = topSong.title.toLowerCase().includes("ennaval") ||
+                  topSong.artist.toLowerCase().includes("dhilip varman") ||
+                  topSong.tags.some(t => t.includes("ennaval") || t.includes("dhilip"));
+  assert(isMatch, `Top match for '${q}' must be 'Ennavaley' by Dhilip Varman (found: ${topSong.title} by ${topSong.artist})`);
+  assert(topSong.audio_url && topSong.audio_url.startsWith("https://"), `Stream URL for '${q}' must be authorized 320kbps HTTPS`);
+  assert.strictEqual(topSong.is_preview, false, `Track '${topSong.title}' must be full length`);
+}
+
+// Verify exact original studio version exists
+const origEnnavale = AppState.masterSongs.find(s => s.id === "indie_ennavale_ennai_maranthathu_orig_2010");
+assert(origEnnavale, "Original 2010 studio track 'indie_ennavale_ennai_maranthathu_orig_2010' must exist in master catalogue");
+assert(origEnnavale.artist.includes("Dhilip Varman"), "Artist must include Dhilip Varman");
+assert.strictEqual(origEnnavale.album, "Saran Z Ennavaley", "Album must be Saran Z Ennavaley");
+
+// 4. Verify additional Dhilip Varman independent hits
+const otherDhilipSongs = [
+  "indie_kanavellam_dhilip_2007",
+  "indie_kangalil_oru_kathal_2010",
+  "indie_uyirulle_saran_2010",
+  "indie_sollamaley_dhilip_2011"
+];
+
+for (const id of otherDhilipSongs) {
+  const s = AppState.masterSongs.find(x => x.id === id);
+  assert(s, `Track ${id} must exist in master catalogue`);
+  assert(s.audio_url && s.audio_url.startsWith("https://"), `Track ${id} must have 320kbps stream URL`);
+}
+
+console.log("[PASS] Verified: Sticky player (play button in same place when scrolling) and original song versions (Kannukulla Nikkira & Ennavale Ennai Maranthathu) verified successfully!");
+
 console.log("\n==================================================");
-console.log("ALL 39 SEARCH, CATALOGUE, FULL-STREAM, DUAL-API, ALBUM SEPARATION, TRANSLITERATION, FRONTEND & DOWNLOAD TESTS PASSED!");
+console.log("ALL 40 SEARCH, CATALOGUE, FULL-STREAM, DUAL-API, ALBUM SEPARATION, TRANSLITERATION, FRONTEND, STICKY PLAYER & DOWNLOAD TESTS PASSED!");
 console.log("==================================================\n");

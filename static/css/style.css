@@ -36,6 +36,7 @@
   --radius-full: 9999px;
   
   --player-height: 90px;
+  --navbar-height: 74px;
 }
 
 * {
@@ -363,24 +364,186 @@ body {
 }
 
 /* ==========================================================================
-   Featured Medium-Big Player & Download Options Hub
+   Featured Medium-Big Player & Download Options Hub (Sticky & Persistent)
    ========================================================================== */
 .featured-player-section {
+  position: -webkit-sticky;
+  position: sticky;
+  top: var(--navbar-height, 74px);
+  z-index: 950;
   max-width: 1200px;
-  margin: 20px auto 26px;
+  margin: 14px auto 20px;
   padding: 0 20px;
+  transition: margin 0.28s ease, padding 0.28s ease;
 }
 
 .featured-player-card {
   position: relative;
   border-radius: 24px;
-  background: linear-gradient(135deg, rgba(30, 18, 62, 0.92) 0%, rgba(16, 11, 38, 0.96) 100%);
-  border: 1px solid rgba(168, 85, 247, 0.38);
-  padding: 28px 32px;
-  box-shadow: 0 16px 45px rgba(0, 0, 0, 0.6), 0 0 25px rgba(168, 85, 247, 0.18);
+  background: linear-gradient(135deg, rgba(30, 18, 62, 0.94) 0%, rgba(16, 11, 38, 0.98) 100%);
+  border: 1px solid rgba(168, 85, 247, 0.42);
+  padding: 24px 30px;
+  box-shadow: 0 16px 45px rgba(0, 0, 0, 0.65), 0 0 25px rgba(168, 85, 247, 0.2);
   overflow: hidden;
-  backdrop-filter: blur(20px);
-  -webkit-backdrop-filter: blur(20px);
+  backdrop-filter: blur(25px);
+  -webkit-backdrop-filter: blur(25px);
+  transition: all 0.28s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+/* Scrolled / Docked Sticky State: Play Button Stays in the Exact Same Place */
+.featured-player-section.is-scrolled {
+  margin: 4px auto 12px;
+  padding: 0 16px;
+}
+
+.featured-player-section.is-scrolled .featured-player-card {
+  padding: 10px 18px;
+  border-radius: 16px;
+  background: rgba(14, 9, 34, 0.96);
+  border: 1px solid rgba(168, 85, 247, 0.65);
+  box-shadow: 0 10px 32px rgba(0, 0, 0, 0.8), 0 0 20px rgba(168, 85, 247, 0.35);
+}
+
+.featured-player-section.is-scrolled .featured-glow-overlay,
+.featured-player-section.is-scrolled .featured-status-bar {
+  display: none;
+}
+
+.featured-player-section.is-scrolled .featured-player-body {
+  gap: 14px;
+}
+
+.featured-player-section.is-scrolled .featured-artwork-container {
+  width: 48px;
+  height: 48px;
+  min-width: 48px;
+  min-height: 48px;
+  border-radius: 10px;
+  border-width: 1.5px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.5);
+}
+
+.featured-player-section.is-scrolled .featured-soundwave-bars {
+  height: 14px;
+  padding: 2px 3px;
+  gap: 2px;
+  bottom: 4px;
+  right: 4px;
+}
+
+.featured-player-section.is-scrolled .sw-bar {
+  width: 2px;
+  height: 3px;
+}
+
+.featured-player-section.is-scrolled .featured-info-controls {
+  gap: 6px;
+}
+
+.featured-player-section.is-scrolled .featured-track-header {
+  gap: 10px;
+}
+
+.featured-player-section.is-scrolled .featured-title {
+  font-size: 1.02rem;
+  margin: 0 0 2px 0;
+  max-width: 320px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.featured-player-section.is-scrolled .featured-artist-wrap {
+  font-size: 0.78rem;
+  gap: 6px;
+}
+
+.featured-player-section.is-scrolled .featured-fav-btn {
+  width: 34px;
+  height: 34px;
+  font-size: 1.05rem;
+}
+
+.featured-player-section.is-scrolled .featured-seekbar-container {
+  margin: 0;
+  gap: 8px;
+}
+
+.featured-player-section.is-scrolled .f-time-display {
+  font-size: 0.74rem;
+  min-width: 32px;
+}
+
+.featured-player-section.is-scrolled .featured-seekbar-slider {
+  height: 5px;
+}
+
+.featured-player-section.is-scrolled .featured-buttons-row {
+  gap: 12px;
+}
+
+.featured-player-section.is-scrolled .f-ctrl-btn {
+  font-size: 1.1rem;
+  padding: 4px;
+}
+
+.featured-player-section.is-scrolled .f-play-pause-btn {
+  width: 44px;
+  height: 44px;
+  min-width: 44px;
+  min-height: 44px;
+  font-size: 1.15rem;
+  box-shadow: 0 4px 14px rgba(124, 58, 237, 0.6), 0 0 14px rgba(168, 85, 247, 0.45);
+}
+
+.featured-player-section.is-scrolled .featured-download-options {
+  margin-top: 6px;
+  padding-top: 6px;
+  border-top: 1px solid rgba(168, 85, 247, 0.22);
+}
+
+.featured-player-section.is-scrolled .dl-options-header {
+  display: none;
+}
+
+.featured-player-section.is-scrolled .dl-options-body {
+  gap: 8px;
+}
+
+.featured-player-section.is-scrolled .btn-featured-download {
+  padding: 5px 12px;
+  min-height: 32px;
+  border-radius: 10px;
+  gap: 8px;
+}
+
+.featured-player-section.is-scrolled .btn-featured-download .btn-dl-icon {
+  font-size: 0.9rem;
+}
+
+.featured-player-section.is-scrolled .btn-dl-title {
+  font-size: 0.78rem;
+}
+
+.featured-player-section.is-scrolled .btn-dl-sub {
+  font-size: 0.66rem;
+}
+
+.featured-player-section.is-scrolled .bitrate-chip {
+  padding: 3px 8px;
+  font-size: 0.72rem;
+  border-radius: 10px;
+}
+
+.featured-player-section.is-scrolled .btn-featured-mobile-app {
+  padding: 5px 10px;
+  min-height: 32px;
+  border-radius: 10px;
+  gap: 6px;
+}
+
+.featured-player-section.is-scrolled .btn-featured-mobile-app .btn-dl-title {
+  font-size: 0.78rem;
 }
 
 .featured-glow-overlay {
@@ -2430,8 +2593,63 @@ body {
 }
 
 @media (max-width: 640px) {
+  :root {
+    --navbar-height: 108px;
+  }
   body {
     padding-bottom: 145px;
+  }
+  .featured-player-section {
+    top: var(--navbar-height, 108px);
+    padding: 0 10px;
+    margin: 8px auto 12px;
+  }
+  .featured-player-section .featured-player-card {
+    padding: 16px 14px;
+    border-radius: 18px;
+  }
+  .featured-player-section .featured-artwork-container {
+    width: 76px;
+    height: 76px;
+    min-width: 76px;
+    min-height: 76px;
+  }
+  .featured-player-section .featured-title {
+    font-size: 1.15rem;
+  }
+  .featured-player-section .f-play-pause-btn {
+    width: 48px;
+    height: 48px;
+    min-width: 48px;
+    min-height: 48px;
+  }
+  .featured-player-section.is-scrolled {
+    margin: 2px auto 8px;
+    padding: 0 8px;
+  }
+  .featured-player-section.is-scrolled .featured-player-card {
+    padding: 8px 12px;
+  }
+  .featured-player-section.is-scrolled .featured-artwork-container {
+    width: 38px;
+    height: 38px;
+    min-width: 38px;
+    min-height: 38px;
+    border-radius: 8px;
+  }
+  .featured-player-section.is-scrolled .featured-title {
+    font-size: 0.88rem;
+    max-width: 160px;
+  }
+  .featured-player-section.is-scrolled .f-play-pause-btn {
+    width: 38px;
+    height: 38px;
+    min-width: 38px;
+    min-height: 38px;
+    font-size: 1rem;
+  }
+  .featured-player-section.is-scrolled .bitrate-selector-group {
+    display: none;
   }
   .navbar {
     padding: 10px 14px;
