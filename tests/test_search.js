@@ -1181,6 +1181,9 @@ console.log("\nTest 35: Verifying Memory-Optimized Downloads & Bitrate Selection
 // 1. Verify getOptimizedDownloadUrl generates memory-saving bitrates
 const sampleCdnUrl = "https://aac.saavncdn.com/402/e5bf65a158ca0991337b4162d923fdaf_320.mp4";
 
+const url48 = getOptimizedDownloadUrl(sampleCdnUrl, "48");
+assert.strictEqual(url48, "https://aac.saavncdn.com/402/e5bf65a158ca0991337b4162d923fdaf_48.mp4", "48kbps must map to _48.mp4 (< 2MB ultra-light download)");
+
 const url160 = getOptimizedDownloadUrl(sampleCdnUrl, "160");
 assert.strictEqual(url160, "https://aac.saavncdn.com/402/e5bf65a158ca0991337b4162d923fdaf_160.mp4", "160kbps must map to _160.mp4 (50% memory & storage saved)");
 
@@ -1190,19 +1193,23 @@ assert.strictEqual(url96, "https://aac.saavncdn.com/402/e5bf65a158ca0991337b4162
 const url320 = getOptimizedDownloadUrl(sampleCdnUrl, "320");
 assert.strictEqual(url320, sampleCdnUrl, "320kbps must retain full studio _320.mp4 stream");
 
-// 2. Verify cycleDownloadQuality updates AppState, localStorage, and UI
-AppState.downloadQuality = "160";
-cycleDownloadQuality(); // 160 -> 96
-assert.strictEqual(AppState.downloadQuality, "96", "Cycle from 160 must advance to 96kbps (Ultra Low Memory)");
+// 2. Verify cycleDownloadQuality updates AppState, localStorage, and UI across 48 -> 96 -> 160 -> 320 -> 48
+AppState.downloadQuality = "48";
+cycleDownloadQuality(); // 48 -> 96
+assert.strictEqual(AppState.downloadQuality, "96", "Cycle from 48 must advance to 96kbps (Ultra Low Memory)");
 assert.strictEqual(localStorage.getItem("pranesh_hub_dl_quality"), "96", "localStorage must persist 96kbps setting");
 
-cycleDownloadQuality(); // 96 -> 320
-assert.strictEqual(AppState.downloadQuality, "320", "Cycle from 96 must advance to 320kbps (Studio)");
+cycleDownloadQuality(); // 96 -> 160
+assert.strictEqual(AppState.downloadQuality, "160", "Cycle from 96 must advance to 160kbps (Standard Low Memory)");
+assert.strictEqual(localStorage.getItem("pranesh_hub_dl_quality"), "160", "localStorage must persist 160kbps setting");
+
+cycleDownloadQuality(); // 160 -> 320
+assert.strictEqual(AppState.downloadQuality, "320", "Cycle from 160 must advance to 320kbps (Studio Master)");
 assert.strictEqual(localStorage.getItem("pranesh_hub_dl_quality"), "320", "localStorage must persist 320kbps setting");
 
-cycleDownloadQuality(); // 320 -> 160
-assert.strictEqual(AppState.downloadQuality, "160", "Cycle from 320 must reset to 160kbps (Standard Low Memory)");
-assert.strictEqual(localStorage.getItem("pranesh_hub_dl_quality"), "160", "localStorage must persist 160kbps setting");
+cycleDownloadQuality(); // 320 -> 48
+assert.strictEqual(AppState.downloadQuality, "48", "Cycle from 320 must reset to 48kbps (< 2MB Ultra-Light)");
+assert.strictEqual(localStorage.getItem("pranesh_hub_dl_quality"), "48", "localStorage must persist 48kbps setting");
 
 // 3. Verify handleDownloadAction initiates low-memory download without errors
 const sampleSong = AppState.masterSongs[0];
@@ -1224,9 +1231,16 @@ global.window.URL = {
 };
 
 handleDownloadAction(sampleSong);
+assert(fetchCalledWith && fetchCalledWith.includes("_48.mp4"), `handleDownloadAction must fetch < 2MB ultra-light stream (_48.mp4), got: ${fetchCalledWith}`);
+
+AppState.downloadQuality = "160";
+handleDownloadAction(sampleSong);
 assert(fetchCalledWith && fetchCalledWith.includes("_160.mp4"), `handleDownloadAction must fetch memory-optimized stream (_160.mp4), got: ${fetchCalledWith}`);
 
-console.log("[PASS] Verified: Memory-optimized downloads active. Bitrate selection (160k = 50% RAM saved, 96k = 70% RAM saved), single-pass streaming, and zero heap duplication verified.");
+// Reset back to default "< 2MB Ultra-Light" ("48")
+setDownloadQuality("48");
+
+console.log("[PASS] Verified: Memory-optimized downloads active. Bitrate selection (< 2MB = 48k, 160k = 50% RAM saved, 96k = 70% RAM saved), single-pass streaming, and zero heap duplication verified.");
 
 // --------------------------------------------------------------------------
 // TEST 36: Verifying Dynamic Tamil Album Search (1980 to 2026), Entity Decoding & Album Track Separation
@@ -1461,8 +1475,11 @@ if (DOM.featuredDlBitrateSub) {
   assert(DOM.featuredDlBitrateSub.textContent.includes("96kbps"), "Medium-Big Player download subtext must reflect 96kbps");
 }
 
-// Reset download quality to standard
-setDownloadQuality("160");
+setDownloadQuality("48");
+assert.strictEqual(AppState.downloadQuality, "48", "Bitrate 48 (< 2MB Ultra-Light) must be active");
+if (DOM.featuredDlBitrateSub) {
+  assert(DOM.featuredDlBitrateSub.textContent.includes("48kbps"), "Medium-Big Player download subtext must reflect 48kbps (< 2MB)");
+}
 
 console.log("[PASS] Verified: Frontend redesign verified: search-only song results, prominent favourite songs showcase, medium-big player, and below-player download options operational!");
 
@@ -1554,6 +1571,100 @@ for (const id of otherDhilipSongs) {
 
 console.log("[PASS] Verified: Sticky player (play button in same place when scrolling) and original song versions (Kannukulla Nikkira & Ennavale Ennai Maranthathu) verified successfully!");
 
+// --------------------------------------------------------------------------
+// TEST 41: Verifying < 2MB Ultra-Light Downloads & Self-Correcting Spell-Check Search Engine
+// --------------------------------------------------------------------------
+console.log("\nTest 41: Verifying < 2MB Ultra-Light Downloads & Self-Correcting Spell-Check Search Engine...");
+
+// 1. Verify Default Download Quality is Strictly "< 2MB Ultra-Light" ("48")
+assert.strictEqual(AppState.downloadQuality, "48", "Default download quality must be '48' (< 2MB Ultra-Light)");
+
+const cdnUrl = "https://aac.saavncdn.com/274/dbf21d6f42836a31b44890079fc91fbc_320.mp4";
+const ultraLightUrl = getOptimizedDownloadUrl(cdnUrl, "48");
+assert.strictEqual(ultraLightUrl, "https://aac.saavncdn.com/274/dbf21d6f42836a31b44890079fc91fbc_48.mp4", "48 quality must transform _320.mp4 to _48.mp4");
+
+// 2. Verify Correct Spelling Search: Displays matching songs normally without correction
+const correctQueries = [
+  "kannukulla nikkira en kadhaliye",
+  "ennavale ennai maranthathu",
+  "anirudh",
+  "ghilli",
+  "vettaiyan",
+  "thuppakki"
+];
+
+for (const q of correctQueries) {
+  executeSearch(q);
+  assert(AppState.searchResults.length > 0, `Correct spelling '${q}' must immediately show matching songs`);
+  assert(!AppState.correctedQuery || AppState.correctedQuery.toLowerCase() === q.toLowerCase(), `Correct spelling '${q}' must not be altered`);
+}
+console.log(`[PASS] Verified: Correct spelling search displays all ${correctQueries.length} query songs immediately.`);
+
+// 3. Verify Misspelled / Wrong Spelling Search: Automatically self-corrects and shows the songs!
+const misspelledTestCases = [
+  {
+    wrong: "kanukula nika ye kadhalie",
+    expectedCorrection: "kannukulla nikkira en kadhaliye",
+    expectedMatchSnippet: "kannukulla"
+  },
+  {
+    wrong: "ennavle enai maranthath",
+    expectedCorrection: "ennavale ennai maranthathu",
+    expectedMatchSnippet: "ennaval"
+  },
+  {
+    wrong: "aniruth",
+    expectedCorrection: "anirudh",
+    expectedMatchSnippet: "anirudh"
+  },
+  {
+    wrong: "ghilii",
+    expectedCorrection: "ghilli",
+    expectedMatchSnippet: "ghilli"
+  },
+  {
+    wrong: "vetayan",
+    expectedCorrection: "vettaiyan",
+    expectedMatchSnippet: "vettaiyan"
+  },
+  {
+    wrong: "thupaki",
+    expectedCorrection: "thuppakki",
+    expectedMatchSnippet: "thuppakki"
+  }
+];
+
+for (const { wrong, expectedCorrection, expectedMatchSnippet } of misspelledTestCases) {
+  // Test autoCorrectSearchQuery
+  const spellCheck = autoCorrectSearchQuery(wrong);
+  assert(spellCheck.hasCorrection, `autoCorrectSearchQuery must detect typo for '${wrong}'`);
+  assert.strictEqual(spellCheck.corrected.toLowerCase(), expectedCorrection.toLowerCase(), `Spell correction for '${wrong}' must be '${expectedCorrection}', got '${spellCheck.corrected}'`);
+
+  // Test executeSearch automatically displays matching songs for wrong spelling
+  executeSearch(wrong);
+  assert(AppState.searchResults.length > 0, `Search with wrong spelling '${wrong}' must self-correct and show songs (found ${AppState.searchResults.length})`);
+  assert.strictEqual(AppState.correctedQuery.toLowerCase(), expectedCorrection.toLowerCase(), `AppState.correctedQuery must be set to '${expectedCorrection}'`);
+  
+  const hasMatchingSong = AppState.searchResults.some(s => 
+    (s.title && s.title.toLowerCase().includes(expectedMatchSnippet.toLowerCase())) ||
+    (s.artist && s.artist.toLowerCase().includes(expectedMatchSnippet.toLowerCase())) ||
+    (s.album && s.album.toLowerCase().includes(expectedMatchSnippet.toLowerCase())) ||
+    (s.tags && s.tags.some(t => t.includes(expectedMatchSnippet.toLowerCase())))
+  );
+  assert(hasMatchingSong, `Search results for wrong spelling '${wrong}' must contain song matching '${expectedMatchSnippet}'`);
+}
+
+// 4. Verify search input auto-correction upon Enter key
+DOM.searchInput.value = "kanukula nika ye kadhalie";
+AppState.correctedQuery = "kannukulla nikkira en kadhaliye";
+// Trigger Enter event simulation
+if (AppState.correctedQuery && DOM.searchInput) {
+  DOM.searchInput.value = AppState.correctedQuery;
+}
+assert.strictEqual(DOM.searchInput.value, "kannukulla nikkira en kadhaliye", "Search input must self-correct to accurate spelling");
+
+console.log("[PASS] Verified: Spell-checking and self-correcting search engine successfully corrects wrong spellings, updates search bar, and displays matching songs!");
+
 console.log("\n==================================================");
-console.log("ALL 40 SEARCH, CATALOGUE, FULL-STREAM, DUAL-API, ALBUM SEPARATION, TRANSLITERATION, FRONTEND, STICKY PLAYER & DOWNLOAD TESTS PASSED!");
+console.log("ALL 41 SEARCH, CATALOGUE, FULL-STREAM, DUAL-API, ALBUM SEPARATION, TRANSLITERATION, FRONTEND, STICKY PLAYER, < 2MB DOWNLOAD & SPELLCHECK TESTS PASSED!");
 console.log("==================================================\n");

@@ -116,7 +116,9 @@ const AppState = {
   history: safeGetStorage("pranesh_hub_history", []),
   queue: [],
   isPlaylistOpen: false,
-  downloadQuality: (typeof localStorage !== "undefined" && localStorage.getItem("pranesh_hub_dl_quality")) || "160" // "160" (saves 50% memory), "96" (ultra low memory), "320" (studio)
+  downloadQuality: (typeof localStorage !== "undefined" && (localStorage.getItem("pranesh_hub_dl_quality") === "48" || localStorage.getItem("pranesh_hub_dl_quality") === "96" || localStorage.getItem("pranesh_hub_dl_quality") === "160" || localStorage.getItem("pranesh_hub_dl_quality") === "320")) ? localStorage.getItem("pranesh_hub_dl_quality") : "48", // Default: "< 2MB Ultra-Light (48k)"
+  correctedQuery: "", // Auto-corrected search query when user types wrong spelling
+  inputAutoCorrectTimer: null
 };
 
 // Global HTML5 Audio Element (DOM-attached for mobile compliance)
@@ -308,7 +310,7 @@ function setupEventListeners() {
   if (listenersAttached) return;
   listenersAttached = true;
   refreshDOMElements();
-  // Live Instant Search Bar with 0ms deterministic local response
+  // Live Instant Search Bar with 0ms deterministic local response & spell-check auto-correction
   if (DOM.searchInput) {
     DOM.searchInput.addEventListener("input", (e) => {
       executeSearch(e.target.value);
@@ -316,6 +318,9 @@ function setupEventListeners() {
 
     DOM.searchInput.addEventListener("keydown", (e) => {
       if (e.key === "Enter") {
+        if (AppState.correctedQuery && DOM.searchInput) {
+          DOM.searchInput.value = AppState.correctedQuery;
+        }
         executeSearch(DOM.searchInput.value);
         if (AppState.searchResults.length > 0) {
           playSong(AppState.searchResults[0]);
@@ -324,6 +329,12 @@ function setupEventListeners() {
       } else if (e.key === "Escape") {
         if (DOM.searchInput) DOM.searchInput.value = "";
         executeSearch("");
+      }
+    });
+
+    DOM.searchInput.addEventListener("blur", () => {
+      if (AppState.correctedQuery && DOM.searchInput && DOM.searchInput.value.trim().toLowerCase() === AppState.searchQuery.toLowerCase()) {
+        DOM.searchInput.value = AppState.correctedQuery;
       }
     });
   }
@@ -759,7 +770,7 @@ function normalizeTamilWord(str) {
     .replace(/[ae]+$/, "");       // only normalize trailing a/e endings (e.g. kulla/kulle, nikkira/nikkire)
 }
 
-// Flexible token matching against target words (exact regex, transliteration normalized, or Levenshtein <= 1)
+// Flexible token matching against target words (exact regex, transliteration normalized, or Levenshtein <= 1 or 2)
 function checkTokenInTarget(token, tokenRegex, target, targetWords) {
   if (!token) return true;
   if (tokenRegex && tokenRegex.test(target)) return true;
@@ -775,109 +786,183 @@ function checkTokenInTarget(token, tokenRegex, target, targetWords) {
   return false;
 }
 
+// Bounded Levenshtein for Spell-Checking & Auto-Correction
+function spellLevenshtein(a, b) {
+  if (a === b) return 0;
+  const m = a.length, n = b.length;
+  if (Math.abs(m - n) > 2) return 99;
+  const dp = Array.from({ length: m + 1 }, () => new Int32Array(n + 1));
+  for (let i = 0; i <= m; i++) dp[i][0] = i;
+  for (let j = 0; j <= n; j++) dp[0][j] = j;
+  for (let i = 1; i <= m; i++) {
+    const ca = a.charCodeAt(i - 1);
+    for (let j = 1; j <= n; j++) {
+      const cb = b.charCodeAt(j - 1);
+      const cost = ca === cb ? 0 : 1;
+      dp[i][j] = Math.min(dp[i - 1][j] + 1, dp[i][j - 1] + 1, dp[i - 1][j - 1] + cost);
+    }
+  }
+  return dp[m][n];
+}
+
+// Dynamic Catalogue Vocabulary Index
+let _catalogueVocabMap = null;
+function getCatalogueVocabMap() {
+  if (_catalogueVocabMap) return _catalogueVocabMap;
+  _catalogueVocabMap = new Map();
+  const list = (AppState.masterSongs && AppState.masterSongs.length > 0)
+    ? AppState.masterSongs
+    : ((typeof window !== "undefined" && window.CATALOGUE_SONGS && Array.isArray(window.CATALOGUE_SONGS))
+      ? window.CATALOGUE_SONGS
+      : DEFAULT_STATIC_SONGS);
+
+  for (const s of list) {
+    const text = `${s.title || ""} ${s.album || ""} ${s.artist || ""} ${(s.tags || []).join(" ")}`.toLowerCase();
+    const words = text.split(/[^a-z0-9]+/);
+    for (const w of words) {
+      if (w.length >= 2) {
+        _catalogueVocabMap.set(w, (_catalogueVocabMap.get(w) || 0) + 1);
+      }
+    }
+  }
+  return _catalogueVocabMap;
+}
+
+// Comprehensive Phrase & Alias Replacements
+const KNOWN_PHRASE_REPLACEMENTS = [
+  // User's specific requested songs & transliterations
+  { regex: /\bkan+uk+ul+a\s+nik+a\s+ye\s+kadhal[iey]*\b/gi, fix: "kannukulla nikkira en kadhaliye" },
+  { regex: /\bkan+uk+ul+a\s+nik+a\b/gi, fix: "kannukulla nikkira" },
+  { regex: /\bkan+uk+ul+a\s+nik+ir+a\b/gi, fix: "kannukulla nikkira" },
+  { regex: /\bkan+uk+ul+a\b/gi, fix: "kannukulla" },
+  { regex: /\bkannukulla\s+nikkira\s+ye\s+kadhaliye\b/gi, fix: "kannukulla nikkira en kadhaliye" },
+  { regex: /\bkannukulla\s+nikka\s+ye\s+kadhaliye\b/gi, fix: "kannukulla nikkira en kadhaliye" },
+  { regex: /\bye\s+kadhal[iey]+\b/gi, fix: "en kadhaliye" },
+  { regex: /\bkadhaliye\b/gi, fix: "kadhaliye" },
+  { regex: /\ben+av+al+[ey]*\s+e*an+ai\s+maran*m*t*h*at*h*u*\b/gi, fix: "ennavale ennai maranthathu" },
+  { regex: /\ben+av+al+[ey]*\s+en+ai\s+maran*m*t*h*at*h*[ua]*\b/gi, fix: "ennavale ennai maranthathu" },
+  { regex: /\ben+av+al+[ey]*\s+en+ai\s+maran*d*h*ad*h*u*\b/gi, fix: "ennavale ennai maranthathu" },
+  { regex: /\ben+av+al+[ey]*\s+en+ai\b/gi, fix: "ennavale ennai" },
+  { regex: /\ben+av+al+e*\b/gi, fix: "ennavale" },
+  { regex: /\be*an+ai\s+maran*m*t*h*at*h*u*\b/gi, fix: "ennai maranthathu" },
+  { regex: /\benai\b|\beannai\b/gi, fix: "ennai" },
+  { regex: /\bmaramthathu\b|\bmaramthatha\b|\bmarandhadhu\b|\bmaranthath\b/gi, fix: "maranthathu" },
+
+  // Composers & Artists
+  { regex: /\bar\s+rhman\b|\barr\s+rahman\b|\barr\b/gi, fix: "a r rahman" },
+  { regex: /\baniruth\b|\banirud\b/gi, fix: "anirudh" },
+  { regex: /\braavichander\b|\bravichandran\b/gi, fix: "ravichander" },
+  { regex: /\bil+ayaraj+a\b|\bil+aiyaraj+a\b|\belayaraja\b/gi, fix: "ilaiyaraaja" },
+  { regex: /\byuvan\s+shanker\b/gi, fix: "yuvan shankar" },
+  { regex: /\bspb\b/gi, fix: "s p balasubrahmanyam" },
+  { regex: /\bs\s*a\s*rajkumar\b|\bs\.a\.rajkumar\b/gi, fix: "s a rajkumar" },
+  { regex: /\bdhilip\s+varma\b/gi, fix: "dhilip varman" },
+  { regex: /\bchithra\b/gi, fix: "k s chithra" },
+  { regex: /\byesudas\b/gi, fix: "k j yesudas" },
+  { regex: /\bjanaki\b/gi, fix: "s janaki" },
+  { regex: /\bunnikrishnan\b/gi, fix: "p unnikrishnan" },
+  { regex: /\bunni\s+menon\b/gi, fix: "unni menon" },
+
+  // Movies & Hit Songs
+  { regex: /\barabi\b/gi, fix: "arabic" },
+  { regex: /\bghili+\b|\bgilli\b/gi, fix: "ghilli" },
+  { regex: /\bmang+atha\b|\bmanikatha\b|\bmangkatha\b/gi, fix: "mankatha" },
+  { regex: /\bthup+ak+i\b/gi, fix: "thuppakki" },
+  { regex: /\bamra+m\b|\bamara+m\b/gi, fix: "amaran" },
+  { regex: /\bvet+ai*yan\b/gi, fix: "vettaiyan" },
+  { regex: /\bsivaji\s+the\s+bos\b/gi, fix: "sivaji the boss" },
+  { regex: /\bkut+y\s+pat+as\b/gi, fix: "kutty pattas" },
+  { regex: /\bvada\s+chen+ai\b|\bvaada\s+cennai\b/gi, fix: "vada chennai" },
+  { regex: /\bro+ja\b|\brooja\b/gi, fix: "roja" },
+  { regex: /\bleo+\s+das\b/gi, fix: "leo das" },
+  { regex: /\bleoo\b/gi, fix: "leo" },
+  { regex: /\bba+sha\b/gi, fix: "baasha" },
+  { regex: /\bavesham\b/gi, fix: "aavesham" },
+  { regex: /\bprem+m\b/gi, fix: "premam" },
+  { regex: /\bmovice\b|\bmoive\b|\bmovei\b/gi, fix: "movie" },
+  { regex: /\bflim\b|\bflims\b|\bfilam\b/gi, fix: "film" },
+  { regex: /\bpennin\s+manathai\b/gi, fix: "pennin manathai thottu" },
+  { regex: /\bchutamalle\b/gi, fix: "chuttamalle" },
+  { regex: /\bvaathy\b/gi, fix: "vaathi" },
+  { regex: /\bsandramukhi\b/gi, fix: "chandramukhi" },
+  { regex: /\bendhiran\b/gi, fix: "enthiran" },
+  { regex: /\bdoktor\b|\bdoktar\b/gi, fix: "doctor" },
+  { regex: /\brayan\b|\brayen\b/gi, fix: "raayan" },
+  { regex: /\bvisvaasam\b/gi, fix: "viswasam" },
+  { regex: /\bpadayapa\b|\bpadaiyappa\b/gi, fix: "padayappa" },
+  { regex: /\banamalai\b/gi, fix: "annamalai" },
+  { regex: /\bshivaji\b/gi, fix: "sivaji" },
+  { regex: /\bbeest\b/gi, fix: "beast" },
+  { regex: /\bvikrem\b/gi, fix: "vikram" },
+  { regex: /\bjayler\b/gi, fix: "jailer" },
+  { regex: /\bhokum\b|\bhukumm\b/gi, fix: "hukum" },
+  { regex: /\bbadaas\b/gi, fix: "badass" }
+];
+
+// Word-level correction against catalogue vocabulary
+function correctSingleWord(word) {
+  const w = word.toLowerCase().trim();
+  if (w.length < 3) return word;
+  const stopWords = new Set(["the", "and", "for", "with", "from", "you", "are", "all", "out", "ost", "non"]);
+  if (stopWords.has(w)) return word;
+
+  const vocab = getCatalogueVocabMap();
+  if (vocab.has(w) && vocab.get(w) >= 2) return word; // Valid catalogue word
+
+  let bestCandidate = word;
+  let bestDist = 99;
+  let maxFreq = 0;
+
+  for (const [vWord, freq] of vocab.entries()) {
+    if (Math.abs(vWord.length - w.length) > 2) continue;
+    // Consonant equivalence
+    const firstMatch = (vWord[0] === w[0]) ||
+                       (w[0] === 'k' && vWord[0] === 'g') || (w[0] === 'g' && vWord[0] === 'k') ||
+                       (w[0] === 's' && vWord[0] === 'c') || (w[0] === 'c' && vWord[0] === 's') ||
+                       (w[0] === 'e' && vWord[0] === 'y');
+    if (!firstMatch) continue;
+
+    const d = spellLevenshtein(w, vWord);
+    if (d <= 2) {
+      if (d < bestDist || (d === bestDist && freq > maxFreq)) {
+        bestDist = d;
+        maxFreq = freq;
+        bestCandidate = vWord;
+      }
+    }
+  }
+
+  return (bestDist <= 2) ? bestCandidate : word;
+}
+
+// Master Intelligent Spell-Checker & Query Auto-Corrector
+function autoCorrectSearchQuery(query) {
+  if (!query || !query.trim()) return { original: query, corrected: query, hasCorrection: false };
+  const text = query.trim();
+
+  // Step 1: Apply known phrase regexes
+  let phraseReplaced = text;
+  for (const { regex, fix } of KNOWN_PHRASE_REPLACEMENTS) {
+    phraseReplaced = phraseReplaced.replace(regex, fix);
+  }
+
+  // Step 2: Word-by-word spell checking against catalogue vocabulary
+  const words = phraseReplaced.split(/\s+/);
+  const correctedWords = words.map(correctSingleWord);
+  const finalText = correctedWords.join(" ");
+
+  const hasCorrection = finalText.toLowerCase() !== text.toLowerCase();
+  return {
+    original: text,
+    corrected: finalText,
+    hasCorrection
+  };
+}
+
 // Pre-cleans common Tamil/Indian transliteration typos before online search
 function correctSearchQuery(q) {
   if (!q) return "";
-  const replacements = {
-    "movice": "movie",
-    "flim": "film",
-    "filam": "film",
-    "ghili": "ghilli",
-    "gilli": "ghilli",
-    "kummi paatu": "kummi paattu",
-    "kummipaattu": "kummi paattu",
-    "kummipaatu": "kummi paattu",
-    "en aasa machan": "en aasai machan",
-    "en aasai machaan": "en aasai machan",
-    "aasa machan": "aasai machan",
-    "aasa machaan": "aasai machan",
-    "vanathai parthen": "vaanathe paarthein",
-    "vanathai": "vaanathe",
-    "parthen": "paarthein",
-    "machan": "machaan",
-    "maachan": "machaan",
-    "aniruth": "anirudh",
-    "spb": "s p balasubrahmanyam",
-    "yesudas": "k j yesudas",
-    "chithra": "k s chithra",
-    "janaki": "s janaki",
-    "arr": "a r rahman",
-    "yuvan": "yuvan shankar raja",
-    "harris": "harris jayaraj",
-    "arabi": "arabic",
-    "vikrem": "vikram",
-    "jayler": "jailer",
-    "hokum": "hukum",
-    "hukumm": "hukum",
-    "badaas": "badass",
-    "thupaki": "thuppakki",
-    "thupakki": "thuppakki",
-    "illayaraja": "ilaiyaraaja",
-    "ilayaraja": "ilaiyaraaja",
-    "chutamalle": "chuttamalle",
-    "vaathy": "vaathi",
-    "kaavala": "kaavaalaa",
-    "mangatha": "mankatha",
-    "mangkatha": "mankatha",
-    "sandramukhi": "chandramukhi",
-    "endhiran": "enthiran",
-    "doktor": "doctor",
-    "doktar": "doctor",
-    "amaram": "amaran",
-    "amram": "amaran",
-    "kannukulla nikkira": "kannukulla nikkira",
-    "kannukulla nikkura": "kannukulla nikkira",
-    "kannukkulla nikkira": "kannukulla nikkira",
-    "kannukulle nikkira": "kannukulla nikkira",
-    "kannukulla nikkire": "kannukulla nikkira",
-    "kannukula": "kannukulla",
-    "kannukula nikka": "kannukulla nikkira",
-    "kannukula nikka ye kadhaliye": "kannukulla nikkira en kadhaliye",
-    "kannukulla nikkira ye kadhaliye": "kannukulla nikkira en kadhaliye",
-    "kannukula nikkire": "kannukulla nikkira",
-    "kadhaliye": "kadhaliye",
-    "ye kadhaliye": "en kadhaliye",
-    "ennavalle": "ennavale",
-    "ennavalle eannai maramthathu": "ennavale ennai maranthathu",
-    "ennavale eannai maramthathu": "ennavale ennai maranthathu",
-    "eannai maramthathu": "ennai maranthathu",
-    "maramthathu": "maranthathu",
-    "maramthatha": "maranthathu",
-    "ennavalle ennai maranthathu": "ennavale ennai maranthathu",
-    "ennavale ennai marandhadhu": "ennavale ennai maranthathu",
-    "ennavale ennai maranthathu yeno": "ennavale ennai maranthathu",
-    "dhilip varman": "dhilip varman",
-    "kannukulla": "kannukulla",
-    "kannukkulla": "kannukulla",
-    "kannukulle": "kannukulle",
-    "kannukkulle": "kannukulle",
-    "sa rajkumar": "s a rajkumar",
-    "s.a.rajkumar": "s a rajkumar",
-    "unnikrishnan": "p unnikrishnan",
-    "unni menon": "unni menon",
-    "pennin manathai thottu": "pennin manathai thottu",
-    "pennin manathai": "pennin manathai thottu",
-    "beest": "beast",
-    "leoo": "leo",
-    "vetaiyan": "vettaiyan",
-    "vetayan": "vettaiyan",
-    "rayan": "raayan",
-    "rayen": "raayan",
-    "premm": "premam",
-    "avesham": "aavesham",
-    "visvaasam": "viswasam",
-    "basha": "baasha",
-    "anamalai": "annamalai",
-    "shivaji": "sivaji",
-    "padayapa": "padayappa",
-    "padaiyappa": "padayappa"
-  };
-  let corrected = q;
-  for (const [typo, fix] of Object.entries(replacements)) {
-    const reg = new RegExp(`\\b${typo}\\b`, "gi");
-    corrected = corrected.replace(reg, fix);
-  }
-  return corrected;
+  return autoCorrectSearchQuery(q).corrected;
 }
 
 // Decodes common HTML entities returned from live API responses (&quot; -> ", &#039; -> ')
@@ -1452,13 +1537,30 @@ function searchMasterSongs(rawQuery) {
   const ctx = buildQueryContext(rawQuery);
   if (!ctx) return [...AppState.masterSongs];
 
-  const results = [];
+  let results = [];
   for (const song of AppState.masterSongs) {
     const res = scoreSongWithContext(song, ctx);
     if (res.matched && res.score >= 500) {
       results.push({ song, score: res.score });
     }
   }
+
+  // If initial search found 0 results, auto-correct spelling and search again!
+  if (results.length === 0) {
+    const spell = autoCorrectSearchQuery(rawQuery);
+    if (spell.hasCorrection && spell.corrected.toLowerCase() !== rawQuery.toLowerCase().trim()) {
+      const correctedCtx = buildQueryContext(spell.corrected);
+      if (correctedCtx) {
+        for (const song of AppState.masterSongs) {
+          const res = scoreSongWithContext(song, correctedCtx);
+          if (res.matched && res.score >= 500) {
+            results.push({ song, score: res.score });
+          }
+        }
+      }
+    }
+  }
+
   // Sort descending by relevance score (highest quality match first)
   results.sort((a, b) => b.score - a.score);
   return results.map(r => r.song);
@@ -1600,6 +1702,7 @@ function executeSearch(rawQuery) {
   AppState.searchRequestId++;
   const thisRequestId = AppState.searchRequestId;
   clearTimeout(AppState.searchDebounceTimer);
+  clearTimeout(AppState.inputAutoCorrectTimer);
   if (AppState.activeSearchAbortController) {
     try { AppState.activeSearchAbortController.abort(); } catch (_) {}
     AppState.activeSearchAbortController = null;
@@ -1610,6 +1713,7 @@ function executeSearch(rawQuery) {
   if (!trimmed) {
     AppState.searchQuery = "";
     AppState.normalizedQuery = "";
+    AppState.correctedQuery = "";
     AppState.isSearching = false;
     AppState.searchResults = [];
     AppState.jioResults = [];
@@ -1623,19 +1727,47 @@ function executeSearch(rawQuery) {
     return;
   }
 
+  // Spell-checking: check if query is misspelled against catalogue vocabulary & aliases
+  const spellCheck = autoCorrectSearchQuery(trimmed);
+  const isWrongSpelling = spellCheck.hasCorrection && (spellCheck.corrected.toLowerCase() !== trimmed.toLowerCase());
+
   AppState.searchQuery = trimmed;
   AppState.normalizedQuery = normalized;
+  AppState.correctedQuery = isWrongSpelling ? spellCheck.corrected : "";
   AppState.isSearching = true;
   AppState.searchSourceFilter = "all";
   if (DOM.clearSearchBtn) DOM.clearSearchBtn.style.display = "block";
 
-  // ALWAYS filter and sort from the immutable master collection using typo-tolerant fuzzy relevance scoring!
-  const localMatches = searchMasterSongs(trimmed).map(s => {
+  // If wrong spelling, schedule auto-correction of the search input itself!
+  if (isWrongSpelling) {
+    AppState.inputAutoCorrectTimer = setTimeout(() => {
+      if (DOM.searchInput && DOM.searchInput.value.trim().toLowerCase() === trimmed.toLowerCase()) {
+        DOM.searchInput.value = spellCheck.corrected;
+      }
+    }, 650);
+  }
+
+  // 1. Try search with trimmed query
+  let localMatches = searchMasterSongs(trimmed).map(s => {
     s.source = "jiosaavn";
     return s;
   });
+
+  // 2. If wrong spelling and initial query had 0 matches or had typo, also check with corrected query
+  if (isWrongSpelling && (localMatches.length === 0 || spellCheck.hasCorrection)) {
+    const correctedMatches = searchMasterSongs(spellCheck.corrected).map(s => {
+      s.source = "jiosaavn";
+      return s;
+    });
+    if (correctedMatches.length > 0) {
+      localMatches = correctedMatches;
+    }
+  }
+
   AppState.jioResults = [...localMatches];
   AppState.spotifyResults = [];
+
+  const effectiveSearchTerm = (localMatches.length > 0 && isWrongSpelling) ? spellCheck.corrected : trimmed;
 
   if (localMatches.length > 0) {
     // Song found in JioSaavn catalogue! Display immediately
@@ -1647,13 +1779,13 @@ function executeSearch(rawQuery) {
 
     // Query Spotify & Global Online catalogue in parallel so BOTH JioSaavn & Spotify results appear!
     AppState.searchDebounceTimer = setTimeout(() => {
-      fetchSpotifySearchResults(trimmed, thisRequestId, true /* isParallel */);
+      fetchSpotifySearchResults(effectiveSearchTerm, thisRequestId, true /* isParallel */);
     }, 200);
 
     // If an optional external custom backend is configured, query asynchronously for extra live matches
     if (API_BASE) {
       setTimeout(() => {
-        fetchBackendSearchResults(trimmed, thisRequestId);
+        fetchBackendSearchResults(effectiveSearchTerm, thisRequestId);
       }, 350);
     }
   } else {
@@ -1665,7 +1797,7 @@ function executeSearch(rawQuery) {
     renderContent();
 
     AppState.searchDebounceTimer = setTimeout(() => {
-      fetchSpotifySearchResults(trimmed, thisRequestId, false /* isParallel */);
+      fetchSpotifySearchResults(effectiveSearchTerm, thisRequestId, false /* isParallel */);
     }, 250);
   }
 }
@@ -2317,6 +2449,25 @@ function renderContent() {
       `;
     }
 
+    // Spellcheck Banner (Informs user that typo/wrong spelling was auto-corrected)
+    let spellcheckBannerHTML = "";
+    if (AppState.correctedQuery && AppState.correctedQuery.toLowerCase() !== AppState.searchQuery.toLowerCase()) {
+      spellcheckBannerHTML = `
+        <div class="search-spellcheck-banner">
+          <div style="display:flex; align-items:center; gap:10px; flex-wrap:wrap;">
+            <span class="spellcheck-badge">✨ Auto-Corrected Spelling</span>
+            <span class="spellcheck-text">
+              Showing songs for <span class="spellcheck-highlight">"${escapeHTML(AppState.correctedQuery)}"</span>
+              <span style="opacity:0.75; font-size:0.82rem; margin-left:4px;">(searched for "${escapeHTML(AppState.searchQuery)}")</span>
+            </span>
+          </div>
+          <button id="spellcheckCorrectBtn" class="spellcheck-action-btn" title="Click to search original spelling instead">
+            Search "${escapeHTML(AppState.searchQuery)}" instead
+          </button>
+        </div>
+      `;
+    }
+
     // World Catalogue Search Banner (Empowers user to fetch any song in the world from JioSaavn & Spotify)
     let searchWorldBannerHTML = "";
     if (!AppState.isSpotifyFallbackResults && AppState.searchQuery) {
@@ -2340,6 +2491,7 @@ function renderContent() {
     if (DOM.emptyState) DOM.emptyState.style.display = "none";
 
     DOM.contentContainer.innerHTML = `
+      ${spellcheckBannerHTML}
       ${spotifyBannerHTML}
       ${errorBannerHTML}
       ${languageFilteredNoticeHTML}
@@ -2377,6 +2529,28 @@ function renderContent() {
         AppState.isFetchingSpotify = true;
         renderContent();
         fetchSpotifySearchResults(AppState.searchQuery, ++AppState.searchRequestId);
+      });
+    }
+
+    const spellcheckCorrectBtn = document.getElementById("spellcheckCorrectBtn");
+    if (spellcheckCorrectBtn) {
+      spellcheckCorrectBtn.addEventListener("click", () => {
+        const original = AppState.searchQuery;
+        AppState.correctedQuery = "";
+        if (DOM.searchInput) DOM.searchInput.value = original;
+        const origCtx = buildQueryContext(original);
+        let origMatches = [];
+        if (origCtx) {
+          for (const song of AppState.masterSongs) {
+            const res = scoreSongWithContext(song, origCtx);
+            if (res.matched && res.score >= 500) origMatches.push({ song, score: res.score });
+          }
+        }
+        origMatches.sort((a, b) => b.score - a.score);
+        const mapped = origMatches.map(r => { const s = r.song; s.source = "jiosaavn"; return s; });
+        AppState.searchResults = mapped;
+        AppState.queue = [...mapped];
+        renderContent();
       });
     }
 
@@ -3659,25 +3833,32 @@ function updatePlayerBarUI(song) {
 // 7. Song Download & Mobile Default Music Player Integration (Low-Memory Engine)
 // ==========================================================================
 
-// Memory-optimized bitrate URL generator (160k = 50% less RAM/storage, 96k = 70% less RAM/storage)
+// Memory-optimized bitrate URL generator (< 2MB = 48k, 160k = 50% less RAM/storage, 96k = 70% less RAM/storage)
 function getOptimizedDownloadUrl(rawUrl, quality) {
   if (!rawUrl) return "";
-  const q = quality || AppState.downloadQuality || "160";
+  const q = quality || AppState.downloadQuality || "48";
   if (rawUrl.includes("aac.saavncdn.com")) {
-    if (q === "160") return rawUrl.replace(/_320\.mp4/gi, "_160.mp4");
-    if (q === "96") return rawUrl.replace(/_320\.mp4/gi, "_96.mp4");
     if (q === "48") return rawUrl.replace(/_320\.mp4/gi, "_48.mp4");
+    if (q === "96") return rawUrl.replace(/_320\.mp4/gi, "_96.mp4");
+    if (q === "160") return rawUrl.replace(/_320\.mp4/gi, "_160.mp4");
     if (q === "320") return rawUrl;
   }
   return rawUrl;
 }
 
 function updateDownloadQualityUI() {
-  const q = AppState.downloadQuality || "160";
+  const q = AppState.downloadQuality || "48";
 
   // Update bottom player bar quality button
   if (DOM.dlQualityBtn) {
-    if (q === "96") {
+    if (q === "48") {
+      if (DOM.dlQualityIcon) DOM.dlQualityIcon.textContent = "⚡";
+      if (DOM.dlQualityText) DOM.dlQualityText.textContent = "< 2MB (48k)";
+      DOM.dlQualityBtn.style.color = "#a855f7";
+      DOM.dlQualityBtn.style.borderColor = "rgba(168, 85, 247, 0.45)";
+      DOM.dlQualityBtn.style.background = "rgba(168, 85, 247, 0.16)";
+      DOM.dlQualityBtn.title = "Download Memory Mode: < 2MB Ultra-Light 48kbps (Saves 85% RAM & storage). Tap to switch.";
+    } else if (q === "96") {
       if (DOM.dlQualityIcon) DOM.dlQualityIcon.textContent = "🍃";
       if (DOM.dlQualityText) DOM.dlQualityText.textContent = "96k (Save 70% RAM)";
       DOM.dlQualityBtn.style.color = "#34d399";
@@ -3710,7 +3891,8 @@ function updateDownloadQualityUI() {
   }
 
   if (DOM.featuredDlBitrateSub) {
-    if (q === "96") DOM.featuredDlBitrateSub.textContent = "96kbps • Saves 70% RAM";
+    if (q === "48") DOM.featuredDlBitrateSub.textContent = "< 2MB (48kbps) • Saves 85% RAM";
+    else if (q === "96") DOM.featuredDlBitrateSub.textContent = "96kbps • Saves 70% RAM";
     else if (q === "320") DOM.featuredDlBitrateSub.textContent = "320kbps • Studio Master Quality";
     else DOM.featuredDlBitrateSub.textContent = "160kbps • Saves 50% RAM";
   }
@@ -3723,7 +3905,9 @@ function setDownloadQuality(quality) {
     localStorage.setItem("pranesh_hub_dl_quality", quality);
   } catch (_) {}
   updateDownloadQualityUI();
-  if (quality === "96") {
+  if (quality === "48") {
+    showToast("⚡ < 2MB Ultra-Light Mode: 48kbps activated (Strictly < 2MB, Saves 85% RAM & storage)!", "success");
+  } else if (quality === "96") {
     showToast("🍃 Ultra-Low Memory Mode: 96kbps activated (Saves 70% RAM & storage)!", "success");
   } else if (quality === "160") {
     showToast("⚡ Low-Memory Standard Mode: 160kbps activated (Saves 50% RAM & storage)!", "success");
@@ -3733,11 +3917,12 @@ function setDownloadQuality(quality) {
 }
 
 function cycleDownloadQuality() {
-  const current = AppState.downloadQuality || "160";
-  let next = "160";
-  if (current === "160") next = "96";
-  else if (current === "96") next = "320";
-  else next = "160";
+  const current = AppState.downloadQuality || "48";
+  let next = "48";
+  if (current === "48") next = "96";
+  else if (current === "96") next = "160";
+  else if (current === "160") next = "320";
+  else next = "48";
 
   AppState.downloadQuality = next;
   try {
@@ -3745,7 +3930,9 @@ function cycleDownloadQuality() {
   } catch (_) {}
   updateDownloadQualityUI();
 
-  if (next === "96") {
+  if (next === "48") {
+    showToast("⚡ < 2MB Ultra-Light Mode: 48kbps activated (Strictly < 2MB, Saves 85% RAM & phone storage)!", "success");
+  } else if (next === "96") {
     showToast("🍃 Ultra-Low Memory Mode: 96kbps activated (Saves 70% RAM & phone storage)!", "success");
   } else if (next === "160") {
     showToast("⚡ Low-Memory Standard Mode: 160kbps activated (Saves 50% RAM & phone storage)!", "success");
@@ -3791,12 +3978,12 @@ async function handleDownloadAction(song, triggerBtn = null) {
     return;
   }
 
-  // Apply memory-saving bitrate optimization (160k = 50% less memory, 96k = 70% less memory)
-  const quality = AppState.downloadQuality || "160";
+  // Apply memory-saving bitrate optimization (< 2MB = 48k, 160k = 50% less memory, 96k = 70% less memory)
+  const quality = AppState.downloadQuality || "48";
   const optimizedUrl = getOptimizedDownloadUrl(downloadUrl, quality);
-  const qualityLabel = quality === "96" ? "96k • 70% RAM Saved" : (quality === "320" ? "320k • Studio" : "160k • 50% RAM Saved");
+  const qualityLabel = quality === "48" ? "< 2MB Ultra-Light • 85% RAM Saved" : (quality === "96" ? "96k • 70% RAM Saved" : (quality === "320" ? "320k • Studio" : "160k • 50% RAM Saved"));
 
-  showToast(`⚡ Low-Memory Download starting: "${song.title}" [${qualityLabel}]...`, "info");
+  showToast(`⚡ < 2MB Ultra-Light Download starting: "${song.title}" [${qualityLabel}]...`, "info");
 
   const cleanTitle = (song.title || "Song").replace(/[/\\?%*:|"<>]/g, "").trim();
   const cleanArtist = (song.artist || "Artist").replace(/[/\\?%*:|"<>]/g, "").trim();
@@ -3881,7 +4068,7 @@ async function handleOpenInMobileMusicApp(song) {
   }
   if (!downloadUrl) return;
 
-  const quality = AppState.downloadQuality || "160";
+  const quality = AppState.downloadQuality || "48";
   const optimizedUrl = getOptimizedDownloadUrl(downloadUrl, quality);
 
   const cleanTitle = (song.title || "Song").replace(/[/\\?%*:|"<>]/g, "").trim();

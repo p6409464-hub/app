@@ -6,7 +6,7 @@
   <meta name="referrer" content="no-referrer" />
   <title>Pranesh Music Hub - Modern Dark Music Experience</title>
   <meta name="description" content="Stream and directly download Tamil, English, Malayalam, Instrumental, and Only Friends OST tracks in a modern, ad-free dark theme." />
-  <link rel="stylesheet" href="static/css/style.css?v=3.29.0" />
+  <link rel="stylesheet" href="static/css/style.css?v=3.30.0" />
   <!-- Google Fonts: Inter -->
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
@@ -122,8 +122,8 @@
       <!-- Download Options (IN BLOW / BELOW OF PLAYING SONG) -->
       <div class="featured-download-options">
         <div class="dl-options-header">
-          <span class="dl-header-title">📥 Download Options (Direct MP3 • Memory-Saver)</span>
-          <span class="dl-header-badge">⚡ Memory-Optimized Single-Pass Download</span>
+          <span class="dl-header-title">📥 Download Options (&lt; 2MB Ultra-Light • Direct MP3)</span>
+          <span class="dl-header-badge">⚡ Less than 2MB • Zero Lag • Fast Download</span>
         </div>
 
         <div class="dl-options-body">
@@ -132,7 +132,7 @@
             <span class="btn-dl-icon">⬇️</span>
             <div class="btn-dl-text-wrap">
               <span class="btn-dl-title">Download Song (MP3)</span>
-              <span id="featuredDlBitrateSub" class="btn-dl-sub">160kbps • Saves 50% RAM</span>
+              <span id="featuredDlBitrateSub" class="btn-dl-sub">&lt; 2MB (48kbps) • Saves 85% RAM</span>
             </div>
           </button>
 
@@ -140,14 +140,17 @@
           <div class="bitrate-selector-group">
             <span class="bitrate-select-label">Quality:</span>
             <div class="bitrate-chips-wrap">
-              <button class="bitrate-chip" data-quality="320" title="Studio High Quality (320 kbps)">
-                💎 320k Studio
-              </button>
-              <button class="bitrate-chip active" data-quality="160" title="Standard Quality (160 kbps - Saves 50% RAM)">
-                ⚡ 160k (Save 50% RAM)
+              <button class="bitrate-chip active" data-quality="48" title="Ultra-Light &lt; 2MB (48 kbps - Fast &amp; Saves 85% RAM)">
+                ⚡ &lt; 2MB Ultra-Light
               </button>
               <button class="bitrate-chip" data-quality="96" title="Eco Quality (96 kbps - Saves 70% RAM)">
                 🍃 96k (Save 70% RAM)
+              </button>
+              <button class="bitrate-chip" data-quality="160" title="Standard Quality (160 kbps - Saves 50% RAM)">
+                🎵 160k (Save 50% RAM)
+              </button>
+              <button class="bitrate-chip" data-quality="320" title="Studio High Quality (320 kbps)">
+                💎 320k Studio
               </button>
             </div>
           </div>
@@ -279,7 +282,7 @@
 
       <!-- Memory-Saver Download Quality Mode -->
       <button id="dlQualityBtn" class="dl-quality-btn" title="Download Quality &amp; Memory Mode (Click to switch)">
-        <span id="dlQualityIcon">⚡</span> <span id="dlQualityText">160k (Save 50% RAM)</span>
+        <span id="dlQualityIcon">⚡</span> <span id="dlQualityText">&lt; 2MB (48k)</span>
       </button>
 
       <button id="playerDownloadBtn" class="download-btn" title="Download Authorized Audio">
@@ -324,7 +327,7 @@
   <div id="toastContainer" class="toast-container"></div>
 
   <!-- JavaScript Application Logic -->
-  <script src="static/js/songs_data.js?v=3.29.0"></script>
-  <script src="static/js/app.js?v=3.29.0"></script>
+  <script src="static/js/songs_data.js?v=3.30.0"></script>
+  <script src="static/js/app.js?v=3.30.0"></script>
 </body>
 </html>
