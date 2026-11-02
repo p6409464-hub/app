@@ -58,7 +58,10 @@ const DEFAULT_STATIC_SONGS = [
   { id: "mal_3", title: "Alleppey Calm Waters", artist: "Backwater Echoes", album: "Backwater Soundscapes", duration: 316, duration_str: "5:16", language: "Malayalam", category: "Malayalam Songs", sections: ["recent", "malayalam"], cover_url: "static/images/alleppey_calm_stream.svg", audio_url: "https://aac.saavncdn.com/665/64fe9e59b56dfb5f644e9e461923979b_320.mp4", audio_file: "", download_authorized: true, tags: ["malayalam", "alleppey", "ambient"] },
   { id: "inst_1", title: "Cinematic Piano Dream", artist: "Pranesh Orchestra", album: "Symphonies of the Mind", duration: 372, duration_str: "6:12", language: "Instrumental", category: "Instrumental Music", sections: ["trending", "instrumental"], cover_url: "static/images/cinematic_piano_dream.svg", audio_url: "https://www.soundhelix.com/examples/mp3/SoundHelix-Song-1.mp3", audio_file: "", download_authorized: true, tags: ["instrumental", "piano", "cinematic"] },
   { id: "inst_2", title: "Chillhop Study Beats", artist: "Coffee & Rain", album: "Focus & Code Vol. 1", duration: 423, duration_str: "7:03", language: "Instrumental", category: "Instrumental Music", sections: ["recent", "instrumental"], cover_url: "static/images/chillhop_lofi_beat.svg", audio_url: "https://www.soundhelix.com/examples/mp3/SoundHelix-Song-2.mp3", audio_file: "", download_authorized: true, tags: ["instrumental", "chillhop", "lofi"] },
-  { id: "inst_3", title: "SoundHelix Symphony", artist: "Open Music Archive", album: "Algorithmic Harmony", duration: 345, duration_str: "5:45", language: "Instrumental", category: "Instrumental Music", sections: ["recent", "instrumental"], cover_url: "static/images/soundhelix_ambient.svg", audio_url: "https://www.soundhelix.com/examples/mp3/SoundHelix-Song-3.mp3", audio_file: "", download_authorized: true, tags: ["instrumental", "soundhelix", "electronic"] }
+  { id: "inst_3", title: "SoundHelix Symphony", artist: "Open Music Archive", album: "Algorithmic Harmony", duration: 345, duration_str: "5:45", language: "Instrumental", category: "Instrumental Music", sections: ["recent", "instrumental"], cover_url: "static/images/soundhelix_ambient.svg", audio_url: "https://www.soundhelix.com/examples/mp3/SoundHelix-Song-3.mp3", audio_file: "", download_authorized: true, tags: ["instrumental", "soundhelix", "electronic"] },
+  { id: "saavn_vaanam_no_money_no_honey", title: "No Money No Honey", artist: "Yuvan Shankar Raja, Str, Andrea", album: "Vaanam", duration: 324, duration_str: "5:24", language: "Tamil", era: "now", category: "Tamil Songs", sections: ["trending", "recent", "era_now", "tamil"], cover_url: "https://c.saavncdn.com/013/Vaanam-2010-500x500.jpg", audio_url: "https://aac.saavncdn.com/013/592641c8be65dd785543ba1b363865cf_320.mp4", audio_file: "", download_authorized: true, tags: ["no money no honey", "no money", "no money no money", "vaanam", "yuvan shankar raja", "yuvan", "str", "simbu", "silambarasan", "andrea", "kuthu", "now", "tamil", "trending"] },
+  { id: "saavn_galantis_no_money", title: "No Money", artist: "Galantis", album: "The Aviary", duration: 189, duration_str: "3:09", language: "English", era: "now", category: "English Songs", sections: ["trending", "english"], cover_url: "https://c.saavncdn.com/472/The-Aviary-English-2017-500x500.jpg", audio_url: "https://aac.saavncdn.com/712/e634be97fc61bc5cf76f7dfba6b67b09_320.mp4", audio_file: "", download_authorized: true, tags: ["no money", "galantis", "the aviary", "english", "edm", "pop", "dance", "trending"] },
+  { id: "saavn_vaanam_evan_di", title: "Evan Di Unna Pethan", artist: "Yuvan Shankar Raja, Str", album: "Vaanam", duration: 341, duration_str: "5:41", language: "Tamil", era: "now", category: "Tamil Songs", sections: ["trending", "tamil"], cover_url: "https://c.saavncdn.com/013/Vaanam-2010-500x500.jpg", audio_url: "https://aac.saavncdn.com/013/1ff7c9b8eb258d4a99fcdd4908a73562_320.mp4", audio_file: "", download_authorized: true, tags: ["evan di unna pethan", "evandi unna pethan", "vaanam", "yuvan", "str", "simbu", "now", "tamil"] }
 ];
 
 // Clean up any stale ephemeral Cloudflare tunnels from localStorage
@@ -805,11 +808,41 @@ function spellLevenshtein(a, b) {
   return dp[m][n];
 }
 
+// Comprehensive dictionary of valid song words, musical terms & transliterations that must NEVER be altered
+const KNOWN_VALID_SONG_WORDS = new Set([
+  // Financial, everyday & song terms
+  "money", "honey", "cash", "dollar", "rupee", "bank", "gold", "rich", "poor", "million",
+  // Common emotional & music vocabulary
+  "love", "heart", "baby", "girl", "boy", "queen", "king", "party", "dance", "rock", "beat", "bass",
+  "melody", "rhythm", "music", "song", "audio", "track", "tune", "sound", "night", "day", "star",
+  "moon", "sun", "sky", "fire", "water", "rain", "life", "world", "dream", "happy", "crazy", "sweet",
+  "magic", "cool", "super", "hero", "friend", "soul", "peace", "home", "road", "free", "time", "feel",
+  "fly", "eyes", "smile", "kiss", "touch", "voice", "tears", "pain", "power", "mind", "body",
+  "slow", "fast", "deep", "hot", "cold", "wild", "young", "new", "black", "white", "red", "blue",
+  "green", "yellow", "ring", "bell", "car", "phone", "movie", "film", "show", "game", "play", "run",
+  "walk", "sing", "live", "die", "give", "take", "make", "stop", "start", "open", "close", "shine",
+  "glow", "burn", "fall", "rise", "stay", "wait", "leave", "come", "find", "lose", "true", "real",
+  // Common regional & transliteration valid words
+  "kannukulla", "kannukulle", "nikkira", "kadhaliye", "ennavale", "ennai", "maranthathu",
+  "anirudh", "ilaiyaraaja", "rahman", "yuvan", "harris", "vidyasagar", "deva", "santhosh",
+  "imman", "thaman", "gv", "prakash", "ghilli", "mankatha", "thuppakki", "sivaji", "baasha",
+  "enthiran", "doctor", "beast", "leo", "jailer", "hukum", "badass", "vettaiyan", "amaran",
+  "raayan", "chuttamalle", "vaathi", "arabic", "kuthu", "premam", "aavesham", "viswasam",
+  "padayappa", "annamalai", "roja", "kadhal", "kanmani", "vaanam", "friends", "master",
+  "kutty", "pattas", "usuraiya", "tholaichaen", "adi", "penne", "orasaadha", "asku", "maaro"
+]);
+
 // Dynamic Catalogue Vocabulary Index
 let _catalogueVocabMap = null;
 function getCatalogueVocabMap() {
   if (_catalogueVocabMap) return _catalogueVocabMap;
   _catalogueVocabMap = new Map();
+
+  // Pre-seed with known valid dictionary and song words so they are never misidentified as typos
+  for (const kw of KNOWN_VALID_SONG_WORDS) {
+    _catalogueVocabMap.set(kw, 50);
+  }
+
   const list = (AppState.masterSongs && AppState.masterSongs.length > 0)
     ? AppState.masterSongs
     : ((typeof window !== "undefined" && window.CATALOGUE_SONGS && Array.isArray(window.CATALOGUE_SONGS))
@@ -831,6 +864,11 @@ function getCatalogueVocabMap() {
 // Comprehensive Phrase & Alias Replacements
 const KNOWN_PHRASE_REPLACEMENTS = [
   // User's specific requested songs & transliterations
+  { regex: /\bno\s+mon+y\s+no\s+mon+y\b|\bno\s+mon+ey\s+no\s+mon+ey\b/gi, fix: "no money no money" },
+  { regex: /\bno\s+mon+y\s+no\s+hon+y\b|\bno\s+mon+ey\s+no\s+hon+ey\b/gi, fix: "no money no honey" },
+  { regex: /\bno\s+mon+y\b/gi, fix: "no money" },
+  { regex: /\bmon+y\b/gi, fix: "money" },
+  { regex: /\bhon+y\b/gi, fix: "honey" },
   { regex: /\bkan+uk+ul+a\s+nik+a\s+ye\s+kadhal[iey]*\b/gi, fix: "kannukulla nikkira en kadhaliye" },
   { regex: /\bkan+uk+ul+a\s+nik+a\b/gi, fix: "kannukulla nikkira" },
   { regex: /\bkan+uk+ul+a\s+nik+ir+a\b/gi, fix: "kannukulla nikkira" },
@@ -903,11 +941,11 @@ const KNOWN_PHRASE_REPLACEMENTS = [
 function correctSingleWord(word) {
   const w = word.toLowerCase().trim();
   if (w.length < 3) return word;
-  const stopWords = new Set(["the", "and", "for", "with", "from", "you", "are", "all", "out", "ost", "non"]);
-  if (stopWords.has(w)) return word;
+  const stopWords = new Set(["the", "and", "for", "with", "from", "you", "are", "all", "out", "ost", "non", "not"]);
+  if (stopWords.has(w) || KNOWN_VALID_SONG_WORDS.has(w)) return word;
 
   const vocab = getCatalogueVocabMap();
-  if (vocab.has(w) && vocab.get(w) >= 2) return word; // Valid catalogue word
+  if (vocab.has(w)) return word; // Valid catalogue or dictionary word - keep as is!
 
   let bestCandidate = word;
   let bestDist = 99;
@@ -1741,7 +1779,7 @@ function executeSearch(rawQuery) {
   // If wrong spelling, schedule auto-correction of the search input itself!
   if (isWrongSpelling) {
     AppState.inputAutoCorrectTimer = setTimeout(() => {
-      if (DOM.searchInput && DOM.searchInput.value.trim().toLowerCase() === trimmed.toLowerCase()) {
+      if (DOM.searchInput && typeof DOM.searchInput.value === "string" && DOM.searchInput.value.trim().toLowerCase() === trimmed.toLowerCase()) {
         DOM.searchInput.value = spellCheck.corrected;
       }
     }, 650);
@@ -1890,6 +1928,13 @@ function getSearchQueryVariants(cleanQuery) {
       variants.add("saran z ennavaley");
       variants.add("dhilip varman");
     }
+  }
+
+  // 1c. "No Money No Honey" / Vaanam / Galantis aliases
+  if (lower.includes("no money") || lower.includes("no mony") || lower.includes("money") || lower.includes("mony")) {
+    variants.add("no money no honey");
+    variants.add("vaanam no money no honey");
+    variants.add("no money");
   }
 
   // 2. Trailing vowel variations (a <-> e, e <-> a, a <-> u)

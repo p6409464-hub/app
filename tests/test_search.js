@@ -1665,6 +1665,67 @@ assert.strictEqual(DOM.searchInput.value, "kannukulla nikkira en kadhaliye", "Se
 
 console.log("[PASS] Verified: Spell-checking and self-correcting search engine successfully corrects wrong spellings, updates search bar, and displays matching songs!");
 
+// --------------------------------------------------------------------------
+// TEST 42: Verifying "No Money" & Global Word Protection (Never Changed to "No Monkey")
+// --------------------------------------------------------------------------
+console.log("\nTest 42: Verifying 'No Money' & Global Word Protection (Never Changed to 'No Monkey')...");
+
+// 1. Verify "no money", "no money no money", and "no money song" NEVER change to "no monkey"
+const noMoneyQueries = [
+  "no money",
+  "no money no money",
+  "no money no money song",
+  "no money song",
+  "no money no honey"
+];
+
+for (const q of noMoneyQueries) {
+  const sc = autoCorrectSearchQuery(q);
+  assert(!sc.corrected.includes("monkey"), `Query '${q}' must NEVER contain 'monkey'! Got: '${sc.corrected}'`);
+  assert(sc.corrected.includes("money"), `Query '${q}' must retain 'money'! Got: '${sc.corrected}'`);
+  
+  executeSearch(q);
+  assert(AppState.searchResults.length > 0, `Search for '${q}' must return matching songs`);
+  const topSong = AppState.searchResults[0];
+  const matchesMoney = topSong.title.toLowerCase().includes("no money") ||
+                       topSong.tags.some(t => t.includes("no money"));
+  assert(matchesMoney, `Top result for '${q}' must be 'No Money' or 'No Money No Honey' (got: ${topSong.title})`);
+  assert(!topSong.title.toLowerCase().includes("monkey"), `Top result must NOT be a monkey song (got: ${topSong.title})`);
+}
+console.log("[PASS] Verified: 'no money' searches never change to 'monkey' and return genuine 'No Money' / 'No Money No Honey' tracks.");
+
+// 2. Verify misspelled "no mony" & "no mony no mony" self-corrects to "no money" (never "no monkey" or "no many")
+const typoMoneyQueries = [
+  { wrong: "no mony", expected: "no money" },
+  { wrong: "no mony no mony", expected: "no money no money" },
+  { wrong: "no mony song", expected: "no money song" },
+  { wrong: "no mony no hony", expected: "no money no honey" }
+];
+
+for (const { wrong, expected } of typoMoneyQueries) {
+  const sc = autoCorrectSearchQuery(wrong);
+  assert.strictEqual(sc.corrected.toLowerCase(), expected.toLowerCase(), `Typo '${wrong}' must correct to '${expected}', got: '${sc.corrected}'`);
+  assert(!sc.corrected.includes("monkey") && !sc.corrected.includes("many"), `Typo '${wrong}' must not become monkey/many! Got: '${sc.corrected}'`);
+  
+  executeSearch(wrong);
+  assert(AppState.searchResults.length > 0, `Search with typo '${wrong}' must self-correct and return songs`);
+  assert.strictEqual(AppState.correctedQuery.toLowerCase(), expected.toLowerCase(), `AppState.correctedQuery for '${wrong}' must be '${expected}'`);
+}
+console.log("[PASS] Verified: Typo 'no mony' correctly self-corrects to 'no money' across all variants without changing to unrelated words.");
+
+// 3. Verify valid common song words across ALL songs are protected from unintended mutation
+const protectedWords = [
+  "money", "honey", "love", "heart", "dance", "party", "baby", "rock", "night",
+  "star", "fire", "cool", "super", "hero", "life", "dream", "crazy", "sweet", "queen", "king"
+];
+
+for (const w of protectedWords) {
+  const sc = autoCorrectSearchQuery(w);
+  assert.strictEqual(sc.corrected.toLowerCase(), w.toLowerCase(), `Word '${w}' must remain '${w}' and not be auto-corrected to another word`);
+  assert.strictEqual(sc.hasCorrection, false, `Valid word '${w}' must have hasCorrection === false`);
+}
+console.log(`[PASS] Verified: All ${protectedWords.length} protected vocabulary words are preserved across all song queries.`);
+
 console.log("\n==================================================");
-console.log("ALL 41 SEARCH, CATALOGUE, FULL-STREAM, DUAL-API, ALBUM SEPARATION, TRANSLITERATION, FRONTEND, STICKY PLAYER, < 2MB DOWNLOAD & SPELLCHECK TESTS PASSED!");
+console.log("ALL 42 SEARCH, CATALOGUE, FULL-STREAM, DUAL-API, ALBUM SEPARATION, TRANSLITERATION, FRONTEND, STICKY PLAYER, < 2MB DOWNLOAD, SPELLCHECK & NO MONEY TESTS PASSED!");
 console.log("==================================================\n");
