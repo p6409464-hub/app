@@ -301,15 +301,6 @@ if (typeof window !== "undefined") {
   window.initializeApp = initializeApp;
 }
 
-// Execute immediately if DOM is ready; otherwise listen for DOMContentLoaded
-if (typeof document !== "undefined") {
-  if (document.readyState === "loading") {
-    document.addEventListener("DOMContentLoaded", initializeApp);
-  } else {
-    initializeApp();
-  }
-}
-
 function setupEventListeners() {
   if (listenersAttached) return;
   listenersAttached = true;
@@ -847,8 +838,111 @@ const KNOWN_VALID_SONG_WORDS = new Set([
   "kitta", "nerungi", "vaadi", "katta", "vandi", "dishyum", "sakalakala", "vallavan",
   "kottai", "mariamman", "kattu", "kuyilu", "vaseegara", "aalaporan", "thamizhan",
   "nenjukkul", "peidhidum", "nenjinile", "pottu", "kootu", "kallu", "mullu", "thillu",
+  "thavani", "dhavani", "thavaniye", "dhavaniye", "thaniye", "dhaniye",
   "check", "all", "show", "view", "list", "browse", "see", "every"
 ]);
+
+// Universal Tamil & Tanglish Transliteration Phonetic Normalization
+function toTamilCanonical(str) {
+  if (!str) return "";
+  let s = String(str).toLowerCase()
+    .replace(/['’`"“”«»]/g, "")
+    .replace(/[-_.,/#!$%^&*;:{}=~()\[\]]/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+
+  // Vowel length & diphthong unification
+  s = s.replace(/aa+/g, "a")
+       .replace(/ee+|ii+/g, "i")
+       .replace(/oo+|uu+/g, "u")
+       .replace(/ai|ay|ey|ei/g, "ai")
+       .replace(/au|ou|ow/g, "au");
+
+  // Tamil Vallinam (Stop Consonants) Transliteration Equivalence
+  s = s.replace(/dh/g, "th")
+       .replace(/kh|gh/g, "k")
+       .replace(/sh|ch/g, "s")
+       .replace(/ph/g, "p")
+       .replace(/zh/g, "l");
+
+  // Voicing normalizations for Tanglish
+  s = s.replace(/g/g, "k")
+       .replace(/c|z|j/g, "s")
+       .replace(/b|f/g, "p")
+       .replace(/d/g, "t")
+       .replace(/w/g, "v");
+
+  // Tamil Nasal Assimilation (Mellinam before stops, e.g. maramthathu -> maranthathu)
+  s = s.replace(/m(?=th|t|k|s)/g, "n");
+
+  // Collapse doubled consonants
+  s = s.replace(/([a-z])\1+/g, "$1");
+  return s;
+}
+
+// Radical Consonantal Skeleton (preserves essential Tamil root consonants)
+function extractConsonantSkeleton(word) {
+  if (!word) return [];
+  const canon = toTamilCanonical(word);
+  const consonants = [];
+  for (let i = 0; i < canon.length; i++) {
+    const c = canon[i];
+    if (c === "t" && canon[i + 1] === "h") {
+      consonants.push("th");
+      i++;
+    } else if (!/[aeiou\s]/.test(c)) {
+      consonants.push(c);
+    }
+  }
+  return consonants;
+}
+
+// Strict Consonant Compatibility Check (prevents 'Thavaniye' -> 'Thaniye' collision)
+function areConsonantsCompatible(qWord, targetWord) {
+  const sk1 = extractConsonantSkeleton(qWord);
+  const sk2 = extractConsonantSkeleton(targetWord);
+  if (sk1.length === 0 || sk2.length === 0) return true;
+  if (sk1.length === sk2.length) {
+    return sk1.every((c, idx) => c === sk2[idx]);
+  }
+  const minLen = Math.min(sk1.length, sk2.length);
+  for (let i = 0; i < minLen; i++) {
+    if (sk1[i] !== sk2[i]) return false;
+  }
+  const extra = (sk1.length > sk2.length ? sk1 : sk2).slice(minLen);
+  return extra.every(c => c === "y" || c === "v" || c === "n" || c === "m");
+}
+
+// Universal Tamil Tanglish Morphological Stemmer
+function stemTamilWord(word) {
+  const w = String(word).toLowerCase().trim();
+  if (w.length <= 3) return { original: w, stem: w, suffix: "" };
+
+  const suffixRules = [
+    { regex: /(?:iye|iyai|iyae|iyei)$/, suffix: "iye", repl: "i" },
+    { regex: /(?:aye|ayai|ayae)$/, suffix: "aye", repl: "a" },
+    { regex: /(?:ye|ey|ae)$/, suffix: "ye", repl: "" },
+    { regex: /(?:kulla|kulle|kullu)$/, suffix: "kulla", repl: "" },
+    { regex: /(?:vaadi|vaada)$/, suffix: "vaadi", repl: "" },
+    { regex: /(?:inil|ukkul|il)$/, suffix: "inil", repl: "" },
+    { regex: /(?:oda|udan)$/, suffix: "oda", repl: "" },
+    { regex: /(?:um)$/, suffix: "um", repl: "" }
+  ];
+
+  for (const rule of suffixRules) {
+    if (rule.regex.test(w) && w.length - rule.suffix.length >= 3) {
+      const stem = w.replace(rule.regex, rule.repl);
+      return { original: w, stem, suffix: rule.suffix };
+    }
+  }
+
+  // Trailing -e vocative/poetic ending preceded by consonant
+  if (w.length >= 5 && w.endsWith("e") && !/[aeiou]/.test(w[w.length - 2])) {
+    return { original: w, stem: w.slice(0, -1), suffix: "e" };
+  }
+
+  return { original: w, stem: w, suffix: "" };
+}
 
 // Tamil & Indian transliteration vowel compatibility helper
 function getVowelGroup(word) {
@@ -869,32 +963,62 @@ function areVowelsCompatible(w1, w2) {
   return g1 === g2;
 }
 
-// Dynamic Catalogue Vocabulary Index
-let _catalogueVocabMap = null;
-function getCatalogueVocabMap() {
-  if (_catalogueVocabMap) return _catalogueVocabMap;
-  _catalogueVocabMap = new Map();
+// Dynamic Catalogue Vocabulary & Inverted Search Indexes
+var _catalogueVocabMap = null;
+var _tokenInvertedIndex = null;
+var _canonInvertedIndex = null;
 
-  // Pre-seed with known valid dictionary and song words so they are never misidentified as typos
+function indexSingleSong(s) {
+  if (!s || !_tokenInvertedIndex || !_canonInvertedIndex || !_catalogueVocabMap) return;
+  const text = `${s.title || ""} ${s.album || ""} ${s.artist || ""} ${(s.tags || []).join(" ")}`.toLowerCase();
+  const words = text.split(/[^a-z0-9]+/);
+  for (const w of words) {
+    if (w.length >= 2) {
+      _catalogueVocabMap.set(w, (_catalogueVocabMap.get(w) || 0) + 1);
+
+      if (!_tokenInvertedIndex.has(w)) _tokenInvertedIndex.set(w, []);
+      _tokenInvertedIndex.get(w).push(s);
+
+      const stemmed = stemTamilWord(w);
+      if (stemmed.stem !== w && stemmed.stem.length >= 2) {
+        _catalogueVocabMap.set(stemmed.stem, (_catalogueVocabMap.get(stemmed.stem) || 0) + 1);
+        if (!_tokenInvertedIndex.has(stemmed.stem)) _tokenInvertedIndex.set(stemmed.stem, []);
+        _tokenInvertedIndex.get(stemmed.stem).push(s);
+      }
+
+      const canon = toTamilCanonical(w);
+      if (canon) {
+        if (!_canonInvertedIndex.has(canon)) _canonInvertedIndex.set(canon, []);
+        _canonInvertedIndex.get(canon).push(s);
+      }
+    }
+  }
+}
+
+function buildSearchIndex(songsList) {
+  _catalogueVocabMap = new Map();
+  _tokenInvertedIndex = new Map();
+  _canonInvertedIndex = new Map();
+
   for (const kw of KNOWN_VALID_SONG_WORDS) {
     _catalogueVocabMap.set(kw, 50);
   }
 
-  const list = (AppState.masterSongs && AppState.masterSongs.length > 0)
-    ? AppState.masterSongs
-    : ((typeof window !== "undefined" && window.CATALOGUE_SONGS && Array.isArray(window.CATALOGUE_SONGS))
-      ? window.CATALOGUE_SONGS
-      : DEFAULT_STATIC_SONGS);
+  const list = Array.isArray(songsList) && songsList.length > 0
+    ? songsList
+    : ((AppState.masterSongs && AppState.masterSongs.length > 0)
+      ? AppState.masterSongs
+      : ((typeof window !== "undefined" && window.CATALOGUE_SONGS && Array.isArray(window.CATALOGUE_SONGS))
+        ? window.CATALOGUE_SONGS
+        : DEFAULT_STATIC_SONGS));
 
-  for (const s of list) {
-    const text = `${s.title || ""} ${s.album || ""} ${s.artist || ""} ${(s.tags || []).join(" ")}`.toLowerCase();
-    const words = text.split(/[^a-z0-9]+/);
-    for (const w of words) {
-      if (w.length >= 2) {
-        _catalogueVocabMap.set(w, (_catalogueVocabMap.get(w) || 0) + 1);
-      }
-    }
+  for (let idx = 0; idx < list.length; idx++) {
+    indexSingleSong(list[idx]);
   }
+}
+
+function getCatalogueVocabMap() {
+  if (!_catalogueVocabMap) buildSearchIndex();
   return _catalogueVocabMap;
 }
 
@@ -990,22 +1114,31 @@ function correctSingleWord(word) {
   const vocab = getCatalogueVocabMap();
   if (vocab.has(w)) return word; // Valid catalogue or dictionary word - keep as is!
 
+  // Check if its Tamil stem exists in vocabulary (e.g. "thavaniye" -> "thavani", "thaniye" -> "thani")
+  const stemmed = stemTamilWord(w);
+  if (stemmed.stem !== w && vocab.has(stemmed.stem)) {
+    return word; // Valid word with Tamil suffix - NEVER ALTER!
+  }
+
   let bestCandidate = word;
   let bestDist = 99;
   let maxFreq = 0;
 
   for (const [vWord, freq] of vocab.entries()) {
     if (Math.abs(vWord.length - w.length) > 2) continue;
-    // Consonant equivalence
-    const firstMatch = (vWord[0] === w[0]) ||
-                       (w[0] === 'k' && vWord[0] === 'g') || (w[0] === 'g' && vWord[0] === 'k') ||
-                       (w[0] === 's' && vWord[0] === 'c') || (w[0] === 'c' && vWord[0] === 's') ||
-                       (w[0] === 'e' && vWord[0] === 'y');
-    if (!firstMatch) continue;
+
+    // First letter / sound group must match in Tamil phonology
+    const c1 = toTamilCanonical(w[0]);
+    const c2 = toTamilCanonical(vWord[0]);
+    if (c1 !== c2) continue;
 
     // Vowel compatibility: primary vowel sound MUST match!
     // Prevents "kitta" -> "katta", "vaadi" -> "vandi", "kottai" -> "kattu", etc.
     if (!areVowelsCompatible(w, vWord)) continue;
+
+    // Consonant skeleton compatibility: essential radical consonants MUST match!
+    // Prevents "thavaniye" -> "thaniye", "thavani" -> "thani", etc.
+    if (!areConsonantsCompatible(w, vWord)) continue;
 
     // For short words (length <= 4), only allow length difference or double-consonant variations
     // Never allow replacing letters in short root words!
@@ -1018,7 +1151,8 @@ function correctSingleWord(word) {
     }
 
     const d = spellLevenshtein(w, vWord);
-    if (d <= 2) {
+    const maxAllowedDist = w.length <= 5 ? 1 : 2;
+    if (d <= maxAllowedDist) {
       if (d < bestDist || (d === bestDist && freq > maxFreq)) {
         bestDist = d;
         maxFreq = freq;
@@ -1027,7 +1161,7 @@ function correctSingleWord(word) {
     }
   }
 
-  return (bestDist <= 2) ? bestCandidate : word;
+  return (bestDist <= 2 && bestCandidate !== word) ? bestCandidate : word;
 }
 
 // Master Intelligent Spell-Checker & Query Auto-Corrector
@@ -1093,6 +1227,12 @@ function prepareSongSearchMetadata(song) {
   const albumTokens = normAlbum.split(" ").filter(Boolean);
   const artistTokens = normArtist.split(" ").filter(Boolean);
 
+  const canonTitle = toTamilCanonical(normTitle);
+  const canonAlbum = toTamilCanonical(normAlbum);
+  const canonArtist = toTamilCanonical(normArtist);
+  const stemmedTitleTokens = titleTokens.map(w => stemTamilWord(w).stem);
+  const canonTitleTokens = titleTokens.map(toTamilCanonical);
+
   const rawCorpus = [normTitle, normArtist, normAlbum, normLang, normCategory, ...normTags].join(" ");
   const compactCorpus = normalizeCompact(rawCorpus);
   const phoneticCorpus = toPhonetic(rawCorpus);
@@ -1121,12 +1261,17 @@ function prepareSongSearchMetadata(song) {
     _compactTitle: normalizeCompact(normTitle),
     _compactAlbum: normalizeCompact(normAlbum),
     _compactArtist: normalizeCompact(normArtist),
+    _canonTitle: canonTitle,
+    _canonAlbum: canonAlbum,
+    _canonArtist: canonArtist,
     _pTitle: pTitle,
     _pAlbum: pAlbum,
     _pArtist: pArtist,
     _titleTokens: titleTokens,
     _albumTokens: albumTokens,
     _artistTokens: artistTokens,
+    _stemmedTitleTokens: stemmedTitleTokens,
+    _canonTitleTokens: canonTitleTokens,
     _pTitleTokens: titleTokens.map(w => toPhonetic(w)).filter(Boolean),
     _pAlbumTokens: albumTokens.map(w => toPhonetic(w)).filter(Boolean),
     _pArtistTokens: artistTokens.map(w => toPhonetic(w)).filter(Boolean),
@@ -1314,9 +1459,15 @@ function buildQueryContext(rawQuery) {
   const tokens = tokenSource.split(" ").filter(w => w.length >= 2);
   const tokenRegexes = tokens.length >= 2 ? tokens.map(t => new RegExp(`\\b${t.replace(/[-/\\^$*+?.()|[\]{}]/g, "\\$&")}\\b`, "i")) : null;
 
+  const canonQ = toTamilCanonical(normQ);
+  const cleanCanonQ = toTamilCanonical(cleanQ);
+  const stemTokens = tokens.map(w => stemTamilWord(w).stem);
+  const canonTokens = tokens.map(toTamilCanonical);
+
   return {
     rawQuery, normQ, cleanQ, compactQ, cleanCompactQ, cleanPhoneticQ, phoneticQ,
     qPhonetics, coreQ, qForDist, tokens, tokenRegexes,
+    canonQ, cleanCanonQ, stemTokens, canonTokens,
     is1980to2026Query, isPureAllSongsQuery, specificYear, isSpecificYearOnly,
     requestedEra, isPureEraQuery, isGenericMovieQuery, isMovieWordInQuery,
     requestedType, isPureTypeQuery
@@ -1436,29 +1587,75 @@ function scoreSongWithContext(song, ctx) {
     score += 7500;
   }
 
-  // 1. Song Title matches
+  // 1. Song Title matches (Highest Priority: exact titles always score highest)
   if (coreQ && coreTitle === coreQ) {
     matched = true;
-    score += 15000;
+    score += 25000;
   } else if (normTitle === normQ || normTitle === cleanQ) {
     matched = true;
-    score += 13000;
+    score += 24000;
+  } else if (song._canonTitle && (song._canonTitle === ctx.canonQ || song._canonTitle === ctx.cleanCanonQ)) {
+    matched = true;
+    score += 22000;
   } else if (coreQ && coreTitle.startsWith(coreQ)) {
     matched = true;
-    score += 6000;
+    score += 18000;
   } else if (normTitle.startsWith(cleanQ + " ") || normTitle.startsWith(normQ + " ")) {
     matched = true;
-    score += 5500;
-  } else if (cleanQ.length >= 4 && cleanQ.startsWith(normTitle + " ")) {
+    score += 16000;
+  } else if (song._canonTitle && (song._canonTitle.startsWith(ctx.cleanCanonQ + " ") || song._canonTitle.startsWith(ctx.canonQ + " "))) {
     matched = true;
-    score += 4000;
+    score += 15000;
   } else if (normTitle.includes(" " + cleanQ + " ") || normTitle.startsWith(cleanQ + " ") || normTitle.endsWith(" " + cleanQ) ||
              normTitle.includes(" " + normQ + " ") || normTitle.startsWith(normQ + " ") || normTitle.endsWith(" " + normQ)) {
     matched = true;
-    score += 3500;
+    score += 14000;
+  } else if (song._canonTitle && (song._canonTitle.includes(" " + ctx.cleanCanonQ + " ") || song._canonTitle.endsWith(" " + ctx.cleanCanonQ))) {
+    matched = true;
+    score += 12000;
+  } else if (cleanQ.length >= 4 && cleanQ.startsWith(normTitle + " ")) {
+    matched = true;
+    score += 9000;
   } else if (cleanQ.length >= 5 && (normTitle === cleanQ || normTitle.startsWith(cleanQ + " ") || normTitle.endsWith(" " + cleanQ) || normTitle.includes(" " + cleanQ + " "))) {
     matched = true;
-    score += 2500;
+    score += 8000;
+  }
+
+  // 1b. Stemmed & Canonical Title Token Matching (handles Tanglish vocatives/suffixes like "Thavaniye" -> "Thavani", "Kadhaliye" -> "Kadhali")
+  if (!isMovieWordInQuery && tokens && tokens.length === 1) {
+    const qtok = tokens[0];
+    const qstem = ctx.stemTokens ? ctx.stemTokens[0] : qtok;
+    const qcanon = ctx.canonTokens ? ctx.canonTokens[0] : qtok;
+    const songTitleTokens = song._titleTokens || [];
+    const songStemTokens = song._stemmedTitleTokens || [];
+    const songCanonTokens = song._canonTitleTokens || [];
+
+    let found = false;
+    let foundFirstWord = false;
+    for (let j = 0; j < songTitleTokens.length; j++) {
+      const stok = songTitleTokens[j];
+      const sstem = songStemTokens[j] || stok;
+      const scanon = songCanonTokens[j] || stok;
+
+      if (qtok === stok || qstem === stok || qtok === sstem || qstem === sstem) {
+        found = true;
+        if (j === 0) foundFirstWord = true;
+        break;
+      }
+      if (qcanon === scanon && areConsonantsCompatible(qtok, stok) && areVowelsCompatible(qtok, stok)) {
+        found = true;
+        if (j === 0) foundFirstWord = true;
+        break;
+      }
+    }
+
+    if (found) {
+      matched = true;
+      score += 14000;
+      if (foundFirstWord) {
+        score += 3000;
+      }
+    }
   }
 
   // Compact title match (e.g. "naatunaatu" -> "Naatu Naatu")
@@ -1471,12 +1668,12 @@ function scoreSongWithContext(song, ctx) {
   // 2. Movie / Album matches (Ensures ALL songs belonging to the album are included and displayed separately!)
   if (normAlbum === normQ || normAlbum === cleanQ || (coreQ && coreAlbum === coreQ)) {
     matched = true;
-    score += 5000;
+    score += 8000;
     if (coreTitle.includes(coreQ) || normTitle.includes(normQ) || (cleanQ && normTitle.includes(cleanQ))) {
       score += 8500; // Title track from same named movie (e.g. Manithan Manithan in Manithan)
     }
     if (isMovieWordInQuery) {
-      score += 3500; // Explicitly searched for movie/album
+      score += 12000; // Explicitly searched for movie/album
     }
   } else if (normAlbum.startsWith(cleanQ + " ") || normAlbum.startsWith(normQ + " ")) {
     matched = true;
@@ -1556,19 +1753,19 @@ function scoreSongWithContext(song, ctx) {
     }
   }
 
-  // 5. Typo & edit distance on title & album (strictly bounded to max distance 1 with vowel compatibility)
+  // 5. Typo & edit distance on title & album (strictly bounded to max distance 1 with vowel & consonant compatibility)
   if (qForDist) {
     const maxDist = 1;
-    if (boundedLevenshtein(qForDist, normTitle, maxDist) <= maxDist && areVowelsCompatible(qForDist, normTitle)) {
+    if (boundedLevenshtein(qForDist, normTitle, maxDist) <= maxDist && areVowelsCompatible(qForDist, normTitle) && areConsonantsCompatible(qForDist, normTitle)) {
       matched = true;
       score += 1200;
     }
-    if (boundedLevenshtein(qForDist, normAlbum, maxDist) <= maxDist && areVowelsCompatible(qForDist, normAlbum)) {
+    if (boundedLevenshtein(qForDist, normAlbum, maxDist) <= maxDist && areVowelsCompatible(qForDist, normAlbum) && areConsonantsCompatible(qForDist, normAlbum)) {
       matched = true;
       score += 1600;
     } else {
       const albumFirst = song._albumFirst || normAlbum.split(" ")[0];
-      if (albumFirst && albumFirst.length >= 5 && boundedLevenshtein(qForDist, albumFirst, maxDist) <= maxDist && areVowelsCompatible(qForDist, albumFirst)) {
+      if (albumFirst && albumFirst.length >= 5 && boundedLevenshtein(qForDist, albumFirst, maxDist) <= maxDist && areVowelsCompatible(qForDist, albumFirst) && areConsonantsCompatible(qForDist, albumFirst)) {
         matched = true;
         score += 1400;
       }
@@ -1688,6 +1885,41 @@ function matchSongQuery(song, rawQuery) {
   return scoreAndMatchSong(song, rawQuery).matched;
 }
 
+// Fast candidate retrieval using inverted token and canonical indexes
+function getCandidateSongs(ctx) {
+  if (!_tokenInvertedIndex || !_canonInvertedIndex) return AppState.masterSongs;
+  if (ctx.isPureAllSongsQuery || ctx.isPureEraQuery || ctx.isSpecificYearOnly || ctx.isGenericMovieQuery || ctx.isPureTypeQuery || ctx.is1980to2026Query) {
+    return AppState.masterSongs;
+  }
+
+  const tokens = ctx.tokens || [];
+  if (tokens.length === 0) return AppState.masterSongs;
+
+  const candidateSet = new Set();
+  for (let i = 0; i < tokens.length; i++) {
+    const tok = tokens[i];
+    const stem = ctx.stemTokens ? ctx.stemTokens[i] : tok;
+    const canon = ctx.canonTokens ? ctx.canonTokens[i] : tok;
+
+    const list1 = _tokenInvertedIndex.get(tok);
+    if (list1) for (let j = 0; j < list1.length; j++) candidateSet.add(list1[j]);
+
+    if (stem !== tok) {
+      const list2 = _tokenInvertedIndex.get(stem);
+      if (list2) for (let j = 0; j < list2.length; j++) candidateSet.add(list2[j]);
+    }
+
+    const list3 = _canonInvertedIndex.get(canon);
+    if (list3) for (let j = 0; j < list3.length; j++) candidateSet.add(list3[j]);
+  }
+
+  if (candidateSet.size > 0 && candidateSet.size < AppState.masterSongs.length) {
+    return Array.from(candidateSet);
+  }
+
+  return AppState.masterSongs;
+}
+
 // Master search function: filters and sorts songs by typo-tolerant relevance score
 function searchMasterSongs(rawQuery) {
   if (!rawQuery) return [...AppState.masterSongs];
@@ -1700,10 +1932,21 @@ function searchMasterSongs(rawQuery) {
   }
 
   let results = [];
-  for (const song of AppState.masterSongs) {
+  const candidates = getCandidateSongs(ctx);
+  for (const song of candidates) {
     const res = scoreSongWithContext(song, ctx);
     if (res.matched && res.score >= 500) {
       results.push({ song, score: res.score });
+    }
+  }
+
+  // Safety Fallback: If candidates was a subset and gave 0 results, retry against all masterSongs
+  if (results.length === 0 && candidates.length < AppState.masterSongs.length) {
+    for (const song of AppState.masterSongs) {
+      const res = scoreSongWithContext(song, ctx);
+      if (res.matched && res.score >= 500) {
+        results.push({ song, score: res.score });
+      }
     }
   }
 
@@ -1713,10 +1956,19 @@ function searchMasterSongs(rawQuery) {
     if (spell.hasCorrection && spell.corrected.toLowerCase() !== rawQuery.toLowerCase().trim()) {
       const correctedCtx = buildQueryContext(spell.corrected);
       if (correctedCtx) {
-        for (const song of AppState.masterSongs) {
+        const corrCandidates = getCandidateSongs(correctedCtx);
+        for (const song of corrCandidates) {
           const res = scoreSongWithContext(song, correctedCtx);
           if (res.matched && res.score >= 500) {
             results.push({ song, score: res.score });
+          }
+        }
+        if (results.length === 0 && corrCandidates.length < AppState.masterSongs.length) {
+          for (const song of AppState.masterSongs) {
+            const res = scoreSongWithContext(song, correctedCtx);
+            if (res.matched && res.score >= 500) {
+              results.push({ song, score: res.score });
+            }
           }
         }
       }
@@ -1789,6 +2041,9 @@ function loadCatalogue() {
   AppState.songs = [...deduped];
   AppState.queue = [...deduped];
 
+  // Build high-performance Tamil phonological and transliteration inverted index
+  buildSearchIndex(AppState.masterSongs);
+
   // Production log
   console.log(`[MusicHub] Catalogue loaded with ${AppState.masterSongs.length} tracks.`);
 
@@ -1841,6 +2096,9 @@ function autoImportSongToCatalogue(song) {
 
   AppState.masterSongs = Object.freeze([prepared, ...AppState.masterSongs]);
   AppState.songs = [prepared, ...AppState.songs];
+  if (typeof indexSingleSong === "function") {
+    indexSingleSong(prepared);
+  }
 
   try {
     const rawStored = localStorage.getItem("pmh_imported_songs");
@@ -4447,4 +4705,13 @@ function escapeAttr(str) {
 function capitalize(str) {
   if (!str) return "";
   return str.charAt(0).toUpperCase() + str.slice(1);
+}
+
+// Execute immediately if DOM is ready; otherwise listen for DOMContentLoaded
+if (typeof document !== "undefined") {
+  if (document.readyState === "loading") {
+    document.addEventListener("DOMContentLoaded", initializeApp);
+  } else {
+    initializeApp();
+  }
 }

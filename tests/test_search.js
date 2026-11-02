@@ -1888,6 +1888,81 @@ assert(anirudhAllSongs.length > 0 && anirudhAllSongs.length < AppState.masterSon
 assert(anirudhAllSongs.some(s => s.artist.toLowerCase().includes("anirudh")), "Results must contain Anirudh tracks");
 console.log("[PASS] Verified: 'check all songs' in search bar loads all songs; combined queries filter accurately.");
 
+// Test 45: Verifying Intelligent Tamil Song Title Recognition & Spelling Correction (All 12 Requirements)
+console.log("\nTest 45: Verifying Intelligent Tamil Song Title Recognition & Spelling Correction...");
+
+// Req 3, 4, 5: Distinguish "Thavaniye" and "Thaniye" & Preserve original queries
+const autoThavaniye = autoCorrectSearchQuery("Thavaniye");
+assert.strictEqual(autoThavaniye.corrected, "Thavaniye", "Query 'Thavaniye' must never be altered or replaced with 'Thaniye'");
+assert.strictEqual(autoThavaniye.hasCorrection, false, "'Thavaniye' has valid Tamil suffix - hasCorrection must be false");
+
+const autoThaniye = autoCorrectSearchQuery("Thaniye");
+assert.strictEqual(autoThaniye.corrected, "Thaniye", "Query 'Thaniye' must never be altered or replaced with 'Thavaniye'");
+assert.strictEqual(autoThaniye.hasCorrection, false, "'Thaniye' is valid - hasCorrection must be false");
+
+// Req 5, 6, 7: Search 'Thavaniye' returns Thavani/Dhavani songs and NEVER Thaniye
+const resThavaniye = searchMasterSongs("Thavaniye");
+assert(resThavaniye.length > 0, "Search 'Thavaniye' must return matching songs");
+assert(resThavaniye.some(s => /thavani|dhavani/i.test(`${s.title} ${s.album}`)), "Search 'Thavaniye' must return Thavani/Dhavani tracks");
+assert(!resThavaniye.some(s => s.title.toLowerCase() === "thaniye" || (s.title.toLowerCase().startsWith("thaniye ") && !s.title.toLowerCase().includes("thavani"))), "Search 'Thavaniye' must NEVER return 'Thaniye' songs");
+
+// Req 5, 6, 7: Search 'Thaniye' returns Thaniye songs and NEVER Thavani
+const resThaniye = searchMasterSongs("Thaniye");
+assert(resThaniye.length > 0, "Search 'Thaniye' must return matching songs");
+assert.strictEqual(resThaniye[0].title.toLowerCase().includes("thaniye"), true, "Top result for 'Thaniye' must be 'Thaniye' (Exact title priority)");
+assert(!resThaniye.some(s => /thavani|dhavani/i.test(`${s.title} ${s.album}`)), "Search 'Thaniye' must NEVER return 'Thavani' songs");
+
+// Req 1 & 6: Transliteration variations
+const resDhavaniye = searchMasterSongs("Dhavaniye");
+assert(resDhavaniye.length > 0, "Search 'Dhavaniye' must return matching tracks");
+assert(resDhavaniye.some(s => /thavani|dhavani/i.test(`${s.title} ${s.album}`)), "Search 'Dhavaniye' must return Thavani/Dhavani tracks");
+
+const resDhavani = searchMasterSongs("Dhavani");
+assert(resDhavani.length > 0, "Search 'Dhavani' must return matching tracks");
+assert(resDhavani.some(s => /thavani|dhavani/i.test(`${s.title} ${s.album}`)), "Search 'Dhavani' must return Thavani/Dhavani tracks");
+
+const resDhaniyae = searchMasterSongs("Dhaniyae");
+assert(resDhaniyae.length > 0, "Search 'Dhaniyae' must return matching tracks");
+assert(resDhaniyae.some(s => s.title.toLowerCase().includes("thaniye")), "Search 'Dhaniyae' must return Thaniye tracks");
+
+// Req 9: Multiple songs displayed when multiple choices exist
+assert(resThaniye.length >= 2, "Search 'Thaniye' must display multiple relevant choices (at least 2 tracks)");
+
+// Req 1 & 6: Common Tamil transliterations (g/k, s/sh/ch, th/dh)
+const resAniruth = searchMasterSongs("aniruth");
+assert(resAniruth.length > 0 && resAniruth.some(s => s.artist.toLowerCase().includes("anirudh")), "Search 'aniruth' must match Anirudh");
+
+const resShivaji = searchMasterSongs("shivaji");
+assert(resShivaji.length > 0 && resShivaji.some(s => (s.title + s.album).toLowerCase().includes("sivaji")), "Search 'shivaji' must match Sivaji");
+
+const resGilli = searchMasterSongs("gilli");
+assert(resGilli.length > 0 && resGilli.some(s => (s.title + s.album).toLowerCase().includes("ghilli") || s.title.toLowerCase().includes("gilli")), "Search 'gilli' must match Ghilli");
+
+// Req 2: Correct genuine spelling mistakes when intended song is clear
+const spellNoMony = autoCorrectSearchQuery("no mony");
+assert.strictEqual(spellNoMony.corrected, "no money", "Typo 'no mony' must correct to 'no money'");
+
+const spellKannu = autoCorrectSearchQuery("kannukula nikka ye kadhaliye");
+assert(spellKannu.corrected.includes("kannukulla nikkira"), "Typo query must correct to 'kannukulla nikkira'");
+
+// Req 10: Never display unrelated songs for non-matching gibberish
+const resGibberish = searchMasterSongs("zzqwkpx9999");
+assert.strictEqual(resGibberish.length, 0, "Non-matching query must return 0 results");
+
+// Req 11: Catalogue immutability & preservation of original titles
+assert(AppState.masterSongs.length >= initialMasterCount, "Database count must preserve all songs");
+assert(Object.isFrozen(AppState.masterSongs), "masterSongs must remain frozen and unmodified");
+
+// Req 12: Performance benchmark - 100 searches execution time
+const perfStart = Date.now();
+for (let i = 0; i < 100; i++) {
+  searchMasterSongs(i % 2 === 0 ? "Thavaniye" : "Thaniye");
+}
+const perfElapsed = Date.now() - perfStart;
+assert(perfElapsed < 350, `100 searches must finish in under 350ms, took ${perfElapsed}ms (${(perfElapsed/100).toFixed(2)}ms/search)`);
+console.log(`[PASS] Performance verified: 100 searches completed in ${perfElapsed}ms (${(perfElapsed/100).toFixed(2)}ms/search).`);
+console.log("[PASS] Verified: All 12 Intelligent Tamil Song Title Recognition & Spelling Correction requirements fully validated!");
+
 console.log("\n==================================================");
-console.log("ALL 44 SEARCH, CATALOGUE, FULL-STREAM, DUAL-API, ALBUM SEPARATION, TRANSLITERATION, FRONTEND, STICKY PLAYER, < 2MB DOWNLOAD, SPELLCHECK, NO MONEY, ANTI-COLLISION & CHECK ALL SONGS TESTS PASSED!");
+console.log("ALL 45 SEARCH, CATALOGUE, FULL-STREAM, DUAL-API, ALBUM SEPARATION, TRANSLITERATION, FRONTEND, STICKY PLAYER, < 2MB DOWNLOAD, SPELLCHECK, NO MONEY, ANTI-COLLISION, CHECK ALL SONGS & GLOBAL TAMIL TITLE RECOGNITION TESTS PASSED!");
 console.log("==================================================\n");
