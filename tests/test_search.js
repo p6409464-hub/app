@@ -1726,6 +1726,129 @@ for (const w of protectedWords) {
 }
 console.log(`[PASS] Verified: All ${protectedWords.length} protected vocabulary words are preserved across all song queries.`);
 
+// --------------------------------------------------------------------------
+// TEST 43: Verifying High-Precision Song Matching & Anti-Collision ("Kitta Nerungi Vaa Di" vs "Katta Vandi")
+// Requirements:
+// 1. Give priority to exact song-title matches.
+// 2. Do not match unrelated songs just because some letters or words look similar.
+// 3. Use intelligent Tamil transliteration matching.
+// 4. Support minor spelling mistakes without changing the actual song.
+// 5. Use a proper similarity threshold for fuzzy search.
+// 6. Match complete words and song titles, not just a few common letters.
+// 7. Never automatically select an unrelated song.
+// 8. If no reliable match exists, display "No matching songs found".
+// 9. Keep all existing songs and features.
+// 10. Test with similar-looking but completely different Tamil song names.
+// --------------------------------------------------------------------------
+console.log("\nTest 43: Verifying Song Matching, Anti-Collision & Transliterations ('Kitta Nerungi Vaa Di' vs 'Katta Vandi')...");
+
+// 1. Search "Kitta Nerungi Vaa Di" must show ONLY "Kitta Nerungi Vaadi" and NEVER "Katta Vandi"
+const kittaQueries = [
+  "Kitta Nerungi Vaa Di",
+  "kitta nerungi vaadi",
+  "kittha nerungi vaadi",
+  "kitta nerungi",
+  "kitta nerungi vaa di"
+];
+
+for (const q of kittaQueries) {
+  executeSearch(q);
+  assert(AppState.searchResults.length > 0, `Query '${q}' must return matching track 'Kitta Nerungi Vaadi'`);
+  const topResult = AppState.searchResults[0];
+  assert.strictEqual(topResult.title, "Kitta Nerungi Vaadi", `Top result for '${q}' must be 'Kitta Nerungi Vaadi', got '${topResult.title}'`);
+  assert.strictEqual(topResult.album, "Dishyum", `Album for top result must be 'Dishyum'`);
+  assert(topResult.audio_url && topResult.audio_url.includes("aac.saavncdn.com"), `Result must have authorized 320kbps audio URL`);
+
+  // Verify that "Katta Vandi Katta Vandi" is NEVER returned for any Kitta query
+  const hasKattaVandi = AppState.searchResults.some(s =>
+    (s.title && s.title.toLowerCase().includes("katta vandi")) ||
+    (s.album && s.album.toLowerCase().includes("sakalakala"))
+  );
+  assert.strictEqual(hasKattaVandi, false, `Query '${q}' must NEVER return 'Katta Vandi Katta Vandi'!`);
+}
+console.log("[PASS] Verified: 'Kitta Nerungi Vaa Di' and transliteration variants rank #1 and NEVER match 'Katta Vandi'.");
+
+// 2. Search "Katta Vandi Katta Vandi" must show ONLY "Katta Vandi" and NEVER "Kitta Nerungi"
+const kattaQueries = [
+  "Katta Vandi Katta Vandi",
+  "katta vandi",
+  "katta vandi sakalakala vallavan"
+];
+
+for (const q of kattaQueries) {
+  executeSearch(q);
+  assert(AppState.searchResults.length > 0, `Query '${q}' must return 'Katta Vandi' tracks`);
+  const topResult = AppState.searchResults[0];
+  assert(topResult.title.toLowerCase().includes("katta vandi"), `Top result for '${q}' must be 'Katta Vandi', got '${topResult.title}'`);
+
+  const hasKitta = AppState.searchResults.some(s =>
+    (s.title && s.title.toLowerCase().includes("kitta nerungi")) ||
+    (s.album && s.album.toLowerCase().includes("dishyum"))
+  );
+  assert.strictEqual(hasKitta, false, `Query '${q}' must NEVER return 'Kitta Nerungi Vaadi'!`);
+}
+console.log("[PASS] Verified: 'Katta Vandi Katta Vandi' searches return 'Katta Vandi' and NEVER match 'Kitta Nerungi'.");
+
+// 3. Similar-looking but completely different Tamil song names must NEVER cross-match
+const distinctSongPairs = [
+  {
+    query: "Kottai Mariamman",
+    expectedMatch: "kottai",
+    forbiddenWrongMatch: "kattu kuyilu"
+  },
+  {
+    query: "Vaseegara",
+    expectedMatch: "vaseegara",
+    forbiddenWrongMatch: "vaadi vaadi"
+  },
+  {
+    query: "Aalaporan Thamizhan",
+    expectedMatch: "aalaporan",
+    forbiddenWrongMatch: "aalappuzha"
+  },
+  {
+    query: "Nenjukkul Peidhidum",
+    expectedMatch: "nenjukkul",
+    forbiddenWrongMatch: "nenjinile"
+  },
+  {
+    query: "Ennavale Adi Ennavale",
+    expectedMatch: "kadhalan",
+    forbiddenWrongMatch: "ennavale ennai maranthathu"
+  }
+];
+
+for (const { query, expectedMatch, forbiddenWrongMatch } of distinctSongPairs) {
+  const results = searchMasterSongs(query);
+  const titles = results.map(s => `${s.title} ${s.album}`.toLowerCase());
+  const hasWrongMatch = titles.some(t => t.includes(forbiddenWrongMatch.toLowerCase()));
+  assert.strictEqual(hasWrongMatch, false, `Searching '${query}' must NOT match unrelated song '${forbiddenWrongMatch}'`);
+}
+console.log(`[PASS] Verified: All ${distinctSongPairs.length} similar-looking distinct Tamil song pairs are never cross-matched.`);
+
+// 4. Complete word and title matching (never match substring inside unrelated words)
+const kittaMatches = searchMasterSongs("kitta");
+assert(kittaMatches.length > 0, "'kitta' must match 'Kitta Nerungi Vaadi'");
+assert.strictEqual(kittaMatches[0].title, "Kitta Nerungi Vaadi", "Top match for 'kitta' must be 'Kitta Nerungi Vaadi'");
+const hasFalseSubstrings = kittaMatches.some(s => s.title.toLowerCase().includes("katta vandi"));
+assert.strictEqual(hasFalseSubstrings, false, "Searching 'kitta' must not match 'Katta Vandi'");
+console.log("[PASS] Verified: Word-level search matches complete words and song titles, not arbitrary letters.");
+
+// 5. Gibberish search returns 0 results and displays "No matching songs found"
+const nonMatchingQuery = "xyzqqwwee1234notarealsong";
+const nonMatchingResults = searchMasterSongs(nonMatchingQuery);
+assert.strictEqual(nonMatchingResults.length, 0, "Gibberish query must return 0 results from master catalogue");
+
+AppState.searchQuery = nonMatchingQuery;
+AppState.isSearching = true;
+AppState.searchResults = [];
+AppState.isFetchingSpotify = false;
+renderContent();
+
+const emptyDiv = document.getElementById("emptyState");
+assert.strictEqual(emptyDiv.style.display, "block", "Empty state ('No matching songs found') must be displayed for non-matching queries");
+console.log("[PASS] Verified: Non-existent queries return 0 results and display 'No matching songs found'.");
+
 console.log("\n==================================================");
-console.log("ALL 42 SEARCH, CATALOGUE, FULL-STREAM, DUAL-API, ALBUM SEPARATION, TRANSLITERATION, FRONTEND, STICKY PLAYER, < 2MB DOWNLOAD, SPELLCHECK & NO MONEY TESTS PASSED!");
+console.log("ALL 43 SEARCH, CATALOGUE, FULL-STREAM, DUAL-API, ALBUM SEPARATION, TRANSLITERATION, FRONTEND, STICKY PLAYER, < 2MB DOWNLOAD, SPELLCHECK, NO MONEY & ANTI-COLLISION TESTS PASSED!");
 console.log("==================================================\n");

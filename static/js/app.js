@@ -61,7 +61,8 @@ const DEFAULT_STATIC_SONGS = [
   { id: "inst_3", title: "SoundHelix Symphony", artist: "Open Music Archive", album: "Algorithmic Harmony", duration: 345, duration_str: "5:45", language: "Instrumental", category: "Instrumental Music", sections: ["recent", "instrumental"], cover_url: "static/images/soundhelix_ambient.svg", audio_url: "https://www.soundhelix.com/examples/mp3/SoundHelix-Song-3.mp3", audio_file: "", download_authorized: true, tags: ["instrumental", "soundhelix", "electronic"] },
   { id: "saavn_vaanam_no_money_no_honey", title: "No Money No Honey", artist: "Yuvan Shankar Raja, Str, Andrea", album: "Vaanam", duration: 324, duration_str: "5:24", language: "Tamil", era: "now", category: "Tamil Songs", sections: ["trending", "recent", "era_now", "tamil"], cover_url: "https://c.saavncdn.com/013/Vaanam-2010-500x500.jpg", audio_url: "https://aac.saavncdn.com/013/592641c8be65dd785543ba1b363865cf_320.mp4", audio_file: "", download_authorized: true, tags: ["no money no honey", "no money", "no money no money", "vaanam", "yuvan shankar raja", "yuvan", "str", "simbu", "silambarasan", "andrea", "kuthu", "now", "tamil", "trending"] },
   { id: "saavn_galantis_no_money", title: "No Money", artist: "Galantis", album: "The Aviary", duration: 189, duration_str: "3:09", language: "English", era: "now", category: "English Songs", sections: ["trending", "english"], cover_url: "https://c.saavncdn.com/472/The-Aviary-English-2017-500x500.jpg", audio_url: "https://aac.saavncdn.com/712/e634be97fc61bc5cf76f7dfba6b67b09_320.mp4", audio_file: "", download_authorized: true, tags: ["no money", "galantis", "the aviary", "english", "edm", "pop", "dance", "trending"] },
-  { id: "saavn_vaanam_evan_di", title: "Evan Di Unna Pethan", artist: "Yuvan Shankar Raja, Str", album: "Vaanam", duration: 341, duration_str: "5:41", language: "Tamil", era: "now", category: "Tamil Songs", sections: ["trending", "tamil"], cover_url: "https://c.saavncdn.com/013/Vaanam-2010-500x500.jpg", audio_url: "https://aac.saavncdn.com/013/1ff7c9b8eb258d4a99fcdd4908a73562_320.mp4", audio_file: "", download_authorized: true, tags: ["evan di unna pethan", "evandi unna pethan", "vaanam", "yuvan", "str", "simbu", "now", "tamil"] }
+  { id: "saavn_vaanam_evan_di", title: "Evan Di Unna Pethan", artist: "Yuvan Shankar Raja, Str", album: "Vaanam", duration: 341, duration_str: "5:41", language: "Tamil", era: "now", category: "Tamil Songs", sections: ["trending", "tamil"], cover_url: "https://c.saavncdn.com/013/Vaanam-2010-500x500.jpg", audio_url: "https://aac.saavncdn.com/013/1ff7c9b8eb258d4a99fcdd4908a73562_320.mp4", audio_file: "", download_authorized: true, tags: ["evan di unna pethan", "evandi unna pethan", "vaanam", "yuvan", "str", "simbu", "now", "tamil"] },
+  { id: "saavn_SDIIxL9o", title: "Kitta Nerungi Vaadi", artist: "Vijay Antony, Sukhwindher Singh, Gayathri", album: "Dishyum", year: "2006", duration: 257, duration_str: "4:17", language: "Tamil", era: "2k", type: "kuthu", category: "Tamil Songs", sections: ["trending", "recent", "era_2k", "tamil"], cover_url: "https://c.saavncdn.com/791/Dishyum-Tamil-2006-20171219-500x500.jpg", audio_url: "https://aac.saavncdn.com/791/aa9a9fdbc97e058eb2e5c8bbebafa584_320.mp4", audio_file: "", download_authorized: true, tags: ["kitta nerungi vaadi", "kitta nerungi vaa di", "kitta nerungi", "kitta nerungi vadi", "kitta", "nerungi", "vaadi", "dishyum", "vijay antony", "sukhwindher singh", "gayathri", "jiiva", "2k", "tamil", "trending"] }
 ];
 
 // Clean up any stale ephemeral Cloudflare tunnels from localStorage
@@ -829,8 +830,31 @@ const KNOWN_VALID_SONG_WORDS = new Set([
   "enthiran", "doctor", "beast", "leo", "jailer", "hukum", "badass", "vettaiyan", "amaran",
   "raayan", "chuttamalle", "vaathi", "arabic", "kuthu", "premam", "aavesham", "viswasam",
   "padayappa", "annamalai", "roja", "kadhal", "kanmani", "vaanam", "friends", "master",
-  "kutty", "pattas", "usuraiya", "tholaichaen", "adi", "penne", "orasaadha", "asku", "maaro"
+  "kutty", "pattas", "usuraiya", "tholaichaen", "adi", "penne", "orasaadha", "asku", "maaro",
+  // Common Tamil roots & transliteration words
+  "kitta", "nerungi", "vaadi", "katta", "vandi", "dishyum", "sakalakala", "vallavan",
+  "kottai", "mariamman", "kattu", "kuyilu", "vaseegara", "aalaporan", "thamizhan",
+  "nenjukkul", "peidhidum", "nenjinile", "pottu", "kootu", "kallu", "mullu", "thillu"
 ]);
+
+// Tamil & Indian transliteration vowel compatibility helper
+function getVowelGroup(word) {
+  if (!word) return "none";
+  const m = String(word).toLowerCase().match(/[aeiou]/);
+  if (!m) return "none";
+  const v = m[0];
+  if (v === "a") return "a";
+  if (v === "e" || v === "i") return "ei";
+  if (v === "o" || v === "u") return "ou";
+  return v;
+}
+
+function areVowelsCompatible(w1, w2) {
+  const g1 = getVowelGroup(w1);
+  const g2 = getVowelGroup(w2);
+  if (g1 === "none" || g2 === "none") return true;
+  return g1 === g2;
+}
 
 // Dynamic Catalogue Vocabulary Index
 let _catalogueVocabMap = null;
@@ -885,6 +909,12 @@ const KNOWN_PHRASE_REPLACEMENTS = [
   { regex: /\be*an+ai\s+maran*m*t*h*at*h*u*\b/gi, fix: "ennai maranthathu" },
   { regex: /\benai\b|\beannai\b/gi, fix: "ennai" },
   { regex: /\bmaramthathu\b|\bmaramthatha\b|\bmarandhadhu\b|\bmaranthath\b/gi, fix: "maranthathu" },
+  { regex: /\bkit+ha\s+nerun*g*i*\s+va+a*\s+d+i+\b|\bkit+a\s+nerun*g*i*\s+va+a*\s+d+i+\b/gi, fix: "kitta nerungi vaa di" },
+  { regex: /\bkit+ha\s+nerun*g*i*\s+va+d+i+\b|\bkit+a\s+nerun*g*i*\s+va+d+i+\b/gi, fix: "kitta nerungi vaadi" },
+  { regex: /\bkit+ha\s+nerun*g*i*\b|\bkit+a\s+nerun*g*i*\b/gi, fix: "kitta nerungi" },
+  { regex: /\bkit+ha\b/gi, fix: "kitta" },
+  { regex: /\bnerung+i\b/gi, fix: "nerungi" },
+  { regex: /\bkat+a\s+van+d+i\b/gi, fix: "katta vandi" },
 
   // Composers & Artists
   { regex: /\bar\s+rhman\b|\barr\s+rahman\b|\barr\b/gi, fix: "a r rahman" },
@@ -941,7 +971,7 @@ const KNOWN_PHRASE_REPLACEMENTS = [
 function correctSingleWord(word) {
   const w = word.toLowerCase().trim();
   if (w.length < 3) return word;
-  const stopWords = new Set(["the", "and", "for", "with", "from", "you", "are", "all", "out", "ost", "non", "not"]);
+  const stopWords = new Set(["the", "and", "for", "with", "from", "you", "are", "all", "out", "ost", "non", "not", "vaa", "di", "en", "da"]);
   if (stopWords.has(w) || KNOWN_VALID_SONG_WORDS.has(w)) return word;
 
   const vocab = getCatalogueVocabMap();
@@ -959,6 +989,20 @@ function correctSingleWord(word) {
                        (w[0] === 's' && vWord[0] === 'c') || (w[0] === 'c' && vWord[0] === 's') ||
                        (w[0] === 'e' && vWord[0] === 'y');
     if (!firstMatch) continue;
+
+    // Vowel compatibility: primary vowel sound MUST match!
+    // Prevents "kitta" -> "katta", "vaadi" -> "vandi", "kottai" -> "kattu", etc.
+    if (!areVowelsCompatible(w, vWord)) continue;
+
+    // For short words (length <= 4), only allow length difference or double-consonant variations
+    // Never allow replacing letters in short root words!
+    if (w.length <= 4) {
+      const isConsonantDoubling = w.replace(/([a-z])\1+/g, "$1") === vWord.replace(/([a-z])\1+/g, "$1");
+      const dShort = spellLevenshtein(w, vWord);
+      if (!isConsonantDoubling && dShort > 0 && Math.abs(w.length - vWord.length) === 0) {
+        continue;
+      }
+    }
 
     const d = spellLevenshtein(w, vWord);
     if (d <= 2) {
@@ -1352,26 +1396,26 @@ function scoreSongWithContext(song, ctx) {
   // 1. Song Title matches
   if (coreQ && coreTitle === coreQ) {
     matched = true;
-    score += 12000;
+    score += 15000;
   } else if (normTitle === normQ || normTitle === cleanQ) {
     matched = true;
-    score += 10000;
+    score += 13000;
   } else if (coreQ && coreTitle.startsWith(coreQ)) {
     matched = true;
-    score += 5000;
+    score += 6000;
   } else if (normTitle.startsWith(cleanQ + " ") || normTitle.startsWith(normQ + " ")) {
     matched = true;
-    score += 4500;
-  } else if (cleanQ.length >= 3 && cleanQ.startsWith(normTitle + " ")) {
+    score += 5500;
+  } else if (cleanQ.length >= 4 && cleanQ.startsWith(normTitle + " ")) {
     matched = true;
     score += 4000;
   } else if (normTitle.includes(" " + cleanQ + " ") || normTitle.startsWith(cleanQ + " ") || normTitle.endsWith(" " + cleanQ) ||
              normTitle.includes(" " + normQ + " ") || normTitle.startsWith(normQ + " ") || normTitle.endsWith(" " + normQ)) {
     matched = true;
     score += 3500;
-  } else if (cleanQ.length >= 5 && normTitle.includes(cleanQ)) {
+  } else if (cleanQ.length >= 5 && (normTitle === cleanQ || normTitle.startsWith(cleanQ + " ") || normTitle.endsWith(" " + cleanQ) || normTitle.includes(" " + cleanQ + " "))) {
     matched = true;
-    score += 1500;
+    score += 2500;
   }
 
   // Compact title match (e.g. "naatunaatu" -> "Naatu Naatu")
@@ -1401,9 +1445,9 @@ function scoreSongWithContext(song, ctx) {
              normAlbum.includes(" " + normQ + " ") || normAlbum.startsWith(normQ + " ") || normAlbum.endsWith(" " + normQ)) {
     matched = true;
     score += 3000;
-  } else if (cleanQ.length >= 5 && normAlbum.includes(cleanQ)) {
+  } else if (cleanQ.length >= 5 && (normAlbum === cleanQ || normAlbum.startsWith(cleanQ + " ") || normAlbum.endsWith(" " + cleanQ) || normAlbum.includes(" " + cleanQ + " "))) {
     matched = true;
-    score += 1200;
+    score += 1500;
   }
 
   // Compact album match
@@ -1433,43 +1477,55 @@ function scoreSongWithContext(song, ctx) {
     score += 3000;
   }
 
-  // 4. Phonetic matches
+  // 4. Phonetic matches (with vowel and letter compatibility safeguards)
   for (const qp of qPhonetics) {
     if (qp.length < 3) continue;
-    if (pTitle === qp) {
+    if (pTitle === qp && areVowelsCompatible(cleanQ, normTitle)) {
       matched = true;
       score += 2500;
-    } else if (pAlbum === qp) {
+    } else if (pAlbum === qp && areVowelsCompatible(cleanQ, normAlbum)) {
       matched = true;
       score += 2400;
-    } else if (pArtist === qp) {
+    } else if (pArtist === qp && areVowelsCompatible(cleanQ, normArtist)) {
       matched = true;
       score += 1800;
     } else if (song._pTitleTokens && song._pTitleTokens.includes(qp)) {
-      matched = true;
-      score += 1500;
+      const titleWords = song._titleTokens || normTitle.split(" ");
+      const hasActualMatch = titleWords.some(w => areVowelsCompatible(cleanQ, w) && (w[0] === cleanQ[0] || (w[0] === 'k' && cleanQ[0] === 'g') || (w[0] === 'g' && cleanQ[0] === 'k')) && spellLevenshtein(cleanQ, w) <= 2);
+      if (hasActualMatch) {
+        matched = true;
+        score += 1500;
+      }
     } else if (song._pAlbumTokens && song._pAlbumTokens.includes(qp)) {
-      matched = true;
-      score += 1400;
+      const albumWords = normAlbum.split(" ");
+      const hasActualMatch = albumWords.some(w => areVowelsCompatible(cleanQ, w) && (w[0] === cleanQ[0] || (w[0] === 'k' && cleanQ[0] === 'g') || (w[0] === 'g' && cleanQ[0] === 'k')) && spellLevenshtein(cleanQ, w) <= 2);
+      if (hasActualMatch) {
+        matched = true;
+        score += 1400;
+      }
     } else if (song._pArtistTokens && song._pArtistTokens.includes(qp)) {
-      matched = true;
-      score += 1200;
+      const artistWords = normArtist.split(" ");
+      const hasActualMatch = artistWords.some(w => areVowelsCompatible(cleanQ, w) && (w[0] === cleanQ[0] || (w[0] === 'k' && cleanQ[0] === 'g') || (w[0] === 'g' && cleanQ[0] === 'k')) && spellLevenshtein(cleanQ, w) <= 2);
+      if (hasActualMatch) {
+        matched = true;
+        score += 1200;
+      }
     }
   }
 
-  // 5. Typo & edit distance on title & album (strictly bounded to max distance 1)
+  // 5. Typo & edit distance on title & album (strictly bounded to max distance 1 with vowel compatibility)
   if (qForDist) {
     const maxDist = 1;
-    if (boundedLevenshtein(qForDist, normTitle, maxDist) <= maxDist) {
+    if (boundedLevenshtein(qForDist, normTitle, maxDist) <= maxDist && areVowelsCompatible(qForDist, normTitle)) {
       matched = true;
       score += 1200;
     }
-    if (boundedLevenshtein(qForDist, normAlbum, maxDist) <= maxDist) {
+    if (boundedLevenshtein(qForDist, normAlbum, maxDist) <= maxDist && areVowelsCompatible(qForDist, normAlbum)) {
       matched = true;
       score += 1600;
     } else {
       const albumFirst = song._albumFirst || normAlbum.split(" ")[0];
-      if (albumFirst && albumFirst.length >= 4 && boundedLevenshtein(qForDist, albumFirst, maxDist) <= maxDist) {
+      if (albumFirst && albumFirst.length >= 5 && boundedLevenshtein(qForDist, albumFirst, maxDist) <= maxDist && areVowelsCompatible(qForDist, albumFirst)) {
         matched = true;
         score += 1400;
       }
@@ -1545,6 +1601,26 @@ function scoreSongWithContext(song, ctx) {
       score += 4000;
       if (song.duration >= 180) score += 4000;
       else if (song.duration >= 90) score += 2000;
+    }
+  }
+
+  // Strict multi-token salience constraint:
+  // When user searches 3 or more words (e.g. "kitta nerungi vaa di"), an unrelated song
+  // that only matches 0 or 1 token (e.g. just "vaa" or "di") MUST NOT be accepted!
+  if (tokens && tokens.length >= 3 && matched) {
+    const targetAll = song._targetText || `${normTitle} ${normAlbum} ${normArtist} ${rawTags.join(" ")}`;
+    let matchedTokenCount = 0;
+    for (const t of tokens) {
+      if (t.length <= 2) continue; // Skip single/2-letter common particles
+      const tReg = new RegExp(`\\b${t.replace(/[-/\\^$*+?.()|[\]{}]/g, "\\$&")}\\b`, "i");
+      if (tReg.test(targetAll)) {
+        matchedTokenCount++;
+      }
+    }
+    const isExactTitleOrAlbum = normTitle === normQ || normTitle === cleanQ || normAlbum === normQ || normAlbum === cleanQ || (coreQ && (coreTitle === coreQ || coreAlbum === coreQ));
+    if (!isExactTitleOrAlbum && matchedTokenCount < 2) {
+      matched = false;
+      score = 0;
     }
   }
 
@@ -1776,8 +1852,8 @@ function executeSearch(rawQuery) {
   AppState.searchSourceFilter = "all";
   if (DOM.clearSearchBtn) DOM.clearSearchBtn.style.display = "block";
 
-  // If wrong spelling, schedule auto-correction of the search input itself!
-  if (isWrongSpelling) {
+  // If wrong spelling and user's query had 0 direct matches, schedule auto-correction of the search input
+  if (isWrongSpelling && searchMasterSongs(trimmed).length === 0) {
     AppState.inputAutoCorrectTimer = setTimeout(() => {
       if (DOM.searchInput && typeof DOM.searchInput.value === "string" && DOM.searchInput.value.trim().toLowerCase() === trimmed.toLowerCase()) {
         DOM.searchInput.value = spellCheck.corrected;
@@ -1791,8 +1867,8 @@ function executeSearch(rawQuery) {
     return s;
   });
 
-  // 2. If wrong spelling and initial query had 0 matches or had typo, also check with corrected query
-  if (isWrongSpelling && (localMatches.length === 0 || spellCheck.hasCorrection)) {
+  // 2. If wrong spelling and initial query had 0 matches or typo corrected had matches
+  if (isWrongSpelling && localMatches.length === 0) {
     const correctedMatches = searchMasterSongs(spellCheck.corrected).map(s => {
       s.source = "jiosaavn";
       return s;
@@ -1800,12 +1876,20 @@ function executeSearch(rawQuery) {
     if (correctedMatches.length > 0) {
       localMatches = correctedMatches;
     }
+  } else if (isWrongSpelling && localMatches.length > 0) {
+    const correctedMatches = searchMasterSongs(spellCheck.corrected).map(s => {
+      s.source = "jiosaavn";
+      return s;
+    });
+    if (correctedMatches.length > localMatches.length) {
+      localMatches = correctedMatches;
+    }
   }
 
   AppState.jioResults = [...localMatches];
   AppState.spotifyResults = [];
 
-  const effectiveSearchTerm = (localMatches.length > 0 && isWrongSpelling) ? spellCheck.corrected : trimmed;
+  const effectiveSearchTerm = (localMatches.length > 0 && searchMasterSongs(trimmed).length === 0 && isWrongSpelling) ? spellCheck.corrected : trimmed;
 
   if (localMatches.length > 0) {
     // Song found in JioSaavn catalogue! Display immediately
@@ -1935,6 +2019,16 @@ function getSearchQueryVariants(cleanQuery) {
     variants.add("no money no honey");
     variants.add("vaanam no money no honey");
     variants.add("no money");
+  }
+
+  // 1d. "Kitta Nerungi Vaadi" / Dishyum aliases
+  if (lower.includes("kitta") || lower.includes("kittha")) {
+    if (lower.includes("nerung") || lower.includes("vaa") || lower.includes("vadi") || lower.includes("vaadi") || lower.includes("di")) {
+      variants.add("kitta nerungi vaadi");
+      variants.add("kitta nerungi vaa di");
+      variants.add("dishyum kitta nerungi");
+      variants.add("dishyum");
+    }
   }
 
   // 2. Trailing vowel variations (a <-> e, e <-> a, a <-> u)
