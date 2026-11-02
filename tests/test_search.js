@@ -1849,6 +1849,45 @@ const emptyDiv = document.getElementById("emptyState");
 assert.strictEqual(emptyDiv.style.display, "block", "Empty state ('No matching songs found') must be displayed for non-matching queries");
 console.log("[PASS] Verified: Non-existent queries return 0 results and display 'No matching songs found'.");
 
+// --------------------------------------------------------------------------
+// TEST 44: Verifying "Check All Songs" via Search Bar & All Songs Action
+// --------------------------------------------------------------------------
+console.log("\nTest 44: Verifying 'Check All Songs' via Search Bar & All Songs Action...");
+
+const allSongsTestQueries = [
+  "all songs",
+  "check all songs",
+  "check all",
+  "all",
+  "songs",
+  "show all songs",
+  "view all songs",
+  "list all songs",
+  "browse all songs",
+  "all tracks",
+  "every song",
+  "all paatu",
+  "ella songs"
+];
+
+for (const q of allSongsTestQueries) {
+  const results = searchMasterSongs(q);
+  assert.strictEqual(results.length, AppState.masterSongs.length, `Searching '${q}' must return all ${AppState.masterSongs.length} songs in catalogue, got ${results.length}`);
+}
+console.log(`[PASS] Verified: All ${allSongsTestQueries.length} 'check all songs' search variations return all catalogue tracks.`);
+
+// Verify executeSearch with "check all songs" in search bar
+executeSearch("check all songs");
+assert.strictEqual(AppState.searchResults.length, AppState.masterSongs.length, `executeSearch('check all songs') must load all ${AppState.masterSongs.length} songs`);
+assert.strictEqual(AppState.isSearching, true, "isSearching must be true");
+assert.strictEqual(AppState.isFetchingSpotify, false, "isFetchingSpotify must be false");
+
+// Verify keyword combination with all songs (e.g. "check all songs anirudh") filters to Anirudh tracks
+const anirudhAllSongs = searchMasterSongs("check all songs anirudh");
+assert(anirudhAllSongs.length > 0 && anirudhAllSongs.length < AppState.masterSongs.length, "Combined search 'check all songs anirudh' must filter to Anirudh tracks");
+assert(anirudhAllSongs.some(s => s.artist.toLowerCase().includes("anirudh")), "Results must contain Anirudh tracks");
+console.log("[PASS] Verified: 'check all songs' in search bar loads all songs; combined queries filter accurately.");
+
 console.log("\n==================================================");
-console.log("ALL 43 SEARCH, CATALOGUE, FULL-STREAM, DUAL-API, ALBUM SEPARATION, TRANSLITERATION, FRONTEND, STICKY PLAYER, < 2MB DOWNLOAD, SPELLCHECK, NO MONEY & ANTI-COLLISION TESTS PASSED!");
+console.log("ALL 44 SEARCH, CATALOGUE, FULL-STREAM, DUAL-API, ALBUM SEPARATION, TRANSLITERATION, FRONTEND, STICKY PLAYER, < 2MB DOWNLOAD, SPELLCHECK, NO MONEY, ANTI-COLLISION & CHECK ALL SONGS TESTS PASSED!");
 console.log("==================================================\n");

@@ -354,6 +354,18 @@ function setupEventListeners() {
     });
   }
 
+  // Check All Songs Button (Quick Action)
+  const checkAllBtn = document.getElementById("checkAllSongsNavBtn");
+  if (checkAllBtn) {
+    checkAllBtn.addEventListener("click", () => {
+      if (DOM.searchInput) {
+        DOM.searchInput.value = "all songs";
+        DOM.searchInput.focus();
+      }
+      executeSearch("all songs");
+    });
+  }
+
   // Reset Search & Filters Button
   if (DOM.resetSearchBtn) {
     DOM.resetSearchBtn.addEventListener("click", () => {
@@ -834,7 +846,8 @@ const KNOWN_VALID_SONG_WORDS = new Set([
   // Common Tamil roots & transliteration words
   "kitta", "nerungi", "vaadi", "katta", "vandi", "dishyum", "sakalakala", "vallavan",
   "kottai", "mariamman", "kattu", "kuyilu", "vaseegara", "aalaporan", "thamizhan",
-  "nenjukkul", "peidhidum", "nenjinile", "pottu", "kootu", "kallu", "mullu", "thillu"
+  "nenjukkul", "peidhidum", "nenjinile", "pottu", "kootu", "kallu", "mullu", "thillu",
+  "check", "all", "show", "view", "list", "browse", "see", "every"
 ]);
 
 // Tamil & Indian transliteration vowel compatibility helper
@@ -1232,6 +1245,24 @@ function buildQueryContext(rawQuery) {
   const is1980to2026Query = /\b(1980\s*(?:to|-|until|through)\s*2026|1980\s+2026|1980s?\s*(?:to|-)\s*2026s?)\b/i.test(normQ) ||
     (/\b1980\b/i.test(normQ) && /\b2026\b/i.test(normQ));
 
+  // Pure "Check All Songs" in Search Bar Detection
+  const allSongsRegex = /^(all\s+songs?|check\s+all(\s+songs?)?|check\s+songs?|show\s+all(\s+songs?)?|view\s+all(\s+songs?)?|list\s+all(\s+songs?)?|see\s+all(\s+songs?)?|browse\s+all(\s+songs?)?|all\s+tracks?|all\s+music|every\s+songs?|all|songs?|total\s+songs?|full\s+songs?|all\s+album\s+songs?|ella\s+songs?|ellam\s+songs?|ella\s+paa?t+u|ellam\s+paa?t+u|all\s+paa?t+u)$/i;
+  const hasAllPhrase = allSongsRegex.test(normQ.trim()) ||
+    /\b(all\s+songs|check\s+all\s+songs|check\s+all|show\s+all\s+songs|view\s+all\s+songs|list\s+all\s+songs|browse\s+all\s+songs|every\s+song|ella\s+songs|ellam\s+songs)\b/i.test(normQ.trim());
+  const allFilterWordsRegex = /\b(all|songs|song|check|show|view|list|see|browse|every|tracks|track|music|total|full|album|albums|ella|ellam|paatu|paattu|pattu|by|of)\b/gi;
+  const remainingWithoutAll = normQ.replace(allFilterWordsRegex, " ").replace(/\s+/g, " ").trim();
+  const isPureAllSongsQuery = Boolean(hasAllPhrase && remainingWithoutAll.length === 0);
+
+  // When "all songs" phrase is combined with keywords (e.g. "check all songs anirudh", "all songs 90s"), strip all songs phrase from cleanQ
+  if (hasAllPhrase && remainingWithoutAll.length > 0) {
+    cleanQ = remainingWithoutAll;
+    const typoRemaining = correctSearchQuery(remainingWithoutAll);
+    if (typoRemaining && typoRemaining !== remainingWithoutAll) {
+      const cleanTypo = typoRemaining.replace(allFilterWordsRegex, " ").replace(/\s+/g, " ").trim();
+      if (cleanTypo) cleanQ = cleanTypo;
+    }
+  }
+
   const specificYearMatch = normQ.match(/\b(19[89]\d|20[0-2]\d)\b/);
   const specificYear = specificYearMatch ? specificYearMatch[1] : null;
   const isSpecificYearOnly = specificYear && cleanQ.replace(new RegExp(`\\b${specificYear}\\b`, 'g'), " ").trim().length === 0;
@@ -1276,7 +1307,7 @@ function buildQueryContext(rawQuery) {
   const cleanPhoneticQ = toPhonetic(cleanQ);
   const phoneticQ = toPhonetic(rawQuery);
   const qPhonetics = [phoneticQ, cleanPhoneticQ].filter(Boolean);
-  const coreQ = cleanCoreTitle(rawQuery);
+  const coreQ = cleanCoreTitle(cleanQ && cleanQ.length > 0 ? cleanQ : rawQuery);
   const qForDist = cleanQ && cleanQ.length >= 4 ? cleanQ : (normQ.length >= 4 ? normQ : null);
 
   const tokenSource = cleanQ && cleanQ.length >= 2 ? cleanQ : normQ;
@@ -1286,7 +1317,7 @@ function buildQueryContext(rawQuery) {
   return {
     rawQuery, normQ, cleanQ, compactQ, cleanCompactQ, cleanPhoneticQ, phoneticQ,
     qPhonetics, coreQ, qForDist, tokens, tokenRegexes,
-    is1980to2026Query, specificYear, isSpecificYearOnly,
+    is1980to2026Query, isPureAllSongsQuery, specificYear, isSpecificYearOnly,
     requestedEra, isPureEraQuery, isGenericMovieQuery, isMovieWordInQuery,
     requestedType, isPureTypeQuery
   };
@@ -1296,10 +1327,22 @@ function scoreSongWithContext(song, ctx) {
   const {
     normQ, cleanQ, compactQ, cleanPhoneticQ, phoneticQ,
     qPhonetics, coreQ, qForDist, tokens, tokenRegexes,
-    is1980to2026Query, specificYear, isSpecificYearOnly,
+    is1980to2026Query, isPureAllSongsQuery, specificYear, isSpecificYearOnly,
     requestedEra, isPureEraQuery, isGenericMovieQuery, isMovieWordInQuery,
     requestedType, isPureTypeQuery
   } = ctx;
+
+  // Pure "Check All Songs" Query (e.g. "all songs", "check all songs", "all", "songs", "all tracks")
+  if (isPureAllSongsQuery) {
+    let allScore = 6000;
+    if (song.year) allScore += 100;
+    if (Array.isArray(song.sections) && song.sections.includes("trending")) allScore += 80;
+    if (song.era === "now") allScore += 50;
+    else if (song.era === "2k") allScore += 40;
+    else if (song.era === "90s") allScore += 30;
+    else if (song.era === "80s") allScore += 20;
+    return { matched: true, score: allScore };
+  }
 
   // 1980 to 2026 range queries
   if (is1980to2026Query) {
@@ -1651,6 +1694,11 @@ function searchMasterSongs(rawQuery) {
   const ctx = buildQueryContext(rawQuery);
   if (!ctx) return [...AppState.masterSongs];
 
+  // Pure "Check All Songs" Query returns entire master catalogue immediately
+  if (ctx.isPureAllSongsQuery) {
+    return [...AppState.masterSongs];
+  }
+
   let results = [];
   for (const song of AppState.masterSongs) {
     const res = scoreSongWithContext(song, ctx);
@@ -1837,6 +1885,24 @@ function executeSearch(rawQuery) {
     AppState.isFetchingSpotify = false;
     if (DOM.clearSearchBtn) DOM.clearSearchBtn.style.display = "none";
     if (DOM.emptyState) DOM.emptyState.style.display = "none";
+    renderContent();
+    return;
+  }
+
+  // Pure "Check All Songs" in Search Bar: immediately display all tracks in master catalogue
+  const ctxAll = buildQueryContext(trimmed);
+  if (ctxAll && ctxAll.isPureAllSongsQuery) {
+    AppState.searchQuery = trimmed;
+    AppState.normalizedQuery = normalized;
+    AppState.correctedQuery = "";
+    AppState.isSearching = true;
+    AppState.isFetchingSpotify = false;
+    AppState.isSpotifyFallbackResults = false;
+    AppState.searchResults = [...AppState.masterSongs];
+    AppState.jioResults = [...AppState.masterSongs];
+    AppState.spotifyResults = [];
+    AppState.queue = [...AppState.masterSongs];
+    if (DOM.clearSearchBtn) DOM.clearSearchBtn.style.display = "block";
     renderContent();
     return;
   }
@@ -2629,6 +2695,16 @@ function renderContent() {
 
     if (DOM.emptyState) DOM.emptyState.style.display = "none";
 
+    const searchCtx = buildQueryContext(AppState.searchQuery);
+    const isPureAll = searchCtx && searchCtx.isPureAllSongsQuery;
+    const headerTitle = isPureAll
+      ? "All Songs Catalogue (1980 – 2026)"
+      : `Search Results for "${escapeHTML(AppState.searchQuery)}"`;
+    const headerBadge = isPureAll
+      ? `${totalCount} total songs available`
+      : `${totalCount} tracks found`;
+    const headerIcon = isPureAll ? "🎵" : (AppState.isSpotifyFallbackResults ? "🟢" : "🔍");
+
     DOM.contentContainer.innerHTML = `
       ${spellcheckBannerHTML}
       ${spotifyBannerHTML}
@@ -2639,9 +2715,9 @@ function renderContent() {
       <section class="music-section">
         <div class="section-header">
           <div class="section-title-wrap">
-            <span class="section-icon">${AppState.isSpotifyFallbackResults ? "🟢" : "🔍"}</span>
-            <h2 class="section-title">Search Results for "${escapeHTML(AppState.searchQuery)}"</h2>
-            <span class="section-badge">${totalCount} tracks found</span>
+            <span class="section-icon">${headerIcon}</span>
+            <h2 class="section-title">${headerTitle}</h2>
+            <span class="section-badge">${headerBadge}</span>
           </div>
         </div>
         <div class="songs-grid">
