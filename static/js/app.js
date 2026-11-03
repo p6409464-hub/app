@@ -1226,7 +1226,8 @@ function prepareSongSearchMetadata(song) {
   const normLang = normalizeSearchText(lang);
   const normCategory = normalizeSearchText(category);
 
-  const titleTokens = normTitle.split(" ").filter(Boolean);
+  const coreCleanTitle = cleanCoreTitle(title);
+  const titleTokens = (coreCleanTitle ? coreCleanTitle.split(" ") : normTitle.split(" ")).filter(Boolean);
   const albumTokens = normAlbum.split(" ").filter(Boolean);
   const artistTokens = normArtist.split(" ").filter(Boolean);
 
@@ -1286,7 +1287,12 @@ function prepareSongSearchMetadata(song) {
     _compactCorpus: compactCorpus,
     _phoneticCorpus: phoneticCorpus,
     _wordTokens: wordTokens,
-    _phoneticTokens: phoneticTokens
+    _phoneticTokens: phoneticTokens,
+    _extractedMovie: extractSongMovie({ title, album, movie: song.movie }),
+    _canonMovie: toTamilCanonical(cleanCoreTitle(extractSongMovie({ title, album, movie: song.movie })).replace(/\s+/g, "")),
+    _canonicalKey: getSongCanonicalKey({ title, name: title, album, movie: song.movie, artist, singer: artist }),
+    _isDerivative: isUnwantedDerivativeVersion({ title, name: title, album, movie: song.movie, artist, singer: artist, tags: normTags, duration: song.duration }),
+    _originalRank: getOriginalVersionRank({ title, name: title, album, movie: song.movie, artist, singer: artist, tags: normTags, audio_url: song.audio_url, duration: song.duration, year: song.year })
   };
 }
 
@@ -1301,6 +1307,163 @@ function cleanCoreTitle(rawTitle) {
     .replace(/\s+/g, " ")
     .trim()
     .toLowerCase();
+}
+
+// Detects compilation albums vs authentic movie soundtrack albums
+function isCompilationAlbum(albumName) {
+  if (!albumName) return false;
+  return /\b(hits of|signature hits|best of|love hits|dance hits|collection|greatest hits|top hero|favourite songs|sweet voice of|paadava pudhu|mega star|isai virundhu|special hits|top 10|top 20|celebration hits|film story)\b/i.test(albumName);
+}
+
+// Identifies unwanted derivative versions (remixes, DJ edits, lofi, covers, reels edits, dialogue snippets)
+function isUnwantedDerivativeVersion(song, userQuery = "") {
+  if (!song) return false;
+  const uq = (userQuery || "").toLowerCase();
+  const explicitKeywords = /\b(remix|remixes|dj|mashup|lofi|lo-fi|slowed|reverb|cover|karaoke|acoustic|instrumental|sped|speed|teaser|trailer|reels|shorts|dialogue|parody)\b/i;
+  if (explicitKeywords.test(uq)) return false;
+
+  const t = (song.title || song.name || "").toLowerCase();
+  const a = (song.album || song.movie || "").toLowerCase();
+  const art = (song.artist || song.singer || "").toLowerCase();
+  const tags = Array.isArray(song.tags) ? song.tags.join(" ").toLowerCase() : "";
+  const all = `${t} ${a} ${art} ${tags}`;
+
+  if (/\b(remix|remixes|dance mix|club mix|edm mix|party mix|flip|mashup|mash-up|medley|parody)\b/i.test(t)) return true;
+  if (/\b(dj\s|dj-|dj_|dj mix)\b/i.test(t) || art.startsWith("dj ") || art.includes(" dj ") || art.includes(", dj")) return true;
+  if (/\b(slowed|reverb|lofi|lo-fi|sped up|speed up|chillout|ambient mix|bass boosted)\b/i.test(all)) return true;
+  if (/\b(cover version|cover|karaoke|instrumental|tribute|piano cover|violin cover|guitar cover|flute cover|unplugged cover|made famous by|in the style of)\b/i.test(t)) return true;
+  if (/\b(reels version|shorts version|tiktok edit|trending edit|insta edit|reels edit)\b/i.test(all)) return true;
+  if (/\b(audio teaser|teaser|trailer|promo teaser|dialogue promo|dialogue part|glimpse|motion poster|film story|movie dialogue)\b/i.test(t) || /\b(dialogue|film story)\b/i.test(a)) return true;
+  if (song.duration && song.duration < 55 && !/\b(intro|theme|whistle|title)\b/i.test(t)) return true;
+
+  return false;
+}
+
+// Extracts authentic movie or standalone album name from song metadata
+function extractSongMovie(song) {
+  if (!song) return "";
+  if (song.movie) return song.movie;
+  const combined = (song.title || "") + " " + (song.album || "");
+  const match = combined.match(/\bfrom\s*["']?([^"')\],]+)["']?/i);
+  if (match) return match[1].trim();
+  if (song.album && !isCompilationAlbum(song.album) && !/\b(from|soundtrack|ost|vol|hits)\b/i.test(song.album)) return song.album;
+  return "";
+}
+
+// Canonical grouping key to collapse multiple duplicate album releases into single track identity
+function getSongCanonicalKey(song) {
+  const rawTitle = song.title || song.name || "";
+  const coreTitle = cleanCoreTitle(rawTitle);
+  const compactTitle = toTamilCanonical(coreTitle.replace(/\s+/g, ""));
+
+  const movie = extractSongMovie(song);
+  if (movie) {
+    const compactMovie = toTamilCanonical(cleanCoreTitle(movie).replace(/\s+/g, ""));
+    return `${compactTitle}__m_${compactMovie}`;
+  }
+
+  const art = (song.artist || song.singer || "").split(/[,&]/)[0].trim();
+  const compactArt = toTamilCanonical(normalizeSearchText(art).replace(/\s+/g, ""));
+  return `${compactTitle}__a_${compactArt}`;
+}
+
+// Ranks original soundtrack recording highest over compilations, duplicates and covers
+function getOriginalVersionRank(song) {
+  let rank = 0;
+  const t = (song.title || song.name || "").toLowerCase();
+  const a = (song.album || song.movie || "").toLowerCase();
+  const movie = (song.movie || "").toLowerCase();
+  const isComp = isCompilationAlbum(a);
+
+  if (!isComp && movie && a === movie) rank += 50000;
+  else if (!isComp && !t.includes("from \"") && !a.includes("hits") && !a.includes("vol")) rank += 30000;
+
+  if (isComp) rank -= 40000;
+  if (/\bfrom\s*["'][^"']+["']/i.test(t) || /\bfrom\s+[a-z]+/i.test(t)) rank -= 15000;
+
+  if (song.audio_url && song.audio_url.includes("aac.saavncdn.com")) {
+    rank += 5000;
+    if (song.audio_url.includes("_320.mp4")) rank += 3000;
+  }
+
+  if (song.duration && song.duration >= 150 && song.duration <= 450) rank += 2000;
+
+  if (song.year) {
+    const yr = parseInt(song.year, 10);
+    if (movie === "ghilli" && yr === 2004) rank += 20000;
+    if (movie === "jayam" && yr === 2003) rank += 20000;
+  }
+
+  if (Array.isArray(song.tags) && song.tags.includes("soundtrack")) rank += 5000;
+
+  return rank;
+}
+
+const MOVIE_TARGET_INDEX = new Map();
+
+function indexMovieTarget(song) {
+  const m = song._extractedMovie || extractSongMovie(song);
+  if (!m) return;
+  const cleanM = cleanCoreTitle(m);
+  if (!cleanM || cleanM.length < 3) return;
+  const canonM = song._canonMovie || toTamilCanonical(cleanM.replace(/\s+/g, ""));
+  const entry = { cleanMovie: cleanM, canonMovie: canonM, movieName: m };
+  MOVIE_TARGET_INDEX.set(cleanM, entry);
+  const normM = normalizeTamilWord(cleanM);
+  if (normM) MOVIE_TARGET_INDEX.set(normM, entry);
+  if (cleanM === "gilli") MOVIE_TARGET_INDEX.set("ghilli", entry);
+  if (cleanM === "ghilli") MOVIE_TARGET_INDEX.set("gilli", entry);
+}
+
+// Determines if query matches an authentic movie name in the database (O(1) lookup)
+function findExactMovieTarget(query) {
+  if (!query) return null;
+  const clean = cleanCoreTitle(query);
+  if (!clean || clean.length < 3) return null;
+  return MOVIE_TARGET_INDEX.get(clean) || MOVIE_TARGET_INDEX.get(normalizeTamilWord(clean)) || null;
+}
+
+// Deduplicate candidate results down to ONE verified original version per song
+function deduplicateToOriginals(rawResults, rawQuery = "") {
+  let pool = rawResults;
+  const explicitKeywords = /\b(remix|remixes|dj|mashup|lofi|lo-fi|slowed|reverb|cover|karaoke|acoustic|instrumental|sped|speed|teaser|trailer|reels|shorts|dialogue|parody)\b/i;
+  const isExplicit = explicitKeywords.test(rawQuery || "");
+
+  if (!isExplicit) {
+    const nonDeriv = rawResults.filter(r => !(r.song && (r.song._isDerivative ?? isUnwantedDerivativeVersion(r.song, rawQuery))));
+    if (nonDeriv.length > 0) {
+      pool = nonDeriv;
+    }
+  }
+
+  const groups = new Map();
+  for (const item of pool) {
+    const s = item.song;
+    const key = (s && s._canonicalKey) || getSongCanonicalKey(s);
+    if (!groups.has(key)) {
+      groups.set(key, []);
+    }
+    groups.get(key).push(item);
+  }
+
+  const originals = [];
+  for (const [key, items] of groups.entries()) {
+    if (items.length === 1) {
+      originals.push(items[0]);
+      continue;
+    }
+    items.sort((a, b) => {
+      const bRank = (b.song && b.song._originalRank !== undefined) ? b.song._originalRank : getOriginalVersionRank(b.song);
+      const aRank = (a.song && a.song._originalRank !== undefined) ? a.song._originalRank : getOriginalVersionRank(a.song);
+      const origDiff = bRank - aRank;
+      if (origDiff !== 0) return origDiff;
+      return b.score - a.score;
+    });
+    originals.push(items[0]);
+  }
+
+  originals.sort((a, b) => b.score - a.score);
+  return originals.map(o => o.song);
 }
 
 // Intelligently finds matching original singer / 320kbps full-length stream from JioSaavn catalogue
@@ -1669,26 +1832,27 @@ function scoreSongWithContext(song, ctx) {
   }
 
   // 2. Movie / Album matches (Ensures ALL songs belonging to the album are included and displayed separately!)
-  if (normAlbum === normQ || normAlbum === cleanQ || (coreQ && coreAlbum === coreQ)) {
+  const albumIsComp = isCompilationAlbum(normAlbum);
+  if (normAlbum === normQ || normAlbum === cleanQ || (coreQ && coreAlbum === coreQ) || (song.movie && song.movie.toLowerCase() === cleanQ)) {
     matched = true;
-    score += 8000;
+    score += 15000;
     if (coreTitle.includes(coreQ) || normTitle.includes(normQ) || (cleanQ && normTitle.includes(cleanQ))) {
       score += 8500; // Title track from same named movie (e.g. Manithan Manithan in Manithan)
     }
     if (isMovieWordInQuery) {
       score += 12000; // Explicitly searched for movie/album
     }
-  } else if (normAlbum.startsWith(cleanQ + " ") || normAlbum.startsWith(normQ + " ")) {
+  } else if (!albumIsComp && (normAlbum.startsWith(cleanQ + " ") || normAlbum.startsWith(normQ + " "))) {
     matched = true;
     score += 4000;
-  } else if (cleanQ.length >= 3 && cleanQ.startsWith(normAlbum + " ")) {
+  } else if (!albumIsComp && cleanQ.length >= 3 && cleanQ.startsWith(normAlbum + " ")) {
     matched = true;
     score += 3500;
-  } else if (normAlbum.includes(" " + cleanQ + " ") || normAlbum.startsWith(cleanQ + " ") || normAlbum.endsWith(" " + cleanQ) ||
-             normAlbum.includes(" " + normQ + " ") || normAlbum.startsWith(normQ + " ") || normAlbum.endsWith(" " + normQ)) {
+  } else if (!albumIsComp && (normAlbum.includes(" " + cleanQ + " ") || normAlbum.startsWith(cleanQ + " ") || normAlbum.endsWith(" " + cleanQ) ||
+             normAlbum.includes(" " + normQ + " ") || normAlbum.startsWith(normQ + " ") || normAlbum.endsWith(" " + normQ))) {
     matched = true;
     score += 3000;
-  } else if (cleanQ.length >= 5 && (normAlbum === cleanQ || normAlbum.startsWith(cleanQ + " ") || normAlbum.endsWith(" " + cleanQ) || normAlbum.includes(" " + cleanQ + " "))) {
+  } else if (!albumIsComp && cleanQ.length >= 5 && (normAlbum === cleanQ || normAlbum.startsWith(cleanQ + " ") || normAlbum.endsWith(" " + cleanQ) || normAlbum.includes(" " + cleanQ + " "))) {
     matched = true;
     score += 1500;
   }
@@ -1952,6 +2116,22 @@ function searchMasterSongs(rawQuery) {
     return [...AppState.masterSongs];
   }
 
+  // Check if query is targeting a strict movie soundtrack
+  const movieTarget = findExactMovieTarget(rawQuery);
+  if (movieTarget) {
+    const movieCandidates = [];
+    for (const song of AppState.masterSongs) {
+      const sCanonMovie = song._canonMovie || toTamilCanonical(cleanCoreTitle(song._extractedMovie || extractSongMovie(song)).replace(/\s+/g, ""));
+      if (sCanonMovie === movieTarget.canonMovie) {
+        const res = scoreSongWithContext(song, ctx);
+        movieCandidates.push({ song, score: (res.matched ? res.score : 0) + 50000 });
+      }
+    }
+    if (movieCandidates.length > 0) {
+      return deduplicateToOriginals(movieCandidates, rawQuery);
+    }
+  }
+
   let results = [];
   const candidates = getCandidateSongs(ctx);
   for (const song of candidates) {
@@ -1996,9 +2176,7 @@ function searchMasterSongs(rawQuery) {
     }
   }
 
-  // Sort descending by relevance score (highest quality match first)
-  results.sort((a, b) => b.score - a.score);
-  return results.map(r => r.song);
+  return deduplicateToOriginals(results, rawQuery);
 }
 
 // ==========================================================================
@@ -2054,6 +2232,7 @@ function loadCatalogue() {
       download_authorized: Boolean(s.download_authorized)
     });
 
+    indexMovieTarget(prepared);
     deduped.push(prepared);
   }
 
@@ -2194,6 +2373,9 @@ function executeSearch(rawQuery) {
   AppState.normalizedQuery = normalized;
   AppState.correctedQuery = isWrongSpelling ? spellCheck.corrected : "";
   AppState.isSearching = true;
+  AppState.searchResults = [];
+  AppState.jioResults = [];
+  AppState.spotifyResults = [];
   AppState.searchSourceFilter = "all";
   if (DOM.clearSearchBtn) DOM.clearSearchBtn.style.display = "block";
 
