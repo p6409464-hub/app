@@ -782,13 +782,16 @@ function checkTokenInTarget(token, tokenRegex, target, targetWords) {
   if (!token) return true;
   if (tokenRegex && tokenRegex.test(target)) return true;
   const normTok = normalizeTamilWord(token);
+  const canonTok = toTamilCanonical(token);
   const words = Array.isArray(targetWords) ? targetWords : (target || "").split(" ").filter(Boolean);
   for (const w of words) {
     if (w === token) return true;
-    if (token[0] !== w[0]) continue; // First letter must match to prevent unrelated words from matching
+    const canonW = toTamilCanonical(w);
+    if (canonTok && canonW && canonTok === canonW && areConsonantsCompatible(token, w) && areVowelsCompatible(token, w)) return true;
     const normW = normalizeTamilWord(w);
-    if (normTok && normW && normTok === normW) return true;
-    if (token.length >= 6 && w.length >= 6 && boundedLevenshtein(token, w, 1) <= 1) return true;
+    if (normTok && normW && normTok === normW && areConsonantsCompatible(token, w)) return true;
+    if (toTamilCanonical(token[0]) !== toTamilCanonical(w[0])) continue;
+    if (token.length >= 6 && w.length >= 6 && boundedLevenshtein(token, w, 1) <= 1 && areConsonantsCompatible(token, w) && areVowelsCompatible(token, w)) return true;
   }
   return false;
 }
@@ -1781,15 +1784,27 @@ function scoreSongWithContext(song, ctx) {
     for (let i = 0; i < tokenRegexes.length; i++) {
       const tok = (tokens && tokens[i]) || "";
       const normTok = normalizeTamilWord(tok);
+      const canonTok = toTamilCanonical(tok);
       let foundIndex = -1;
       for (let j = 0; j < targetWords.length; j++) {
         if (usedWordIndices.has(j)) continue;
         const w = targetWords[j];
         if (w === tok) { foundIndex = j; break; }
-        if (tok[0] !== w[0]) continue;
+        const canonW = toTamilCanonical(w);
+        if (canonTok && canonW && canonTok === canonW && areConsonantsCompatible(tok, w) && areVowelsCompatible(tok, w)) {
+          foundIndex = j;
+          break;
+        }
         const normW = normalizeTamilWord(w);
-        if (normTok && normW && normTok === normW) { foundIndex = j; break; }
-        if (tok.length >= 6 && w.length >= 6 && boundedLevenshtein(tok, w, 1) <= 1) { foundIndex = j; break; }
+        if (normTok && normW && normTok === normW && areConsonantsCompatible(tok, w)) {
+          foundIndex = j;
+          break;
+        }
+        if (toTamilCanonical(tok[0]) !== toTamilCanonical(w[0])) continue;
+        if (tok.length >= 6 && w.length >= 6 && boundedLevenshtein(tok, w, 1) <= 1 && areConsonantsCompatible(tok, w) && areVowelsCompatible(tok, w)) {
+          foundIndex = j;
+          break;
+        }
       }
       if (foundIndex !== -1) {
         usedWordIndices.add(foundIndex);
@@ -1849,15 +1864,21 @@ function scoreSongWithContext(song, ctx) {
   // that only matches 0 or 1 token (e.g. just "vaa" or "di") MUST NOT be accepted!
   if (tokens && tokens.length >= 3 && matched) {
     const targetAll = song._targetText || `${normTitle} ${normAlbum} ${normArtist} ${rawTags.join(" ")}`;
+    const targetWords = (song._targetWords || targetAll.split(" ")).filter(Boolean);
     let matchedTokenCount = 0;
-    for (const t of tokens) {
+    for (let i = 0; i < tokens.length; i++) {
+      const t = tokens[i];
       if (t.length <= 2) continue; // Skip single/2-letter common particles
-      const tReg = new RegExp(`\\b${t.replace(/[-/\\^$*+?.()|[\]{}]/g, "\\$&")}\\b`, "i");
-      if (tReg.test(targetAll)) {
+      const tReg = (tokenRegexes && tokenRegexes[i]) || new RegExp(`\\b${t.replace(/[-/\\^$*+?.()|[\]{}]/g, "\\$&")}\\b`, "i");
+      if (checkTokenInTarget(t, tReg, targetAll, targetWords)) {
         matchedTokenCount++;
       }
     }
-    const isExactTitleOrAlbum = normTitle === normQ || normTitle === cleanQ || normAlbum === normQ || normAlbum === cleanQ || (coreQ && (coreTitle === coreQ || coreAlbum === coreQ));
+    const isExactTitleOrAlbum = normTitle === normQ || normTitle === cleanQ ||
+      normAlbum === normQ || normAlbum === cleanQ ||
+      (coreQ && (coreTitle === coreQ || coreAlbum === coreQ)) ||
+      (song._canonTitle && (song._canonTitle === ctx.canonQ || song._canonTitle === ctx.cleanCanonQ)) ||
+      (song._canonAlbum && (song._canonAlbum === ctx.canonQ || song._canonAlbum === ctx.cleanCanonQ));
     if (!isExactTitleOrAlbum && matchedTokenCount < 2) {
       matched = false;
       score = 0;
