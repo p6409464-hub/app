@@ -307,12 +307,23 @@ function setupEventListeners() {
   refreshDOMElements();
   // Live Instant Search Bar with 0ms deterministic local response & spell-check auto-correction
   if (DOM.searchInput) {
+    let searchInputDebounceTimer = null;
     DOM.searchInput.addEventListener("input", (e) => {
-      executeSearch(e.target.value);
+      clearTimeout(searchInputDebounceTimer);
+      const val = e.target.value;
+      if (!val || !val.trim()) {
+        executeSearch("");
+        return;
+      }
+      // 60ms micro-debounce ensures smooth, responsive typing without frame drops
+      searchInputDebounceTimer = setTimeout(() => {
+        executeSearch(val);
+      }, 60);
     });
 
     DOM.searchInput.addEventListener("keydown", (e) => {
       if (e.key === "Enter") {
+        clearTimeout(searchInputDebounceTimer);
         if (AppState.correctedQuery && DOM.searchInput) {
           DOM.searchInput.value = AppState.correctedQuery;
         }
@@ -322,6 +333,7 @@ function setupEventListeners() {
           showToast(`🎵 Playing "${AppState.searchResults[0].title}" with related tracks in Playlist!`, "info");
         }
       } else if (e.key === "Escape") {
+        clearTimeout(searchInputDebounceTimer);
         if (DOM.searchInput) DOM.searchInput.value = "";
         executeSearch("");
       }
@@ -968,6 +980,7 @@ function areVowelsCompatible(w1, w2) {
 
 // Dynamic Catalogue Vocabulary & Inverted Search Indexes
 var _catalogueVocabMap = null;
+var _catalogueVocabByCanonFirstChar = null;
 var _tokenInvertedIndex = null;
 var _canonInvertedIndex = null;
 
@@ -1000,6 +1013,7 @@ function indexSingleSong(s) {
 
 function buildSearchIndex(songsList) {
   _catalogueVocabMap = new Map();
+  _catalogueVocabByCanonFirstChar = new Map();
   _tokenInvertedIndex = new Map();
   _canonInvertedIndex = new Map();
 
@@ -1017,6 +1031,15 @@ function buildSearchIndex(songsList) {
 
   for (let idx = 0; idx < list.length; idx++) {
     indexSingleSong(list[idx]);
+  }
+
+  for (const [w, freq] of _catalogueVocabMap.entries()) {
+    if (!w) continue;
+    const c = toTamilCanonical(w[0]);
+    if (!_catalogueVocabByCanonFirstChar.has(c)) {
+      _catalogueVocabByCanonFirstChar.set(c, []);
+    }
+    _catalogueVocabByCanonFirstChar.get(c).push([w, freq]);
   }
 }
 
@@ -1127,11 +1150,13 @@ function correctSingleWord(word) {
   let bestDist = 99;
   let maxFreq = 0;
 
-  for (const [vWord, freq] of vocab.entries()) {
+  const c1 = toTamilCanonical(w[0]);
+  const candidates = (_catalogueVocabByCanonFirstChar && _catalogueVocabByCanonFirstChar.get(c1)) || vocab.entries();
+
+  for (const [vWord, freq] of candidates) {
     if (Math.abs(vWord.length - w.length) > 2) continue;
 
     // First letter / sound group must match in Tamil phonology
-    const c1 = toTamilCanonical(w[0]);
     const c2 = toTamilCanonical(vWord[0]);
     if (c1 !== c2) continue;
 
@@ -1407,12 +1432,18 @@ function indexMovieTarget(song) {
   const cleanM = cleanCoreTitle(m);
   if (!cleanM || cleanM.length < 3) return;
   const canonM = song._canonMovie || toTamilCanonical(cleanM.replace(/\s+/g, ""));
-  const entry = { cleanMovie: cleanM, canonMovie: canonM, movieName: m };
-  MOVIE_TARGET_INDEX.set(cleanM, entry);
-  const normM = normalizeTamilWord(cleanM);
-  if (normM) MOVIE_TARGET_INDEX.set(normM, entry);
-  if (cleanM === "gilli") MOVIE_TARGET_INDEX.set("ghilli", entry);
-  if (cleanM === "ghilli") MOVIE_TARGET_INDEX.set("gilli", entry);
+  let entry = MOVIE_TARGET_INDEX.get(cleanM);
+  if (!entry) {
+    entry = { cleanMovie: cleanM, canonMovie: canonM, movieName: m, songs: [] };
+    MOVIE_TARGET_INDEX.set(cleanM, entry);
+    const normM = normalizeTamilWord(cleanM);
+    if (normM) MOVIE_TARGET_INDEX.set(normM, entry);
+    if (cleanM === "gilli") MOVIE_TARGET_INDEX.set("ghilli", entry);
+    if (cleanM === "ghilli") MOVIE_TARGET_INDEX.set("gilli", entry);
+  }
+  if (!entry.songs.includes(song)) {
+    entry.songs.push(song);
+  }
 }
 
 // Determines if query matches an authentic movie name in the database (O(1) lookup)
@@ -2120,7 +2151,8 @@ function searchMasterSongs(rawQuery) {
   const movieTarget = findExactMovieTarget(rawQuery);
   if (movieTarget) {
     const movieCandidates = [];
-    for (const song of AppState.masterSongs) {
+    const targetPool = (movieTarget.songs && movieTarget.songs.length > 0) ? movieTarget.songs : AppState.masterSongs;
+    for (const song of targetPool) {
       const sCanonMovie = song._canonMovie || toTamilCanonical(cleanCoreTitle(song._extractedMovie || extractSongMovie(song)).replace(/\s+/g, ""));
       if (sCanonMovie === movieTarget.canonMovie) {
         const res = scoreSongWithContext(song, ctx);
@@ -2365,6 +2397,12 @@ function executeSearch(rawQuery) {
     return;
   }
 
+  // 1. Fast direct search in master catalogue first (instant pass)
+  let localMatches = searchMasterSongs(trimmed).map(s => {
+    s.source = "jiosaavn";
+    return s;
+  });
+
   // Spell-checking: check if query is misspelled against catalogue vocabulary & aliases
   const spellCheck = autoCorrectSearchQuery(trimmed);
   const isWrongSpelling = spellCheck.hasCorrection && (spellCheck.corrected.toLowerCase() !== trimmed.toLowerCase());
@@ -2379,75 +2417,57 @@ function executeSearch(rawQuery) {
   AppState.searchSourceFilter = "all";
   if (DOM.clearSearchBtn) DOM.clearSearchBtn.style.display = "block";
 
-  // If wrong spelling and user's query had 0 direct matches, schedule auto-correction of the search input
-  if (isWrongSpelling && searchMasterSongs(trimmed).length === 0) {
-    AppState.inputAutoCorrectTimer = setTimeout(() => {
-      if (DOM.searchInput && typeof DOM.searchInput.value === "string" && DOM.searchInput.value.trim().toLowerCase() === trimmed.toLowerCase()) {
-        DOM.searchInput.value = spellCheck.corrected;
-      }
-    }, 650);
-  }
-
-  // 1. Try search with trimmed query
-  let localMatches = searchMasterSongs(trimmed).map(s => {
-    s.source = "jiosaavn";
-    return s;
-  });
-
-  // 2. If wrong spelling and initial query had 0 matches or typo corrected had matches
-  if (isWrongSpelling && localMatches.length === 0) {
+  // 2. If wrong spelling or 0 direct matches, test corrected query
+  if (isWrongSpelling && (localMatches.length === 0 || spellCheck.corrected.length > 0)) {
     const correctedMatches = searchMasterSongs(spellCheck.corrected).map(s => {
       s.source = "jiosaavn";
       return s;
     });
     if (correctedMatches.length > 0) {
-      localMatches = correctedMatches;
-    }
-  } else if (isWrongSpelling && localMatches.length > 0) {
-    const correctedMatches = searchMasterSongs(spellCheck.corrected).map(s => {
-      s.source = "jiosaavn";
-      return s;
-    });
-    if (correctedMatches.length > localMatches.length) {
-      localMatches = correctedMatches;
+      if (localMatches.length === 0 || correctedMatches.length >= localMatches.length) {
+        localMatches = correctedMatches;
+      }
+      AppState.inputAutoCorrectTimer = setTimeout(() => {
+        if (DOM.searchInput && typeof DOM.searchInput.value === "string" && DOM.searchInput.value.trim().toLowerCase() === trimmed.toLowerCase()) {
+          DOM.searchInput.value = spellCheck.corrected;
+        }
+      }, 500);
     }
   }
 
   AppState.jioResults = [...localMatches];
   AppState.spotifyResults = [];
 
-  const effectiveSearchTerm = (localMatches.length > 0 && searchMasterSongs(trimmed).length === 0 && isWrongSpelling) ? spellCheck.corrected : trimmed;
+  const effectiveSearchTerm = (localMatches.length > 0 && isWrongSpelling) ? spellCheck.corrected : trimmed;
 
   if (localMatches.length > 0) {
-    // Song found in JioSaavn catalogue! Display immediately
+    // Song found in JioSaavn catalogue! Display IMMEDIATELY without waiting or pending spinners
     AppState.isSpotifyFallbackResults = false;
-    AppState.isFetchingSpotify = true; // Indicates background Spotify query is underway in parallel
+    AppState.isFetchingSpotify = false;
     AppState.searchResults = [...localMatches];
     AppState.queue = [...localMatches];
     renderContent();
 
-    // Query Spotify & Global Online catalogue in parallel so BOTH JioSaavn & Spotify results appear!
+    // Query Spotify & Global Online catalogue in background non-blockingly
     AppState.searchDebounceTimer = setTimeout(() => {
       fetchSpotifySearchResults(effectiveSearchTerm, thisRequestId, true /* isParallel */);
-    }, 200);
+    }, 350);
 
     // If an optional external custom backend is configured, query asynchronously for extra live matches
     if (API_BASE) {
       setTimeout(() => {
         fetchBackendSearchResults(effectiveSearchTerm, thisRequestId);
-      }, 350);
+      }, 500);
     }
   } else {
     // Song NOT found in JioSaavn catalogue!
-    // Seamlessly query Spotify & Global Online catalogue in background without redirecting
+    // Seamlessly query Spotify & Global Online catalogue IMMEDIATELY without artificial delay
     AppState.searchResults = [];
     AppState.isSpotifyFallbackResults = false;
     AppState.isFetchingSpotify = true;
     renderContent();
 
-    AppState.searchDebounceTimer = setTimeout(() => {
-      fetchSpotifySearchResults(effectiveSearchTerm, thisRequestId, false /* isParallel */);
-    }, 250);
+    fetchSpotifySearchResults(effectiveSearchTerm, thisRequestId, false /* isParallel */);
   }
 }
 
@@ -2633,6 +2653,22 @@ async function fetchSpotifySearchResults(query, requestId, isParallel = false) {
     const apiSongQuery = isYearOnly ? `Tamil hits ${yearMatch[1]}` : cleanQuery;
     const apiAlbumQuery = isYearOnly ? `Tamil ${yearMatch[1]}` : cleanQuery;
 
+    // Launch iTunes India in parallel with JioSaavn for maximum speed
+    const itunesPromise = (async () => {
+      try {
+        const searchUrl = `https://itunes.apple.com/search?term=${encodeURIComponent(cleanQuery)}&country=IN&entity=song&limit=40`;
+        const res = await fetch(searchUrl, { signal: abortController.signal });
+        if (res.ok) {
+          const data = await res.json();
+          if (data && data.results && Array.isArray(data.results) && data.results.length > 0) {
+            const filteredResults = data.results.filter(r => !isAmateurCoverOrKaraoke(r.trackName, r.artistName));
+            return filteredResults.length > 0 ? filteredResults : data.results;
+          }
+        }
+      } catch (_) {}
+      return [];
+    })();
+
     const queryVariants = getSearchQueryVariants(cleanQuery);
     const songEndpoints = [
       `/api/search/songs?query=${encodeURIComponent(apiSongQuery)}&limit=30`
@@ -2682,56 +2718,49 @@ async function fetchSpotifySearchResults(query, requestId, isParallel = false) {
     // Query Spotify & iTunes India Global Network in parallel (country=IN for complete Tamil catalog 1980-2026)
     let itunesSongs = [];
     try {
-      const searchUrl = `https://itunes.apple.com/search?term=${encodeURIComponent(cleanQuery)}&country=IN&entity=song&limit=40`;
-      const res = await fetch(searchUrl, { signal: abortController.signal });
-      if (res.ok) {
-        const data = await res.json();
-        if (data.results && Array.isArray(data.results) && data.results.length > 0) {
-          const filteredResults = data.results.filter(r => !isAmateurCoverOrKaraoke(r.trackName, r.artistName));
-          const poolToMap = filteredResults.length > 0 ? filteredResults : data.results;
+      const itunesRawResults = await itunesPromise;
+      if (Array.isArray(itunesRawResults) && itunesRawResults.length > 0) {
+        itunesSongs = itunesRawResults.map((r, index) => {
+          const durSec = Math.round((r.trackTimeMillis || 210000) / 1000);
+          const artwork = (r.artworkUrl100 || "").replace("100x100bb", "600x600bb") || "static/images/only_friends_theme.svg";
 
-          itunesSongs = poolToMap.map((r, index) => {
-            const durSec = Math.round((r.trackTimeMillis || 210000) / 1000);
-            const artwork = (r.artworkUrl100 || "").replace("100x100bb", "600x600bb") || "static/images/only_friends_theme.svg";
+          const decodedTitle = decodeHtmlEntities(r.trackName || "Unknown Title");
+          const decodedArtist = decodeHtmlEntities(r.artistName || "Unknown Artist");
+          const decodedAlbum = decodeHtmlEntities(r.collectionName || "Single");
 
-            const decodedTitle = decodeHtmlEntities(r.trackName || "Unknown Title");
-            const decodedArtist = decodeHtmlEntities(r.artistName || "Unknown Artist");
-            const decodedAlbum = decodeHtmlEntities(r.collectionName || "Single");
-
-            // Check if authentic full-length 320kbps JioSaavn stream is available in catalogue or live results
-            const localMatch = findFullLengthAudioMatch(decodedTitle, decodedArtist, decodedAlbum) ||
-              liveJioSongs.find(j => {
-                const jCore = cleanCoreTitle(j.title);
-                const rCore = cleanCoreTitle(decodedTitle);
-                return jCore && rCore && (jCore === rCore || jCore.includes(rCore) || rCore.includes(jCore));
-              });
-
-            const hasFullAudio = localMatch && localMatch.audio_url && !localMatch.audio_url.includes("apple.com");
-            const finalAudio = hasFullAudio ? localMatch.audio_url : (r.previewUrl || "");
-            const finalDuration = hasFullAudio && localMatch.duration ? localMatch.duration : durSec;
-            const finalDurationStr = hasFullAudio && localMatch.duration_str ? localMatch.duration_str : formatTime(durSec);
-
-            return prepareSongSearchMetadata({
-              id: `spotify_${r.trackId || (Date.now() + "_" + index)}`,
-              title: decodedTitle,
-              artist: decodedArtist,
-              album: decodedAlbum,
-              duration: finalDuration,
-              duration_str: finalDurationStr,
-              language: AppState.activeLanguage !== "all" ? capitalize(AppState.activeLanguage) : (r.primaryGenreName || "Global"),
-              category: "JioSaavn & Spotify Global Catalogue",
-              sections: ["trending"],
-              cover_url: artwork,
-              audio_url: finalAudio,
-              audio_file: "",
-              is_preview: !hasFullAudio,
-              download_authorized: true,
-              source: "spotify",
-              spotify_id: r.trackId ? String(r.trackId) : "",
-              tags: ["spotify", "jiosaavn", "online", "global", normalizeSearchText(decodedTitle), normalizeSearchText(decodedArtist)]
+          // Check if authentic full-length 320kbps JioSaavn stream is available in catalogue or live results
+          const localMatch = findFullLengthAudioMatch(decodedTitle, decodedArtist, decodedAlbum) ||
+            liveJioSongs.find(j => {
+              const jCore = cleanCoreTitle(j.title);
+              const rCore = cleanCoreTitle(decodedTitle);
+              return jCore && rCore && (jCore === rCore || jCore.includes(rCore) || rCore.includes(jCore));
             });
+
+          const hasFullAudio = localMatch && localMatch.audio_url && !localMatch.audio_url.includes("apple.com");
+          const finalAudio = hasFullAudio ? localMatch.audio_url : (r.previewUrl || "");
+          const finalDuration = hasFullAudio && localMatch.duration ? localMatch.duration : durSec;
+          const finalDurationStr = hasFullAudio && localMatch.duration_str ? localMatch.duration_str : formatTime(durSec);
+
+          return prepareSongSearchMetadata({
+            id: `spotify_${r.trackId || (Date.now() + "_" + index)}`,
+            title: decodedTitle,
+            artist: decodedArtist,
+            album: decodedAlbum,
+            duration: finalDuration,
+            duration_str: finalDurationStr,
+            language: AppState.activeLanguage !== "all" ? capitalize(AppState.activeLanguage) : (r.primaryGenreName || "Global"),
+            category: "JioSaavn & Spotify Global Catalogue",
+            sections: ["trending"],
+            cover_url: artwork,
+            audio_url: finalAudio,
+            audio_file: "",
+            is_preview: !hasFullAudio,
+            download_authorized: true,
+            source: "spotify",
+            spotify_id: r.trackId ? String(r.trackId) : "",
+            tags: ["spotify", "jiosaavn", "online", "global", normalizeSearchText(decodedTitle), normalizeSearchText(decodedArtist)]
           });
-        }
+        });
       }
     } catch (_) {}
 
@@ -2806,18 +2835,21 @@ async function fetchSpotifySearchResults(query, requestId, isParallel = false) {
         }
 
         // Local catalogue matches stay locked in their exact relevance order at the top!
-        AppState.searchResults = [...AppState.jioResults, ...newOnlineTracks];
-        AppState.isSpotifyFallbackResults = false;
         AppState.isFetchingSpotify = false;
-        AppState.queue = [...AppState.searchResults];
+        if (newOnlineTracks.length > 0) {
+          AppState.searchResults = [...AppState.jioResults, ...newOnlineTracks];
+          AppState.isSpotifyFallbackResults = false;
+          AppState.queue = [...AppState.searchResults];
+          renderContent();
+        }
       } else {
         // Local catalogue had no matches! Online results are the primary results
         AppState.searchResults = filteredOnline;
         AppState.isSpotifyFallbackResults = true;
         AppState.isFetchingSpotify = false;
         AppState.queue = [...filteredOnline];
+        renderContent();
       }
-      renderContent();
     } else {
       AppState.isFetchingSpotify = false;
       if (!isParallel) {
