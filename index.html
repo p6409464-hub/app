@@ -139,6 +139,15 @@
             </div>
           </button>
 
+          <!-- Download All Songs in Queue Button -->
+          <button id="featuredDownloadAllBtn" class="btn-featured-download btn-featured-download-all" title="Download All Songs in Queue / Album">
+            <span class="btn-dl-icon">📥</span>
+            <div class="btn-dl-text-wrap">
+              <span class="btn-dl-title">Download All Queue (<span id="featuredQueueCount">0</span>)</span>
+              <span class="btn-dl-sub">Download all songs sequentially</span>
+            </div>
+          </button>
+
           <!-- Quality / Bitrate Selector Buttons -->
           <div class="bitrate-selector-group">
             <span class="bitrate-select-label">Quality:</span>
@@ -315,6 +324,7 @@
         </div>
       </div>
       <div class="playlist-header-right">
+        <button id="downloadAllPlaylistBtn" class="playlist-action-btn" title="Download All Songs in Playlist">📥 Download All (<span id="playlistDlCount">0</span>)</button>
         <button id="shufflePlaylistBtn" class="playlist-action-btn" title="Shuffle Playlist Queue">🔀 Shuffle</button>
         <button id="closePlaylistBtn" class="playlist-close-btn" title="Close Playlist" aria-label="Close">✕</button>
       </div>
@@ -330,7 +340,7 @@
   <div id="toastContainer" class="toast-container"></div>
 
   <!-- JavaScript Application Logic -->
-  <script src="static/js/songs_data.js?v=3.38.0"></script>
-  <script src="static/js/app.js?v=3.38.0"></script>
+  <script src="static/js/songs_data.js?v=3.39.0"></script>
+  <script src="static/js/app.js?v=3.39.0"></script>
 </body>
 </html>

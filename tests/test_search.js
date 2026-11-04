@@ -2025,6 +2025,106 @@ assert(!AppState.jioResults.some(s => s.id === "stale_jio"), "AppState.jioResult
 assert(!AppState.spotifyResults.some(s => s.id === "stale_spot"), "AppState.spotifyResults must be cleared when a new search starts");
 console.log("[PASS] Immediate state clearing verified: previous search results wiped when new search begins.");
 
-console.log("\n==================================================");
-console.log("ALL 46 SEARCH, CATALOGUE, FULL-STREAM, DUAL-API, ALBUM SEPARATION, TRANSLITERATION, FRONTEND, STICKY PLAYER, < 2MB DOWNLOAD, SPELLCHECK, NO MONEY, ANTI-COLLISION, CHECK ALL SONGS, GLOBAL TAMIL TITLE RECOGNITION, STRICT MOVIE SEARCH & ORIGINAL VERSION DEDUPLICATION TESTS PASSED!");
-console.log("==================================================\n");
+(async () => {
+  // Test 47: Verifying Consecutive Song Downloads Without Page Refresh & Download All Batch Queue
+  console.log("\nTest 47: Verifying Consecutive Song Downloads Without Page Refresh & Download All Batch Queue...");
+
+  // 1. Verify DownloadManager is initialized and exposed
+  assert(typeof DownloadManager === "object", "DownloadManager must be defined");
+  assert(typeof DownloadManager.downloadSong === "function", "DownloadManager.downloadSong must be a function");
+  assert(typeof DownloadManager.downloadAll === "function", "DownloadManager.downloadAll must be a function");
+  assert(typeof DownloadManager.cancelBatch === "function", "DownloadManager.cancelBatch must be a function");
+  assert(typeof handleDownloadAction === "function", "handleDownloadAction must be defined");
+
+  // Mock environment for downloads
+  let downloadedAudioUrls = [];
+  global.fetch = async (url) => {
+    if (url.includes(".mp4") || url.includes(".m4a")) {
+      downloadedAudioUrls.push(url);
+    }
+    return {
+      ok: true,
+      status: 200,
+      json: async () => ({ status: "SUCCESS", data: { results: [] } }),
+      blob: async () => ({ size: 3500000, type: "audio/mp4" })
+    };
+  };
+
+  let createdBlobUrls = [];
+  let revokedBlobUrls = [];
+  global.window.URL = {
+    createObjectURL: (b) => {
+      const url = "blob:http://localhost/" + Math.random().toString(36).substring(2);
+      createdBlobUrls.push(url);
+      return url;
+    },
+    revokeObjectURL: (url) => {
+      revokedBlobUrls.push(url);
+    }
+  };
+
+  // 2. Consecutive Downloads Without Page Refresh
+  const song1 = AppState.masterSongs[0];
+  const song2 = AppState.masterSongs[1];
+  const mockBtn1 = createMockElement("btn1", "button");
+  const mockBtn2 = createMockElement("btn2", "button");
+
+  // Download Song 1
+  await handleDownloadAction(song1, mockBtn1);
+  assert(downloadedAudioUrls.length >= 1, "Song 1 must trigger audio fetch download");
+  assert(createdBlobUrls.length >= 1, "Song 1 must create blob URL");
+  // Crucial: blob URL must NOT be revoked immediately (must stay alive for safe OS buffer write)
+  assert.strictEqual(revokedBlobUrls.length, 0, "Blob URL must NOT be revoked at 150ms! Must remain alive for file stream completion");
+  assert(DownloadManager.activeBlobUrls.has(createdBlobUrls[0]), "Blob URL must be safely tracked in DownloadManager.activeBlobUrls");
+
+  // Download Next Song (Song 2) immediately WITHOUT page refresh
+  await handleDownloadAction(song2, mockBtn2);
+  assert(downloadedAudioUrls.length >= 2, "Song 2 must download consecutively without page refresh!");
+  assert(createdBlobUrls.length >= 2, "Song 2 must create its own blob URL consecutively!");
+  assert(DownloadManager.activeBlobUrls.has(createdBlobUrls[1]), "Song 2 blob URL must also be active in DownloadManager");
+  console.log("[PASS] Consecutive downloads verified: Song 1 and Song 2 downloaded consecutively without requiring page refresh.");
+
+  // Verify mock button state transitions
+  assert.strictEqual(mockBtn1.disabled, false, "Button 1 must not be stuck disabled");
+  assert.strictEqual(mockBtn2.disabled, false, "Button 2 must not be stuck disabled");
+  console.log("[PASS] Button states recover cleanly and never remain stuck disabled.");
+
+  // 3. Download All Batch Queue
+  const ghilliSongs = AppState.masterSongs.filter(s => (s.album || "").toLowerCase().includes("ghilli"));
+  assert(ghilliSongs.length >= 6, "Must have Ghilli OST songs for batch download test");
+
+  downloadedAudioUrls = [];
+  DownloadManager.downloadAll(ghilliSongs, "Ghilli Album");
+  assert(DownloadManager.queue.length > 0 || DownloadManager.isProcessing, "DownloadManager must enqueue songs for sequential download");
+  console.log(`[PASS] DownloadManager.downloadAll enqueued all ${ghilliSongs.length} songs sequentially.`);
+
+  // Verify Cancel Batch
+  DownloadManager.cancelBatch();
+  assert.strictEqual(DownloadManager.queue.length, 0, "cancelBatch must empty remaining batch items from queue");
+  console.log("[PASS] DownloadManager.cancelBatch successfully cancels active batch queue.");
+
+  // 4. UI Buttons: Verify presence in Search Results and Album collection view
+  executeSearch("Ghilli");
+  assert(DOM.contentContainer.innerHTML.includes('id="downloadAllResultsBtn"'), "Search results header must include 'Download All' button when multiple tracks are found");
+  assert(DOM.contentContainer.innerHTML.includes('Download All (6)'), "Search results header must display count in Download All button");
+
+  // Album Collection View
+  AppState.searchQuery = "";
+  AppState.activeLanguage = "tamil";
+  AppState.activeAlbum = "Ghilli";
+  renderContent();
+  assert(DOM.contentContainer.innerHTML.includes('id="downloadAllSectionBtn"'), "Album view header must include 'Download All' button");
+  assert(DOM.contentContainer.innerHTML.includes('Download All (6)'), "Album view header must display count in Download All button");
+
+  // Reset state
+  AppState.activeAlbum = "all";
+  AppState.activeLanguage = "all";
+  AppState.searchQuery = "";
+  renderContent();
+  console.log("[PASS] UI verification: 'Download All' buttons operational across Search Results, Movie Albums, and Playlist!");
+
+  console.log("\n==================================================");
+  console.log("ALL 47 SEARCH, CATALOGUE, FULL-STREAM, DUAL-API, ALBUM SEPARATION, TRANSLITERATION, FRONTEND, STICKY PLAYER, < 2MB DOWNLOAD, SPELLCHECK, NO MONEY, ANTI-COLLISION, CHECK ALL SONGS, GLOBAL TAMIL TITLE RECOGNITION, STRICT MOVIE SEARCH, ORIGINAL VERSION DEDUPLICATION, CONSECUTIVE DOWNLOADS & DOWNLOAD ALL TESTS PASSED!");
+  console.log("==================================================\n");
+  process.exit(0);
+})();

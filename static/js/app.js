@@ -209,7 +209,9 @@ const DOM = {
   featuredSoundwave: null,
   featuredDownloadBtn: null,
   featuredDlBitrateSub: null,
-  featuredMusicAppBtn: null
+  featuredMusicAppBtn: null,
+  featuredDownloadAllBtn: null,
+  downloadAllPlaylistBtn: null
 };
 
 function refreshDOMElements() {
@@ -275,6 +277,8 @@ function refreshDOMElements() {
   DOM.featuredDownloadBtn = document.getElementById("featuredDownloadBtn");
   DOM.featuredDlBitrateSub = document.getElementById("featuredDlBitrateSub");
   DOM.featuredMusicAppBtn = document.getElementById("featuredMusicAppBtn");
+  DOM.featuredDownloadAllBtn = document.getElementById("featuredDownloadAllBtn");
+  DOM.downloadAllPlaylistBtn = document.getElementById("downloadAllPlaylistBtn");
 }
 
 // Initial binding attempt
@@ -623,6 +627,26 @@ function setupEventListeners() {
         handleDownloadAction(AppState.currentSong, DOM.featuredDownloadBtn);
       } else if (AppState.masterSongs.length > 0) {
         handleDownloadAction(AppState.masterSongs[0], DOM.featuredDownloadBtn);
+      }
+    });
+  }
+
+  if (DOM.featuredDownloadAllBtn) {
+    DOM.featuredDownloadAllBtn.addEventListener("click", () => {
+      const songsToDownload = (AppState.queue && AppState.queue.length > 0)
+        ? AppState.queue
+        : ((AppState.searchResults && AppState.searchResults.length > 0) ? AppState.searchResults : AppState.masterSongs.slice(0, 10));
+      DownloadManager.downloadAll(songsToDownload, "Current Queue");
+    });
+  }
+
+  if (DOM.downloadAllPlaylistBtn) {
+    DOM.downloadAllPlaylistBtn.addEventListener("click", (e) => {
+      e.stopPropagation();
+      if (AppState.queue && AppState.queue.length > 0) {
+        DownloadManager.downloadAll(AppState.queue, "Up Next Playlist");
+      } else {
+        showToast("⚠️ Up Next playlist is empty.", "info");
       }
     });
   }
@@ -3206,12 +3230,17 @@ function renderContent() {
       ${sourceFilterHTML}
       ${searchWorldBannerHTML}
       <section class="music-section">
-        <div class="section-header">
+        <div class="section-header" style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:10px;">
           <div class="section-title-wrap">
             <span class="section-icon">${headerIcon}</span>
             <h2 class="section-title">${headerTitle}</h2>
             <span class="section-badge">${headerBadge}</span>
           </div>
+          ${visibleList.length > 1 ? `
+            <button id="downloadAllResultsBtn" class="download-all-btn" title="Download all ${totalCount} search results">
+              <span>📥</span> Download All (${totalCount})
+            </button>
+          ` : ""}
         </div>
         <div class="songs-grid">
           ${visibleList.map(s => createSongCardHTML(s)).join("")}
@@ -3222,6 +3251,14 @@ function renderContent() {
 
     attachCardListeners(visibleList);
     attachRetryListener();
+
+    const dlAllResultsBtn = document.getElementById("downloadAllResultsBtn");
+    if (dlAllResultsBtn) {
+      dlAllResultsBtn.addEventListener("click", () => {
+        const pool = (AppState.searchResults && AppState.searchResults.length > 0) ? AppState.searchResults : visibleList;
+        DownloadManager.downloadAll(pool, headerTitle);
+      });
+    }
 
     document.querySelectorAll(".source-filter-chip").forEach(chip => {
       chip.addEventListener("click", () => {
@@ -3516,13 +3553,20 @@ function renderContent() {
 
     DOM.contentContainer.innerHTML = `
       <section class="music-section">
-        <div class="section-header" style="flex-direction:column; align-items:flex-start; gap:4px;">
-          <div class="section-title-wrap" style="width:100%; display:flex; align-items:center; justify-content:space-between;">
+        <div class="section-header" style="flex-direction:column; align-items:flex-start; gap:6px;">
+          <div class="section-title-wrap" style="width:100%; display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:10px;">
             <div style="display:flex; align-items:center; gap:8px;">
               <span class="section-icon">${headerIcon}</span>
               <h2 class="section-title">${headerTitle}</h2>
             </div>
-            <span class="section-badge">${totalCount} tracks</span>
+            <div style="display:flex; align-items:center; gap:10px;">
+              <span class="section-badge">${totalCount} tracks</span>
+              ${totalCount > 1 ? `
+                <button id="downloadAllSectionBtn" class="download-all-btn" title="Download all ${totalCount} songs in this collection">
+                  <span>📥</span> Download All (${totalCount})
+                </button>
+              ` : ""}
+            </div>
           </div>
           ${extraHeaderHTML}
           ${albumChipsHTML}
@@ -3537,6 +3581,13 @@ function renderContent() {
     attachCardListeners(visibleList);
     attachPaginationListeners();
     attachSectionExploreListeners();
+
+    const dlAllSectionBtn = document.getElementById("downloadAllSectionBtn");
+    if (dlAllSectionBtn) {
+      dlAllSectionBtn.addEventListener("click", () => {
+        DownloadManager.downloadAll(displayFiltered, headerTitle);
+      });
+    }
 
     // Attach Clear History Event if present
     const clearHistoryBtn = document.getElementById("clearHistoryBtn");
@@ -3573,9 +3624,14 @@ function renderContent() {
             <h2 class="section-title">My Favourite Songs</h2>
             <span class="section-badge">${favSongs.length} tracks</span>
           </div>
-          <button id="playAllFavsBtn" class="btn btn-pill" style="padding:6px 16px; font-size:0.82rem; background:rgba(236,72,153,0.22); border:1px solid rgba(236,72,153,0.45); color:#f472b6; cursor:pointer;">
-            <span>▶</span> Play All Favourites
-          </button>
+          <div style="display:flex; gap:8px; align-items:center; flex-wrap:wrap;">
+            <button id="playAllFavsBtn" class="btn btn-pill" style="padding:6px 16px; font-size:0.82rem; background:rgba(236,72,153,0.22); border:1px solid rgba(236,72,153,0.45); color:#f472b6; cursor:pointer;">
+              <span>▶</span> Play All Favourites
+            </button>
+            <button id="downloadAllFavsBtn" class="download-all-btn" style="padding:6px 14px; font-size:0.78rem;" title="Download all favourite songs">
+              <span>📥</span> Download All (${favSongs.length})
+            </button>
+          </div>
         </div>
         <div class="songs-grid">
           ${favSongs.map(s => createSongCardHTML(s)).join("")}
@@ -3980,6 +4036,10 @@ function buildRelatedQueue(selectedSong) {
 function renderPlaylistDrawer() {
   if (DOM.playlistBadge) {
     DOM.playlistBadge.textContent = AppState.queue ? AppState.queue.length : 0;
+  }
+  const playlistDlCount = document.getElementById("playlistDlCount");
+  if (playlistDlCount) {
+    playlistDlCount.textContent = AppState.queue ? AppState.queue.length : 0;
   }
   if (!DOM.playlistItems) return;
 
@@ -4514,6 +4574,10 @@ function updateFeaturedPlayerUI(song) {
   if (DOM.featuredDownloadBtn) {
     DOM.featuredDownloadBtn.title = `Download "${song.title}" MP3`;
   }
+  const featuredQueueCount = document.getElementById("featuredQueueCount");
+  if (featuredQueueCount) {
+    featuredQueueCount.textContent = AppState.queue ? AppState.queue.length : 0;
+  }
 
   updateDownloadQualityUI();
 }
@@ -4649,113 +4713,289 @@ function cycleDownloadQuality() {
   }
 }
 
-async function handleDownloadAction(song, triggerBtn = null) {
-  if (!song) return;
+// ==========================================================================
+// Robust Asynchronous Download Manager (Consecutive & Batch Downloads)
+// Resolves issue where downloading next song required page refresh.
+// Retains blob URLs safely for 60s without premature revocation that breaks browser streams.
+// Queues rapid/batch downloads with 800ms spacing to satisfy browser download policies.
+// ==========================================================================
 
-  // Determine endpoint for audio
-  let downloadUrl = "";
-  if (song.audio_file && !song.audio_file.startsWith("http")) {
-    downloadUrl = `static/audio/${song.audio_file}`;
-  } else if (song.audio_file && song.audio_file.startsWith("http")) {
-    downloadUrl = song.audio_file;
-  } else if (song.audio_url) {
-    downloadUrl = song.audio_url;
-  }
+const DownloadManager = {
+  queue: [],
+  isProcessing: false,
+  activeBlobUrls: new Set(),
+  cancelBatchRequested: false,
 
-  if (triggerBtn) {
-    triggerBtn.disabled = true;
-    triggerBtn.innerHTML = `<span class="spinner" style="width:13px;height:13px;border-width:2px;"></span> Saving...`;
-  }
+  registerBlobUrl(url) {
+    if (!url) return;
+    this.activeBlobUrls.add(url);
+    const timer = setTimeout(() => {
+      this.cleanupBlob(url);
+    }, 60000);
+    if (timer && typeof timer.unref === "function") timer.unref();
+  },
 
-  // Ensure download is a full-length stream (upgrade 30s preview if present)
-  if (!downloadUrl || downloadUrl.includes("apple.com") || downloadUrl.includes("preview") || song.is_preview || (song.duration && song.duration <= 45)) {
-    const fullStream = await resolveOnlineFullStream(song);
-    if (fullStream && !fullStream.includes("apple.com") && !fullStream.includes("preview")) {
-      downloadUrl = fullStream;
-      song.audio_url = fullStream;
-      song.is_preview = false;
+  cleanupBlob(url) {
+    if (this.activeBlobUrls.has(url)) {
+      try {
+        if (typeof window !== "undefined" && window.URL && typeof window.URL.revokeObjectURL === "function") {
+          window.URL.revokeObjectURL(url);
+        }
+      } catch (_) {}
+      this.activeBlobUrls.delete(url);
     }
-  }
+  },
 
-  if (!downloadUrl) {
-    if (triggerBtn) {
-      triggerBtn.disabled = false;
-      triggerBtn.innerHTML = `<span>⬇️</span> Download`;
-    }
-    showToast(`⚠️ Audio source not available for download.`, "error");
-    return;
-  }
+  cleanupAll() {
+    this.activeBlobUrls.forEach(url => {
+      try {
+        if (typeof window !== "undefined" && window.URL && typeof window.URL.revokeObjectURL === "function") {
+          window.URL.revokeObjectURL(url);
+        }
+      } catch (_) {}
+    });
+    this.activeBlobUrls.clear();
+  },
 
-  // Apply memory-saving bitrate optimization (< 2MB = 48k, 160k = 50% less memory, 96k = 70% less memory)
-  const quality = AppState.downloadQuality || "48";
-  const optimizedUrl = getOptimizedDownloadUrl(downloadUrl, quality);
-  const qualityLabel = quality === "48" ? "< 2MB Ultra-Light • 85% RAM Saved" : (quality === "96" ? "96k • 70% RAM Saved" : (quality === "320" ? "320k • Studio" : "160k • 50% RAM Saved"));
+  downloadSong(song, triggerBtn = null) {
+    if (!song) return Promise.resolve();
+    return this._executeDownload({ song, triggerBtn, isBatch: false });
+  },
 
-  showToast(`⚡ < 2MB Ultra-Light Download starting: "${song.title}" [${qualityLabel}]...`, "info");
-
-  const cleanTitle = (song.title || "Song").replace(/[/\\?%*:|"<>]/g, "").trim();
-  const cleanArtist = (song.artist || "Artist").replace(/[/\\?%*:|"<>]/g, "").trim();
-  const safeFilename = `${cleanTitle} - ${cleanArtist}`;
-
-  if (optimizedUrl) {
-    try {
-      // Single-pass direct blob streaming with instant memory revocation (0 duplicate buffers)
-      const res = await fetch(optimizedUrl);
-      if (!res.ok) throw new Error(`HTTP ${res.status}`);
-
-      const rawBlob = await res.blob();
-      const blobUrl = window.URL.createObjectURL(rawBlob);
-
-      const a = document.createElement("a");
-      a.style.display = "none";
-      a.href = blobUrl;
-      a.download = `${safeFilename}.m4a`;
-      document.body.appendChild(a);
-      a.click();
-      document.body.removeChild(a);
-
-      // Immediately revoke blob URL so browser garbage-collects heap memory instantly (0 persistent memory retention)
-      setTimeout(() => {
-        window.URL.revokeObjectURL(blobUrl);
-      }, 150);
-
-      showToast(`✅ "${song.title}" saved! [${qualityLabel}] Indexed to Mobile Music App.`, "success");
-
-      if (triggerBtn) {
-        triggerBtn.disabled = false;
-        triggerBtn.innerHTML = `<span>✓</span> Done`;
-        setTimeout(() => {
-          triggerBtn.innerHTML = `<span>⬇️</span> Download`;
-        }, 2500);
-      }
+  async downloadAll(songsList, label = "Collection") {
+    if (!Array.isArray(songsList) || songsList.length === 0) {
+      showToast("⚠️ No songs available to download.", "warning");
       return;
+    }
+
+    const seen = new Set();
+    const uniqueSongs = [];
+    for (const song of songsList) {
+      if (song && song.id && !seen.has(song.id)) {
+        seen.add(song.id);
+        uniqueSongs.push(song);
+      }
+    }
+
+    if (uniqueSongs.length === 0) {
+      showToast("⚠️ No unique songs to download.", "warning");
+      return;
+    }
+
+    const batchList = uniqueSongs.slice(0, 50);
+    const total = batchList.length;
+
+    this.cancelBatchRequested = false;
+    showToastWithAction(
+      `📥 Queued ${total} songs from ${label} for download.`,
+      "info",
+      "Cancel",
+      () => this.cancelBatch()
+    );
+
+    this.queue = batchList.map((song, idx) => ({
+      song,
+      triggerBtn: null,
+      isBatch: true,
+      batchIndex: idx + 1,
+      batchTotal: total,
+      batchLabel: label
+    }));
+
+    if (!this.isProcessing) {
+      return this.processQueue();
+    }
+  },
+
+  cancelBatch() {
+    this.cancelBatchRequested = true;
+    const remaining = this.queue.filter(item => item.isBatch).length;
+    this.queue = this.queue.filter(item => !item.isBatch);
+    showToast(`🛑 Batch download cancelled. (${remaining} remaining songs skipped)`, "warning");
+  },
+
+  async processQueue() {
+    if (this.isProcessing) return;
+    this.isProcessing = true;
+
+    try {
+      while (this.queue.length > 0) {
+        if (this.cancelBatchRequested && this.queue[0]?.isBatch) {
+          this.queue.shift();
+          continue;
+        }
+
+        const task = this.queue.shift();
+        try {
+          await this._executeDownload(task);
+        } catch (err) {
+          console.warn("[DownloadManager] Task error:", err);
+        }
+
+        // 800ms spacing between downloads to satisfy browser download throttling policies
+        if (this.queue.length > 0) {
+          await new Promise(r => setTimeout(r, 800));
+        }
+      }
+    } finally {
+      this.isProcessing = false;
+      this.cancelBatchRequested = false;
+    }
+  },
+
+  async _executeDownload(task) {
+    const { song, triggerBtn, isBatch, batchIndex, batchTotal } = task;
+    if (!song) return;
+
+    if (triggerBtn) {
+      triggerBtn.disabled = true;
+      triggerBtn.innerHTML = `<span class="spinner" style="width:13px;height:13px;border-width:2px;"></span> Saving...`;
+    }
+
+    try {
+      let downloadUrl = "";
+      if (song.audio_file && !song.audio_file.startsWith("http")) {
+        downloadUrl = `static/audio/${song.audio_file}`;
+      } else if (song.audio_file && song.audio_file.startsWith("http")) {
+        downloadUrl = song.audio_file;
+      } else if (song.audio_url) {
+        downloadUrl = song.audio_url;
+      }
+
+      if (!downloadUrl || downloadUrl.includes("apple.com") || downloadUrl.includes("preview") || song.is_preview || (song.duration && song.duration <= 45)) {
+        const fullStream = await resolveOnlineFullStream(song);
+        if (fullStream && !fullStream.includes("apple.com") && !fullStream.includes("preview")) {
+          downloadUrl = fullStream;
+          song.audio_url = fullStream;
+          song.is_preview = false;
+        }
+      }
+
+      if (!downloadUrl) {
+        if (triggerBtn) {
+          triggerBtn.disabled = false;
+          triggerBtn.innerHTML = `<span>⬇️</span> Download`;
+        }
+        showToast(`⚠️ Audio stream not available for "${song.title}".`, "error");
+        return;
+      }
+
+      const quality = AppState.downloadQuality || "48";
+      const optimizedUrl = getOptimizedDownloadUrl(downloadUrl, quality);
+      const qualityLabel = quality === "48" ? "< 2MB Ultra-Light • 85% RAM Saved" : (quality === "96" ? "96k • 70% RAM Saved" : (quality === "320" ? "320k • Studio" : "160k • 50% RAM Saved"));
+
+      const cleanTitle = (song.title || "Song").replace(/[/\\?%*:|"<>]/g, "").trim();
+      const cleanArtist = (song.artist || "Artist").replace(/[/\\?%*:|"<>]/g, "").trim();
+      const safeFilename = `${cleanTitle} - ${cleanArtist}`;
+
+      if (isBatch) {
+        const pct = Math.round((batchIndex / batchTotal) * 100);
+        showToastWithAction(
+          `📥 Downloading ${batchIndex} of ${batchTotal}: "${cleanTitle}" [${pct}%]`,
+          "info",
+          "Cancel",
+          () => this.cancelBatch()
+        );
+      } else {
+        showToast(`⚡ < 2MB Ultra-Light Download starting: "${cleanTitle}" [${qualityLabel}]...`, "info");
+      }
+
+      let downloadedSuccessfully = false;
+
+      if (optimizedUrl) {
+        try {
+          const res = await fetch(optimizedUrl);
+          if (!res.ok) throw new Error(`HTTP ${res.status}`);
+
+          const rawBlob = await res.blob();
+          const blobUrl = (typeof window !== "undefined" && window.URL && typeof window.URL.createObjectURL === "function")
+            ? window.URL.createObjectURL(rawBlob)
+            : "blob:mock";
+          this.registerBlobUrl(blobUrl);
+
+          if (typeof document !== "undefined") {
+            const a = document.createElement("a");
+            a.style.display = "none";
+            a.href = blobUrl;
+            a.download = `${safeFilename}.m4a`;
+            document.body.appendChild(a);
+            a.click();
+            const aTimer = setTimeout(() => {
+              if (document.body.contains(a)) document.body.removeChild(a);
+            }, 500);
+            if (aTimer && typeof aTimer.unref === "function") aTimer.unref();
+          }
+
+          downloadedSuccessfully = true;
+        } catch (fetchErr) {
+          console.warn(`[DownloadManager] Blob fetch notice for "${cleanTitle}":`, fetchErr.message);
+        }
+      }
+
+      if (!downloadedSuccessfully) {
+        try {
+          if (typeof document !== "undefined") {
+            const a = document.createElement("a");
+            a.style.display = "none";
+            a.href = optimizedUrl || downloadUrl;
+            a.target = "_blank";
+            a.rel = "noopener noreferrer";
+            a.download = `${safeFilename}.m4a`;
+            document.body.appendChild(a);
+            a.click();
+            setTimeout(() => {
+              if (document.body.contains(a)) document.body.removeChild(a);
+            }, 500);
+          }
+          downloadedSuccessfully = true;
+        } catch (_) {}
+      }
+
+      if (downloadedSuccessfully) {
+        if (isBatch && batchIndex === batchTotal) {
+          showToast(`🎉 All ${batchTotal} songs downloaded successfully! [Saved to Mobile Music App]`, "success");
+        } else if (!isBatch) {
+          showToast(`✅ "${cleanTitle}" saved! [${qualityLabel}] Indexed to Mobile Music App.`, "success");
+        }
+
+        if (triggerBtn) {
+          triggerBtn.disabled = false;
+          triggerBtn.innerHTML = `<span>✓</span> Done`;
+          const resetTimer = setTimeout(() => {
+            if (triggerBtn) {
+              triggerBtn.innerHTML = `<span>⬇️</span> Download`;
+            }
+          }, 2500);
+          if (resetTimer && typeof resetTimer.unref === "function") resetTimer.unref();
+        }
+      } else {
+        showToast(`⚠️ Could not download "${cleanTitle}".`, "error");
+        if (triggerBtn) {
+          triggerBtn.disabled = false;
+          triggerBtn.innerHTML = `<span>⬇️</span> Download`;
+        }
+      }
     } catch (err) {
-      console.warn("Direct blob download notice, attempting native anchor stream:", err.message);
+      console.error("[DownloadManager] Download failed:", err);
+      showToast(`⚠️ Download error for "${song.title}".`, "error");
+    } finally {
+      if (triggerBtn && triggerBtn.disabled) {
+        triggerBtn.disabled = false;
+        triggerBtn.innerHTML = `<span>⬇️</span> Download`;
+      }
     }
   }
+};
 
-  // Fallback: direct native browser download anchor (0 MB JS memory)
-  try {
-    const a = document.createElement("a");
-    a.style.display = "none";
-    a.href = optimizedUrl || downloadUrl;
-    a.target = "_blank";
-    a.rel = "noopener noreferrer";
-    a.download = `${safeFilename}.m4a`;
-    document.body.appendChild(a);
-    a.click();
-    setTimeout(() => {
-      if (document.body.contains(a)) document.body.removeChild(a);
-    }, 500);
-    showToast(`⬇️ Direct download stream started for "${song.title}"!`, "success");
-  } catch (_) {
-    showToast(`✅ Download queued for "${song.title}"`, "info");
-  }
+if (typeof window !== "undefined") {
+  window.addEventListener("beforeunload", () => {
+    DownloadManager.cleanupAll();
+  });
+}
 
-  if (triggerBtn) {
-    triggerBtn.disabled = false;
-    triggerBtn.innerHTML = `<span>⬇️</span> Download`;
-  }
+function handleDownloadAction(song, triggerBtn = null) {
+  if (!song) return Promise.resolve();
+  return DownloadManager.downloadSong(song, triggerBtn);
 }
 
 // Direct Handler to Open Audio File in Mobile Default Music App via system share sheet
