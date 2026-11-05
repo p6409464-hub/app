@@ -127,7 +127,8 @@ const AppState = {
   playbackSpeed: 1.0,    // 0.5 | 0.75 | 1.0 | 1.25 | 1.5 | 2.0
   favSearchQuery: "",    // Search query within favourites
   favSortOrder: "date_desc", // "date_desc" | "date_asc" | "title_asc" | "title_desc" | "artist_asc" | "duration"
-  favActiveType: "all",  // "all" | "melody" | "kuthu" | "love" | "sad_melody" | "folk" | "film_album"
+  favActiveType: "all",
+  isPlayingFavourites: false, // Tracks whether playback is currently playing from favourite songs  // "all" | "melody" | "kuthu" | "love" | "sad_melody" | "folk" | "film_album"
   favSelectMode: false,  // Multi-select mode toggle in favourites
   selectedFavSongIds: new Set(), // Set of selected song IDs for bulk actions
   isFullscreenOpen: false,
@@ -3283,6 +3284,23 @@ function updateActivePills() {
   }
 }
 
+// Retrieves current active favourites list respecting active favourite type filters
+function getActiveFavouritesList() {
+  const allFavs = AppState.favourites
+    .map(id => AppState.masterSongs.find(s => s.id === id) || (AppState.searchResults && AppState.searchResults.find(s => s.id === id)) || (AppState.songs && AppState.songs.find(s => s.id === id)))
+    .filter(Boolean);
+
+  const effectiveType = (AppState.favActiveType && AppState.favActiveType !== "all")
+    ? AppState.favActiveType
+    : (AppState.activeType && AppState.activeType !== "all" ? AppState.activeType : "all");
+
+  if (effectiveType && effectiveType !== "all") {
+    const filtered = allFavs.filter(s => songMatchesFavType(s, effectiveType));
+    if (filtered.length > 0) return filtered;
+  }
+  return allFavs;
+}
+
 // Matches favourite songs to user-selected type: Melody, Kuthu, Love, Sad Melody, Folk, Film Album
 function songMatchesFavType(song, type) {
   if (!song || !type || type === "all") return true;
@@ -4508,7 +4526,16 @@ function attachCardListeners(pool = []) {
         if (AppState.currentSong && AppState.currentSong.id === song.id) {
           togglePlayPause();
         } else {
-          playSong(song);
+          const isFavContext = AppState.activeSection === "favourites" || (btn.closest && btn.closest(".favourites-section"));
+          if (isFavContext) {
+            AppState.isPlayingFavourites = true;
+            const favList = getActiveFavouritesList();
+            AppState.queue = favList;
+            playSong(song, true);
+          } else {
+            AppState.isPlayingFavourites = false;
+            playSong(song);
+          }
         }
       }
     };
@@ -4528,7 +4555,16 @@ function attachCardListeners(pool = []) {
         if (AppState.currentSong && AppState.currentSong.id === song.id) {
           togglePlayPause();
         } else {
-          playSong(song);
+          const isFavContext = AppState.activeSection === "favourites" || (card.closest && card.closest(".favourites-section"));
+          if (isFavContext) {
+            AppState.isPlayingFavourites = true;
+            const favList = getActiveFavouritesList();
+            AppState.queue = favList;
+            playSong(song, true);
+          } else {
+            AppState.isPlayingFavourites = false;
+            playSong(song);
+          }
         }
       }
     });
@@ -4923,6 +4959,22 @@ function playSong(song, preserveQueue = false) {
 
   AppState.currentSong = song;
 
+  // Check if playing in favourites context
+  const isFav = song.id && AppState.favourites.includes(song.id);
+  const isFavContext = AppState.isPlayingFavourites || AppState.activeSection === "favourites";
+  if (isFavContext && isFav) {
+    AppState.isPlayingFavourites = true;
+    const favList = getActiveFavouritesList();
+    if (favList.length > 0 && (!preserveQueue || !AppState.queue || AppState.queue.length === 0 || !AppState.queue.some(s => s.id === song.id))) {
+      AppState.queue = favList;
+      AppState.currentSongIndex = favList.findIndex(s => s.id === song.id);
+      if (AppState.currentSongIndex === -1) AppState.currentSongIndex = 0;
+      preserveQueue = true;
+    }
+  } else if (!isFav) {
+    AppState.isPlayingFavourites = false;
+  }
+
   // If not preserving current queue, dynamically build intelligent related queue
   if (!preserveQueue || !AppState.queue || AppState.queue.length === 0) {
     AppState.queue = buildRelatedQueue(song);
@@ -5100,6 +5152,29 @@ function togglePlayPause() {
 }
 
 function playNextSong() {
+  // If playing a song in favourites (or in favourites context), Next MUST play next favourite song
+  const isCurrentSongFav = AppState.currentSong && AppState.favourites.includes(AppState.currentSong.id);
+  const isInFavContext = AppState.isPlayingFavourites || AppState.activeSection === "favourites" || (isCurrentSongFav && !AppState.searchQuery);
+
+  if (isInFavContext && AppState.favourites.length > 1) {
+    const favList = getActiveFavouritesList();
+    if (favList.length > 1) {
+      const currentIdx = favList.findIndex(s => s.id === AppState.currentSong.id);
+      let nextIdx = (currentIdx !== -1) ? currentIdx + 1 : 0;
+      if (AppState.isShuffle) {
+        const otherFavs = favList.filter(s => s.id !== AppState.currentSong.id);
+        nextIdx = Math.floor(Math.random() * otherFavs.length);
+        AppState.queue = favList;
+        playSong(otherFavs[nextIdx] || favList[0], true);
+        return;
+      }
+      if (nextIdx >= favList.length) nextIdx = 0;
+      AppState.queue = favList;
+      playSong(favList[nextIdx], true);
+      return;
+    }
+  }
+
   if (!AppState.queue || AppState.queue.length === 0) return;
 
   if (AppState.isShuffle) {
@@ -5113,12 +5188,27 @@ function playNextSong() {
 }
 
 function playPreviousSong() {
-  if (!AppState.queue || AppState.queue.length === 0) return;
-
   if (audioPlayer.currentTime > 3) {
     audioPlayer.currentTime = 0;
     return;
   }
+
+  const isCurrentSongFav = AppState.currentSong && AppState.favourites.includes(AppState.currentSong.id);
+  const isInFavContext = AppState.isPlayingFavourites || AppState.activeSection === "favourites" || (isCurrentSongFav && !AppState.searchQuery);
+
+  if (isInFavContext && AppState.favourites.length > 1) {
+    const favList = getActiveFavouritesList();
+    if (favList.length > 1) {
+      const currentIdx = favList.findIndex(s => s.id === AppState.currentSong.id);
+      let prevIdx = (currentIdx !== -1) ? currentIdx - 1 : 0;
+      if (prevIdx < 0) prevIdx = favList.length - 1;
+      AppState.queue = favList;
+      playSong(favList[prevIdx], true);
+      return;
+    }
+  }
+
+  if (!AppState.queue || AppState.queue.length === 0) return;
 
   let prevIdx = AppState.currentSongIndex - 1;
   if (prevIdx < 0) prevIdx = AppState.queue.length - 1;
@@ -7232,4 +7322,5 @@ if (typeof window !== "undefined") {
   window.transliterateTamilToEnglish = transliterateTamilToEnglish;
   window.updateVoiceLangUI = updateVoiceLangUI;
   window.songMatchesFavType = songMatchesFavType;
+  window.getActiveFavouritesList = getActiveFavouritesList;
 }

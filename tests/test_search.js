@@ -2695,8 +2695,69 @@ console.log("[PASS] Immediate state clearing verified: previous search results w
   AppState.selectedFavSongIds.clear();
   renderContent();
   DownloadManager.cleanupAll();
+  
+
+  // Test 55: Verifying While Song in Favourites is Playing, Next/Prev Controls Play Next Favourite Song
+  // ========================================================================
+  console.log("\nTest 55: Verifying While Song in Favourites is Playing, Next/Prev Controls Play Next Favourite Song...");
+
+  const songA = AppState.masterSongs[0];
+  const songB = AppState.masterSongs[1];
+  const songC = AppState.masterSongs[2];
+
+  AppState.favourites = [songA.id, songB.id, songC.id];
+  AppState.activeSection = "favourites";
+  AppState.favActiveType = "all";
+  AppState.isSearching = false;
+  AppState.searchQuery = "";
+
+  // 1. Start playing first favourite song
+  playSong(songA);
+  assert.strictEqual(AppState.currentSong.id, songA.id, "Current playing song must be songA");
+  assert.strictEqual(AppState.isPlayingFavourites, true, "Must be playing in favourites context");
+
+  // 2. Click Next -> Must play songB (next favourite song)
+  playNextSong();
+  assert.strictEqual(AppState.currentSong.id, songB.id, "Next song in favourites must play songB");
+
+  // 3. Click Next again -> Must play songC (third favourite song)
+  playNextSong();
+  assert.strictEqual(AppState.currentSong.id, songC.id, "Next song in favourites must play songC");
+
+  // 4. Click Next at the end -> Must wrap around to songA (first favourite song)
+  playNextSong();
+  assert.strictEqual(AppState.currentSong.id, songA.id, "Next song at end must wrap around to songA");
+
+  // 5. Click Previous -> Must go back to songC
+  audioPlayer.currentTime = 0; // reset seek time
+  playPreviousSong();
+  assert.strictEqual(AppState.currentSong.id, songC.id, "Previous song from first favourite must wrap to songC");
+
+  // 6. Test with type filter: e.g. Melody favourites
+  const favMelodies = [songA, songB, songC].filter(s => songMatchesFavType(s, "melody"));
+  if (favMelodies.length >= 2) {
+    AppState.favActiveType = "melody";
+    playSong(favMelodies[0]);
+    playNextSong();
+    assert.strictEqual(AppState.currentSong.id, favMelodies[1].id, "Next song with type filter must play next filtered favourite song");
+  }
+
+  // Cleanup
+  AppState.favourites = [];
+  AppState.favActiveType = "all";
+  AppState.activeSection = "all";
+  AppState.isPlayingFavourites = false;
+
+  console.log("[PASS] While song in favourites is playing, Next/Prev controls play next/previous favourite song verified!");
+
+  // Reset Favourites and section state
+  AppState.activeSection = "all";
+  AppState.favSelectMode = false;
+  AppState.selectedFavSongIds.clear();
+  renderContent();
+  DownloadManager.cleanupAll();
   console.log("\n==================================================");
-  console.log("ALL 54 ADVANCED SEARCH, MUSIC PLAYER, 3-STATE REPEAT, PLAYBACK SPEED, QUEUE CONTROLS, DEDICATED FAVOURITES, IN-BROWSER ZIP BUILDER, EQUALIZER, LYRICS, ANDROID MOBILE DOWNLOADS, VOICE SEARCH & FAVOURITE TYPE DROPDOWN TESTS PASSED!");
+  console.log("ALL 55 ADVANCED SEARCH, MUSIC PLAYER, 3-STATE REPEAT, PLAYBACK SPEED, QUEUE CONTROLS, DEDICATED FAVOURITES, IN-BROWSER ZIP BUILDER, EQUALIZER, LYRICS, ANDROID MOBILE DOWNLOADS, VOICE SEARCH, FAVOURITE TYPE DROPDOWN & FAVOURITE SEQUENTIAL PLAYBACK TESTS PASSED!");
   console.log("==================================================\n");
   process.exit(0);
 })();
