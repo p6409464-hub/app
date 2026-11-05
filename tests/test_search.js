@@ -2604,6 +2604,7 @@ console.log("[PASS] Immediate state clearing verified: previous search results w
   AppState.favSelectMode = false;
   AppState.selectedFavSongIds.clear();
   renderContent();
+  DownloadManager.cleanupAll();
   console.log("\n==================================================");
   console.log("ALL 53 ADVANCED SEARCH, MUSIC PLAYER, 3-STATE REPEAT, PLAYBACK SPEED, QUEUE CONTROLS, DEDICATED FAVOURITES, IN-BROWSER ZIP BUILDER, EQUALIZER, LYRICS, ANDROID MOBILE DOWNLOADS & VOICE SEARCH TESTS PASSED!");
   console.log("==================================================\n");

@@ -5283,7 +5283,7 @@ const DownloadManager = {
   lastPreparedDownload: null,
   cancelBatchRequested: false,
 
-  triggerBlobDownload(blob, filename) {
+  triggerBlobDownload(blob, filename, existingBlobUrl = null) {
     if (!blob) return false;
     // Guarantee octet-stream MIME type so Android OS Download Provider writes file to disk directly
     let binaryBlob = blob;
@@ -5295,9 +5295,11 @@ const DownloadManager = {
       }
     }
 
-    const blobUrl = (typeof window !== "undefined" && window.URL && typeof window.URL.createObjectURL === "function")
-      ? window.URL.createObjectURL(binaryBlob)
-      : `blob:mock_${Date.now()}`;
+    const blobUrl = existingBlobUrl || (
+      (typeof window !== "undefined" && window.URL && typeof window.URL.createObjectURL === "function")
+        ? window.URL.createObjectURL(binaryBlob)
+        : `blob:mock_${Date.now()}`
+    );
     
     // Retain in memory map for 60s so Android Download Provider has sufficient time to stream across IPC
     this.registerBlob(blobUrl, binaryBlob, 60000);
@@ -5308,13 +5310,13 @@ const DownloadManager = {
       // 1. NEVER use display: none! Elements with display: none are not in the layout tree,
       //    causing Android Chrome to ignore programmatic clicks on consecutive downloads.
       //    Use fixed position offscreen with 1px dimensions and 0.01 opacity so it is rendered.
+      //    Do NOT set pointerEvents='none' as that can suppress click event handling in mobile Blink.
       a.style.position = "fixed";
       a.style.top = "0";
       a.style.left = "0";
       a.style.width = "1px";
       a.style.height = "1px";
       a.style.opacity = "0.01";
-      a.style.pointerEvents = "none";
       a.href = blobUrl;
       a.download = filename;
       a.rel = "noopener noreferrer";
@@ -5621,8 +5623,11 @@ const DownloadManager = {
         // Wrap arrayBuffer into explicit application/octet-stream blob
         // This forces Android OS Download Manager to stream and save to /storage/emulated/0/Download directly
         const octetBlob = new Blob([arrayBuf], { type: "application/octet-stream" });
-        this.triggerBlobDownload(octetBlob, `${safeFilename}.m4a`);
-        this.lastPreparedDownload = { blob: octetBlob, filename: `${safeFilename}.m4a`, title: cleanTitle };
+        localBlobUrl = (typeof window !== "undefined" && window.URL && typeof window.URL.createObjectURL === "function")
+          ? window.URL.createObjectURL(octetBlob)
+          : `blob:mock_${Date.now()}`;
+        this.triggerBlobDownload(octetBlob, `${safeFilename}.m4a`, localBlobUrl);
+        this.lastPreparedDownload = { blob: octetBlob, blobUrl: localBlobUrl, filename: `${safeFilename}.m4a`, title: cleanTitle };
         downloadedSuccessfully = true;
       } else {
         // Stream binary was not accessible via direct fetch (e.g. CORS or offline).
@@ -5655,18 +5660,17 @@ const DownloadManager = {
         } else if (!isBatch) {
           const isSecondOrLater = this.downloadsCountInSession > 1;
           const promptMsg = isSecondOrLater
-            ? `📥 "${cleanTitle}" ready! Tap "Save File" to save to device:`
+            ? `📥 "${cleanTitle}" ready! Tap "Save File" to store in Files:`
             : `✅ "${cleanTitle}" saved! (Tap to save again if needed):`;
           showToastWithAction(
             promptMsg,
             "success",
             "💾 Save File",
             () => {
-              if (this.lastPreparedDownload && this.lastPreparedDownload.blob) {
-                this.triggerBlobDownload(this.lastPreparedDownload.blob, this.lastPreparedDownload.filename);
-                showToast(`✅ "${cleanTitle}" saving to Android Downloads folder!`, "success");
-              }
-            }
+              showToast(`✅ "${cleanTitle}" saving to Android Downloads folder!`, "success");
+            },
+            localBlobUrl,
+            `${safeFilename}.m4a`
           );
         }
       } else if (!isBatch) {
@@ -5698,9 +5702,26 @@ const DownloadManager = {
             triggerBtn.innerHTML = `<span>💾</span> Save`;
             triggerBtn.title = `Tap to save "${cleanTitle}" directly to device`;
             const prepared = this.lastPreparedDownload;
+            const currentBlobUrl = localBlobUrl || (prepared ? prepared.blobUrl : null);
             const saveHandler = (e) => {
               if (e) e.stopPropagation();
-              if (prepared && prepared.blob) {
+              if (currentBlobUrl && typeof document !== "undefined") {
+                const a = document.createElement("a");
+                a.href = currentBlobUrl;
+                a.download = `${safeFilename}.m4a`;
+                a.style.position = "fixed";
+                a.style.top = "0";
+                a.style.left = "0";
+                a.style.width = "1px";
+                a.style.height = "1px";
+                a.style.opacity = "0.01";
+                document.body.appendChild(a);
+                a.click();
+                setTimeout(() => {
+                  try { if (document.body && document.body.contains(a)) document.body.removeChild(a); } catch (_) {}
+                }, 1000);
+                showToast(`✅ "${cleanTitle}" saving to Android Downloads folder!`, "success");
+              } else if (prepared && prepared.blob) {
                 this.triggerBlobDownload(prepared.blob, prepared.filename);
                 showToast(`✅ "${cleanTitle}" saving to Android Downloads folder!`, "success");
               }
@@ -5851,7 +5872,7 @@ function showToast(message, type = "info") {
   showToastWithAction(message, type, null, null);
 }
 
-function showToastWithAction(message, type = "info", actionLabel = null, actionCallback = null) {
+function showToastWithAction(message, type = "info", actionLabel = null, actionCallback = null, downloadHref = null, downloadFilename = null) {
   if (!DOM.toastContainer) return;
 
   const toast = document.createElement("div");
@@ -5862,29 +5883,40 @@ function showToastWithAction(message, type = "info", actionLabel = null, actionC
   if (type === "error") icon = "⚠️";
   if (type === "warning") icon = "⚠️";
 
-  toast.innerHTML = `
-    <span class="toast-icon">${icon}</span>
-    <span style="flex:1;">${escapeHTML(message)}</span>
-    ${actionLabel && actionCallback ? `
+  let actionHTML = "";
+  if (actionLabel && downloadHref && downloadFilename) {
+    actionHTML = `
+      <a class="toast-action-btn" href="${escapeAttr(downloadHref)}" download="${escapeAttr(downloadFilename)}" style="padding:4px 10px; font-size:0.78rem; font-weight:700; background:rgba(255,255,255,0.22); border:1px solid rgba(255,255,255,0.4); border-radius:20px; color:#fff; cursor:pointer; margin-left:8px; white-space:nowrap; text-decoration:none; display:inline-flex; align-items:center;">
+        ${escapeHTML(actionLabel)}
+      </a>
+    `;
+  } else if (actionLabel) {
+    actionHTML = `
       <button class="toast-action-btn" style="padding:4px 10px; font-size:0.78rem; font-weight:700; background:rgba(255,255,255,0.22); border:1px solid rgba(255,255,255,0.4); border-radius:20px; color:#fff; cursor:pointer; margin-left:8px; white-space:nowrap;">
         ${escapeHTML(actionLabel)}
       </button>
-    ` : ""}
+    `;
+  }
+
+  toast.innerHTML = `
+    <span class="toast-icon">${icon}</span>
+    <span style="flex:1;">${escapeHTML(message)}</span>
+    ${actionHTML}
   `;
 
-  if (actionCallback) {
+  if (actionLabel) {
     const btn = toast.querySelector(".toast-action-btn");
     if (btn) {
       btn.addEventListener("click", (e) => {
-        e.stopPropagation();
-        actionCallback();
+        if (e && e.stopPropagation) e.stopPropagation();
+        if (typeof actionCallback === "function") actionCallback();
       });
     }
   }
 
   DOM.toastContainer.appendChild(toast);
 
-  const duration = actionCallback ? 6500 : 3200;
+  const duration = (actionCallback || downloadHref) ? 8000 : 3200;
   setTimeout(() => {
     toast.style.animation = "slideInToast 0.3s ease reverse forwards";
     setTimeout(() => {
@@ -6820,27 +6852,27 @@ async function downloadFavouritesSequentially(songsToDownload, label = "Favourit
           if (typeof document !== "undefined" && typeof document.createElement === "function") {
             const itemEl = document.createElement("div");
             itemEl.style.cssText = "display: flex; justify-content: space-between; align-items: center; background: rgba(255, 255, 255, 0.05); padding: 6px 10px; border-radius: 6px; font-size: 0.78rem;";
+            const trackBlobUrl = (prep && prep.blobUrl) ? prep.blobUrl : (
+              (savedBlob && typeof window !== "undefined" && window.URL && typeof window.URL.createObjectURL === "function")
+                ? window.URL.createObjectURL(savedBlob)
+                : "#"
+            );
             itemEl.innerHTML = `
               <div style="overflow: hidden; text-overflow: ellipsis; white-space: nowrap; margin-right: 8px; flex: 1;">
                 <span style="color: #4ade80; margin-right: 4px;">✓</span>
                 <strong style="color: #f3e8ff;">${typeof escapeHTML === "function" ? escapeHTML(cleanTitle) : cleanTitle}</strong>
                 <span style="color: var(--text-dim); margin-left: 4px; font-size: 0.72rem;">• ${typeof escapeHTML === "function" ? escapeHTML(safeFilename) : safeFilename}</span>
               </div>
-              <button class="btn btn-pill fav-manual-save-btn" style="background: rgba(34, 197, 94, 0.2); border: 1px solid rgba(34, 197, 94, 0.5); color: #86efac; font-size: 0.72rem; padding: 3px 8px; cursor: pointer; white-space: nowrap;">
+              <a class="btn btn-pill fav-manual-save-btn" href="${escapeAttr(trackBlobUrl)}" download="${escapeAttr(safeFilename)}" style="background: rgba(34, 197, 94, 0.2); border: 1px solid rgba(34, 197, 94, 0.5); color: #86efac; font-size: 0.72rem; padding: 3px 8px; cursor: pointer; white-space: nowrap; text-decoration: none; display: inline-flex; align-items: center;">
                 💾 Save File
-              </button>
+              </a>
             `;
             if (typeof itemEl.querySelector === "function") {
               const saveBtn = itemEl.querySelector(".fav-manual-save-btn");
               if (saveBtn) {
                 saveBtn.onclick = (e) => {
                   if (e && e.stopPropagation) e.stopPropagation();
-                  if (savedBlob) {
-                    DownloadManager.triggerBlobDownload(savedBlob, safeFilename);
-                    showToast(`✅ Saving "${cleanTitle}" to Android Downloads folder!`, "success");
-                  } else {
-                    DownloadManager.downloadSong(song);
-                  }
+                  showToast(`✅ Saving "${cleanTitle}" to Android Downloads folder!`, "success");
                 };
               }
             }
