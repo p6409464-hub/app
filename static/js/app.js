@@ -5286,33 +5286,47 @@ const DownloadManager = {
 
     if (typeof document !== "undefined") {
       const a = document.createElement("a");
-      a.style.display = "none";
+      // CRITICAL FOR ANDROID CHROME & MOBILE BROWSERS:
+      // 1. NEVER use display: none! Elements with display: none are not in the layout tree,
+      //    causing Android Chrome to ignore programmatic clicks on consecutive downloads.
+      //    Use fixed position offscreen with 1px dimensions and 0.01 opacity so it is rendered.
+      a.style.position = "fixed";
+      a.style.top = "0";
+      a.style.left = "0";
+      a.style.width = "1px";
+      a.style.height = "1px";
+      a.style.opacity = "0.01";
+      a.style.pointerEvents = "none";
       a.href = blobUrl;
       a.download = filename;
-      // CRITICAL FIX: Do NOT set target="_self"! Setting target="_self" on an anchor with a Blob URL
-      // marks the browsing window as undergoing navigation in Android Chromium, which suppresses or
-      // drops subsequent consecutive download dispatches on the same window context until page refresh.
+      a.rel = "noopener noreferrer";
+      // CRITICAL: Do NOT set target="_self"! It corrupts window navigation state on Android Chrome.
       document.body.appendChild(a);
 
-      // Asynchronous tick allows DOM mutation & layout registration before click dispatch
-      const triggerClick = () => {
+      // 2. NEVER use setTimeout for a.click()! setTimeout strips transient user activation context,
+      //    causing Chromium's DownloadRequestLimiter to block consecutive downloads.
+      //    Trigger a.click() synchronously in the current call stack, with fallback to MouseEvent dispatch.
+      try {
+        a.click();
+      } catch (clickErr) {
         try {
-          a.click();
-        } catch (err) {
-          console.warn("[DownloadManager] a.click() error:", err);
-        }
-        setTimeout(() => {
-          try {
-            if (document.body && document.body.contains(a)) document.body.removeChild(a);
-          } catch (_) {}
-        }, 1000);
-      };
-
-      if (typeof setTimeout === "function") {
-        setTimeout(triggerClick, 30);
-      } else {
-        triggerClick();
+          if (typeof MouseEvent === "function") {
+            const evt = new MouseEvent("click", {
+              bubbles: true,
+              cancelable: true,
+              view: (typeof window !== "undefined" ? window : null)
+            });
+            a.dispatchEvent(evt);
+          }
+        } catch (_) {}
       }
+
+      // Detach element safely after the browser processes the click
+      setTimeout(() => {
+        try {
+          if (document.body && document.body.contains(a)) document.body.removeChild(a);
+        } catch (_) {}
+      }, 500);
     }
     return true;
   },
@@ -5460,9 +5474,9 @@ const DownloadManager = {
           console.warn("[DownloadManager] Task error:", err);
         }
 
-        // 800ms spacing between downloads to satisfy browser download throttling policies
+        // 1200ms spacing between downloads to satisfy browser download throttling policies
         if (this.queue.length > 0) {
-          await new Promise(r => setTimeout(r, 800));
+          await new Promise(r => setTimeout(r, 1200));
         }
       }
     } finally {
@@ -5534,8 +5548,8 @@ const DownloadManager = {
       const optimizedUrl = getOptimizedDownloadUrl(downloadUrl, quality);
       const qualityLabel = quality === "48" ? "< 2MB Ultra-Light • 85% RAM Saved" : (quality === "96" ? "96k • 70% RAM Saved" : (quality === "320" ? "320k • Studio" : "160k • 50% RAM Saved"));
 
-      const cleanTitle = (song.title || "Song").replace(/[/\\?%*:|"<>]/g, "").trim();
-      const cleanArtist = (song.artist || "Artist").replace(/[/\\?%*:|"<>]/g, "").trim();
+      const cleanTitle = (song.title || "Song").replace(/[/\\?%*:|"<>]/g, "").trim().substring(0, 80);
+      const cleanArtist = (song.artist || "Artist").replace(/[/\\?%*:|"<>]/g, "").trim().substring(0, 60);
       const safeFilename = `${cleanTitle} - ${cleanArtist}`;
 
       if (isBatch) {
@@ -6740,7 +6754,7 @@ async function downloadFavouritesSequentially(songsToDownload, label = "Favourit
     // Spacing between tracks to prevent Android Chromium from throttling download events
     const delayMs = (typeof window !== "undefined" && window.__DOWNLOAD_DELAY_MS__ !== undefined)
       ? window.__DOWNLOAD_DELAY_MS__
-      : 900;
+      : 1200;
     if (i < uniqueSongs.length - 1 && !isCancelled && delayMs > 0) {
       await new Promise(r => setTimeout(r, delayMs));
     }

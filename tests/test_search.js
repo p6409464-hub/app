@@ -2392,6 +2392,8 @@ console.log("[PASS] Immediate state clearing verified: previous search results w
   assert.strictEqual(capturedBlob.type, "application/octet-stream", "Blob must be converted to application/octet-stream for Android Download Provider");
   assert(lastCreatedAnchor !== null, "Anchor must be created for download");
   assert.notStrictEqual(lastCreatedAnchor.getAttribute("target"), "_self", "Download anchor must NEVER set target='_self' to avoid Android navigation lock bug");
+  assert.notStrictEqual(lastCreatedAnchor.style.display, "none", "Download anchor must NOT use display='none'");
+  assert.strictEqual(lastCreatedAnchor.style.position, "fixed", "Download anchor must use position='fixed'");
   global.document.createElement = origCreateEl;
 
   // 3. Verify Blob retention in activeBlobObjects Map
