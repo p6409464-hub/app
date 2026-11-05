@@ -2956,8 +2956,84 @@ console.log("[PASS] Immediate state clearing verified: previous search results w
 
   console.log("[PASS] Test 57: Incremental Favourite Downloads (New Songs Only & Zero Re-prompts) fully verified!");
 
+  // ========================================================================
+  // Test 58: Verifying Accurate Song Matching for Every Particular Genre Type in Favourites
+  // Enforces:
+  // 1. Songs match their genuine genre and do not misfire on artist names (e.g. Sri Krishna) or compilation album names.
+  // 2. Kuthu mass tracks ("Local Boys", "Kurchi Madathapetti", "Neruppu Koothadikkuthu") match 'kuthu'.
+  // 3. Romantic & love songs ("Kaadhal Rojave", "Munbe Vaa", "Vaseegara") match 'melody', 'love', and 'romantic'.
+  // 4. Sad melodies ("Poove Sempoove", "Amma Endru") match 'sad_melody' and 'melody'.
+  // 5. Gaana and folk dance songs match 'folk'.
+  // 6. Strict Rule 9 enforcement: Kuthu and Independent Album songs NEVER match 'melody'.
+  // 7. Selecting any genre type in Favourites filters accurately without interference from AppState.activeType.
+  // ========================================================================
+  console.log("\nTest 58: Verifying Accurate Song Matching for Every Particular Genre Type in Favourites...");
+
+  // Verify Kuthu songs do NOT get misclassified as Devotional or Motivational
+  const kurchiSong = { id: "fav_kurchi", title: "Kurchi Madathapetti", artist: "S. Thaman, Sri Krishna", album: "Guntur Kaaram", type: "kuthu", tags: ["kuthu", "mass beat", "dance"] };
+  const kurchiAnalysis = analyzeSongGenre(kurchiSong);
+  assert.strictEqual(kurchiAnalysis.primary, "kuthu", "Kurchi Madathapetti must have primary genre kuthu, NOT devotional");
+  assert(songMatchesFavType(kurchiSong, "kuthu"), "Kurchi Madathapetti must match 'kuthu'");
+  assert(!songMatchesFavType(kurchiSong, "devotional"), "Kurchi Madathapetti must NOT match 'devotional' just because singer is Sri Krishna");
+  assert(!songMatchesFavType(kurchiSong, "melody"), "Kuthu song must NEVER match 'melody'");
+
+  const localBoysSong = { id: "fav_local_boys", title: "Local Boys", artist: "Dhanush, Anirudh", album: "Ethir Neechal", type: "kuthu", tags: ["kuthu", "fast beat"] };
+  const localBoysAnalysis = analyzeSongGenre(localBoysSong);
+  assert.strictEqual(localBoysAnalysis.primary, "kuthu", "Local Boys must have primary genre kuthu, NOT motivational");
+  assert(songMatchesFavType(localBoysSong, "kuthu"), "Local Boys must match 'kuthu'");
+  assert(!songMatchesFavType(localBoysSong, "melody"), "Local Boys must NEVER match 'melody'");
+
+  // Verify Romantic & Love Melodies
+  const kaadhalRojaveSong = { id: "fav_kaadhal_roja", title: "Kaadhal Rojave", artist: "S.P. Balasubrahmanyam", album: "Roja", type: "melody", tags: ["melody", "love", "romantic", "kaadhal"] };
+  assert(songMatchesFavType(kaadhalRojaveSong, "melody"), "Kaadhal Rojave must match 'melody'");
+  assert(songMatchesFavType(kaadhalRojaveSong, "love"), "Kaadhal Rojave must match 'love'");
+  assert(songMatchesFavType(kaadhalRojaveSong, "romantic"), "Kaadhal Rojave must match 'romantic'");
+  assert(!songMatchesFavType(kaadhalRojaveSong, "kuthu"), "Kaadhal Rojave must NOT match 'kuthu'");
+
+  // Verify Sad Melodies
+  const sempooveSong = { id: "fav_sempoove", title: "Poove Sempoove", artist: "K.J. Yesudas", album: "Solla Thudikuthu Manasu", type: "sad", tags: ["sad", "melody", "heartbreak", "pathos"] };
+  assert(songMatchesFavType(sempooveSong, "sad_melody"), "Poove Sempoove must match 'sad_melody'");
+  assert(songMatchesFavType(sempooveSong, "melody"), "Poove Sempoove must match 'melody'");
+  assert(!songMatchesFavType(sempooveSong, "kuthu"), "Poove Sempoove must NOT match 'kuthu'");
+
+  // Verify Folk & Gaana
+  const gaanaTrack = { id: "fav_gaana_track", title: "Danga Maari Oodhari", artist: "Marana Gaana Viji", album: "Anegan", type: "folk", tags: ["gaana", "folk"] };
+  assert(songMatchesFavType(gaanaTrack, "folk"), "Gaana track must match 'folk'");
+  assert(songMatchesFavType(gaanaTrack, "gaana"), "Gaana track must match 'gaana'");
+
+  // Verify Favourites filtering does NOT leak AppState.activeType
+  AppState.activeType = "rap"; // User previously clicked 'rap' on top bar
+  AppState.favActiveType = "all"; // User is looking at 'all' in Favourites dropdown
+  AppState.favourites = [kurchiSong.id, kaadhalRojaveSong.id, sempooveSong.id];
+  AppState.masterSongs = [kurchiSong, kaadhalRojaveSong, sempooveSong];
+  AppState.activeSection = "favourites";
+
+  const allFilteredFavs = getActiveFavouritesList();
+  assert.strictEqual(allFilteredFavs.length, 3, "When Favourites dropdown is 'all', all 3 favourite songs must display (not overridden by top bar activeType 'rap')");
+
+  // Filter by 'kuthu' in Favourites dropdown
+  AppState.favActiveType = "kuthu";
+  const kuthuOnlyFavs = getActiveFavouritesList();
+  assert.strictEqual(kuthuOnlyFavs.length, 1, "Must contain exactly 1 kuthu song");
+  assert.strictEqual(kuthuOnlyFavs[0].id, kurchiSong.id, "The kuthu song must be Kurchi Madathapetti");
+
+  // Filter by 'melody' in Favourites dropdown
+  AppState.favActiveType = "melody";
+  const melodyOnlyFavs = getActiveFavouritesList();
+  assert.strictEqual(melodyOnlyFavs.length, 2, "Must contain exactly 2 melody songs (Kaadhal Rojave and Poove Sempoove)");
+  assert(!melodyOnlyFavs.some(s => s.id === kurchiSong.id), "Melody filter must NEVER contain Kuthu song");
+
+  // Cleanup
+  AppState.activeType = "all";
+  AppState.favActiveType = "all";
+  AppState.favourites = [];
+  AppState.activeSection = "all";
+  renderContent();
+
+  console.log("[PASS] Test 58: Accurate Song Matching for Every Particular Genre Type in Favourites fully verified!");
+
   console.log("\n==================================================");
-  console.log("ALL 57 ADVANCED SEARCH, MUSIC PLAYER, 3-STATE REPEAT, PLAYBACK SPEED, QUEUE CONTROLS, DEDICATED FAVOURITES, IN-BROWSER ZIP BUILDER, EQUALIZER, LYRICS, ANDROID MOBILE DOWNLOADS, VOICE SEARCH, FAVOURITE TYPE DROPDOWN & FAVOURITE SEQUENTIAL PLAYBACK TESTS PASSED!");
+  console.log("ALL 58 ADVANCED SEARCH, MUSIC PLAYER, 3-STATE REPEAT, PLAYBACK SPEED, QUEUE CONTROLS, DEDICATED FAVOURITES, IN-BROWSER ZIP BUILDER, EQUALIZER, LYRICS, ANDROID MOBILE DOWNLOADS, VOICE SEARCH, FAVOURITE TYPE DROPDOWN, FAVOURITE SEQUENTIAL PLAYBACK & ACCURATE GENRE TYPE MATCHING TESTS PASSED!");
   console.log("==================================================\n");
   process.exit(0);
 })();
