@@ -2026,6 +2026,7 @@ assert(!AppState.spotifyResults.some(s => s.id === "stale_spot"), "AppState.spot
 console.log("[PASS] Immediate state clearing verified: previous search results wiped when new search begins.");
 
 (async () => {
+  DownloadManager.activeDownloadingSongIds.clear();
   // Test 47: Verifying Consecutive Song Downloads Without Page Refresh & Download All Batch Queue
   console.log("\nTest 47: Verifying Consecutive Song Downloads Without Page Refresh & Download All Batch Queue...");
 
@@ -2063,31 +2064,59 @@ console.log("[PASS] Immediate state clearing verified: previous search results w
     }
   };
 
-  // 2. Consecutive Downloads Without Page Refresh
-  const song1 = AppState.masterSongs[0];
-  const song2 = AppState.masterSongs[1];
-  const mockBtn1 = createMockElement("btn1", "button");
-  const mockBtn2 = createMockElement("btn2", "button");
+  // 2. Continuous 5-Song Downloads Without Page Refresh (All 10 Requirements Validated)
+  const fiveSongs = AppState.masterSongs.slice(0, 5);
+  assert.strictEqual(fiveSongs.length, 5, "Must have at least 5 songs to test continuous 5-song download");
 
-  // Download Song 1
-  await handleDownloadAction(song1, mockBtn1);
-  assert(downloadedAudioUrls.length >= 1, "Song 1 must trigger audio fetch download");
-  assert(createdBlobUrls.length >= 1, "Song 1 must create blob URL");
-  // Crucial: blob URL must NOT be revoked immediately (must stay alive for safe OS buffer write)
-  assert.strictEqual(revokedBlobUrls.length, 0, "Blob URL must NOT be revoked at 150ms! Must remain alive for file stream completion");
-  assert(DownloadManager.activeBlobUrls.has(createdBlobUrls[0]), "Blob URL must be safely tracked in DownloadManager.activeBlobUrls");
+  const mockButtons = fiveSongs.map((s, idx) => {
+    const btn = createMockElement(`dlBtn_${idx+1}`, "button");
+    btn.innerHTML = `<span>⬇️</span> Download`;
+    btn.title = `Download ${s.title} MP3`;
+    return btn;
+  });
 
-  // Download Next Song (Song 2) immediately WITHOUT page refresh
-  await handleDownloadAction(song2, mockBtn2);
-  assert(downloadedAudioUrls.length >= 2, "Song 2 must download consecutively without page refresh!");
-  assert(createdBlobUrls.length >= 2, "Song 2 must create its own blob URL consecutively!");
-  assert(DownloadManager.activeBlobUrls.has(createdBlobUrls[1]), "Song 2 blob URL must also be active in DownloadManager");
-  console.log("[PASS] Consecutive downloads verified: Song 1 and Song 2 downloaded consecutively without requiring page refresh.");
+  // Consecutively download 5 distinct songs without refreshing the page
+  for (let i = 0; i < 5; i++) {
+    const song = fiveSongs[i];
+    const btn = mockButtons[i];
 
-  // Verify mock button state transitions
-  assert.strictEqual(mockBtn1.disabled, false, "Button 1 must not be stuck disabled");
-  assert.strictEqual(mockBtn2.disabled, false, "Button 2 must not be stuck disabled");
-  console.log("[PASS] Button states recover cleanly and never remain stuck disabled.");
+    
+                const result = await handleDownloadAction(song, btn);
+    
+    assert.strictEqual(result, true, `Song ${i + 1} ("${song.title}") must return successful download status`);
+    assert(downloadedAudioUrls.length >= i + 1, `Song ${i + 1} must trigger a separate fresh audio fetch`);
+    assert(createdBlobUrls.length >= i + 1, `Song ${i + 1} must create an independent Blob URL`);
+    assert(DownloadManager.activeBlobUrls.has(createdBlobUrls[i]), `Song ${i + 1} Blob URL must be tracked in activeBlobUrls`);
+    assert.strictEqual(btn.disabled, false, `Button ${i + 1} must not remain stuck disabled after download`);
+    assert(!btn.classList.contains("is-downloading"), `Button ${i + 1} must not retain is-downloading class`);
+  }
+  console.log("[PASS] Tested downloading 5 different songs continuously without refreshing the page - ALL 5 SUCCEEDED!");
+
+  // Verify Per-Song Duplicate Click Prevention without blocking other songs (Requirement 9 & 8)
+  const activeSong = fiveSongs[0];
+  DownloadManager.activeDownloadingSongIds.add(String(activeSong.id));
+  
+  // Duplicate click on the same currently downloading song must be rejected
+  const dupResult = await DownloadManager.downloadSong(activeSong, mockButtons[0]);
+  assert.strictEqual(dupResult, false, "Duplicate click on currently downloading song must be rejected");
+  
+  // Meanwhile, a DIFFERENT song must NOT be blocked and should proceed freely
+  const otherSong = AppState.masterSongs[5];
+  const otherBtn = createMockElement("otherBtn", "button");
+  const otherResult = await handleDownloadAction(otherSong, otherBtn);
+  assert.strictEqual(otherResult, true, "Different song must NOT be blocked while another song download was active");
+  assert.strictEqual(otherBtn.disabled, false, "Other song button must recover cleanly");
+  
+  // Clean up mock active state
+  DownloadManager.activeDownloadingSongIds.delete(String(activeSong.id));
+  console.log("[PASS] Duplicate clicks on active song safely prevented without blocking other songs.");
+
+  // Verify Blob URL Cleanup & No memory retention (Requirement 3 & 7)
+  const initialBlobCount = DownloadManager.activeBlobUrls.size;
+  DownloadManager.cleanupAll();
+  assert.strictEqual(DownloadManager.activeBlobUrls.size, 0, "DownloadManager.cleanupAll must release all active Blob URLs");
+  assert(revokedBlobUrls.length >= initialBlobCount, "URL.revokeObjectURL must be called to free binary memory");
+  console.log("[PASS] Blob URL lifecycle and memory cleanup verified (no persistent audio data retained).");
 
   // 3. Download All Batch Queue
   const ghilliSongs = AppState.masterSongs.filter(s => (s.album || "").toLowerCase().includes("ghilli"));
