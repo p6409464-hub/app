@@ -6,7 +6,7 @@
   <meta name="referrer" content="no-referrer" />
   <title>Pranesh Music Hub - Modern Dark Music Experience</title>
   <meta name="description" content="Stream and directly download Tamil, English, Malayalam, Instrumental, and Only Friends OST tracks in a modern, ad-free dark theme." />
-  <link rel="stylesheet" href="static/css/style.css?v=3.31.0" />
+  <link rel="stylesheet" href="static/css/style.css?v=3.40.0" />
   <!-- Google Fonts: Inter -->
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
@@ -39,8 +39,10 @@
           autocomplete="off" 
           spellcheck="false"
         />
+        <button id="voiceSearchBtn" class="voice-search-btn" title="Voice Search (Tamil / English)">🎙️</button>
         <button id="clearSearchBtn" class="clear-search-btn" title="Clear search">✕</button>
       </div>
+      <div id="searchSuggestionsBox" class="search-suggestions-box" style="display: none;"></div>
     </div>
 
     <!-- Nav Actions -->
@@ -53,6 +55,9 @@
       </button>
       <button class="btn btn-pill section-pill" data-section="history" title="View recently played tracks">
         <span>🕒</span> History
+      </button>
+      <button id="themeToggleBtn" class="btn btn-pill theme-toggle-btn" title="Toggle Light / Dark Theme">
+        <span id="themeToggleIcon">🌙</span> <span id="themeToggleText" class="hide-mobile">Dark</span>
       </button>
     </div>
   </header>
@@ -110,13 +115,16 @@
 
           <!-- Medium-Big Controls -->
           <div class="featured-buttons-row">
+            <button id="featuredSpeedBtn" class="f-ctrl-btn f-speed-btn" title="Playback Speed: 1.0x">1.0x</button>
             <button id="featuredShuffleBtn" class="f-ctrl-btn" title="Shuffle Playback">🔀</button>
             <button id="featuredPrevBtn" class="f-ctrl-btn" title="Previous Track">⏮</button>
             <button id="featuredPlayPauseBtn" class="f-play-pause-btn" title="Play / Pause (Spacebar)">
               <span id="featuredPlayIcon">▶</span>
             </button>
             <button id="featuredNextBtn" class="f-ctrl-btn" title="Next Track">⏭</button>
-            <button id="featuredRepeatBtn" class="f-ctrl-btn" title="Repeat Track">🔁</button>
+            <button id="featuredRepeatBtn" class="f-ctrl-btn" title="Repeat (Off / All / One)">🔁</button>
+            <button id="featuredEqBtn" class="f-ctrl-btn" title="Equalizer &amp; Bass Boost">🎚️</button>
+            <button id="featuredLyricsBtn" class="f-ctrl-btn" title="Live Lyrics">📜</button>
             <button id="heroPlayBtn" style="display:none;" aria-hidden="true"></button>
           </div>
         </div>
@@ -267,13 +275,14 @@
     <!-- Center: Playback Controls & Seekbar -->
     <div class="player-controls-container">
       <div class="player-buttons">
+        <button id="playbackSpeedBtn" class="control-btn speed-btn" title="Playback Speed: 1.0x">1.0x</button>
         <button id="shuffleBtn" class="control-btn" title="Shuffle Playback">🔀</button>
         <button id="prevBtn" class="control-btn" title="Previous Track">⏮</button>
         <button id="playPauseBtn" class="btn-play-pause-main" title="Play / Pause (Spacebar)">
           <span id="playPauseIcon">▶</span>
         </button>
         <button id="nextBtn" class="control-btn" title="Next Track">⏭</button>
-        <button id="repeatBtn" class="control-btn" title="Repeat Track">🔁</button>
+        <button id="repeatBtn" class="control-btn" title="Repeat (Off / All / One)">🔁</button>
       </div>
 
       <div class="player-progress-bar">
@@ -305,6 +314,18 @@
         <span>📱</span> <span class="hide-mobile">Open in</span> Music App
       </button>
 
+      <button id="playerEqBtn" class="player-action-btn" title="Equalizer &amp; Bass Boost">
+        <span>🎚️</span> <span class="hide-mobile">EQ</span>
+      </button>
+
+      <button id="playerLyricsBtn" class="player-action-btn" title="Live Lyrics">
+        <span>📜</span> <span class="hide-mobile">Lyrics</span>
+      </button>
+
+      <button id="expandPlayerBtn" class="player-action-btn" title="Full Screen Player">
+        <span>⛶</span>
+      </button>
+
       <button id="togglePlaylistBtn" class="playlist-toggle-btn" title="View Up Next &amp; Related Songs Playlist">
         <span>📋</span> <span class="hide-mobile">Playlist</span> (<span id="playlistBadge">0</span>)
       </button>
@@ -325,6 +346,8 @@
       </div>
       <div class="playlist-header-right">
         <button id="downloadAllPlaylistBtn" class="playlist-action-btn" title="Download All Songs in Playlist">📥 Download All (<span id="playlistDlCount">0</span>)</button>
+        <button id="exportPlaylistM3UBtn" class="playlist-action-btn" title="Export Playlist as M3U file">💾 Export M3U</button>
+        <button id="clearQueueBtn" class="playlist-action-btn" title="Clear Playlist Queue">🗑️ Clear Queue</button>
         <button id="shufflePlaylistBtn" class="playlist-action-btn" title="Shuffle Playlist Queue">🔀 Shuffle</button>
         <button id="closePlaylistBtn" class="playlist-close-btn" title="Close Playlist" aria-label="Close">✕</button>
       </div>
@@ -339,8 +362,134 @@
        ======================================================================== -->
   <div id="toastContainer" class="toast-container"></div>
 
+  <!-- ========================================================================
+       Full-Screen / Expanded Player Modal
+       ======================================================================== -->
+  <div id="fullscreenPlayerModal" class="fullscreen-player-modal" style="display: none;">
+    <div class="fs-backdrop"></div>
+    <div class="fs-player-container">
+      <div class="fs-top-bar">
+        <button id="closeFullscreenBtn" class="fs-close-btn" title="Collapse Player">✕</button>
+        <span class="fs-now-playing-label">NOW PLAYING</span>
+        <button id="fsLyricsToggleBtn" class="fs-icon-btn" title="Live Lyrics">📜</button>
+      </div>
+
+      <div class="fs-artwork-wrap">
+        <img id="fullscreenThumb" class="fs-thumb-img" src="static/images/only_friends_theme.svg" alt="Cover Art" />
+      </div>
+
+      <div class="fs-meta-wrap">
+        <div class="fs-title-artist">
+          <h2 id="fullscreenTitle" class="fs-title">Song Title</h2>
+          <p id="fullscreenArtist" class="fs-artist">Artist Name</p>
+          <span id="fullscreenAlbum" class="fs-album">Movie Album</span>
+        </div>
+        <button id="fullscreenFavBtn" class="fs-fav-btn" title="Toggle Favourite">🤍</button>
+      </div>
+
+      <div class="fs-seekbar-wrap">
+        <input type="range" id="fullscreenSeekbar" class="fs-seekbar-slider" min="0" max="100" value="0" step="0.1" />
+        <div class="fs-time-row">
+          <span id="fullscreenCurrentTime">0:00</span>
+          <span id="fullscreenDurationTime">0:00</span>
+        </div>
+      </div>
+
+      <div class="fs-controls-wrap">
+        <button id="fullscreenSpeedBtn" class="fs-ctrl-btn" title="Playback Speed: 1.0x">1.0x</button>
+        <button id="fullscreenShuffleBtn" class="fs-ctrl-btn" title="Shuffle">🔀</button>
+        <button id="fullscreenPrevBtn" class="fs-ctrl-btn" title="Previous">⏮</button>
+        <button id="fullscreenPlayPauseBtn" class="fs-play-btn" title="Play / Pause">
+          <span id="fullscreenPlayIcon">▶</span>
+        </button>
+        <button id="fullscreenNextBtn" class="fs-ctrl-btn" title="Next">⏭</button>
+        <button id="fullscreenRepeatBtn" class="fs-ctrl-btn" title="Repeat Track">🔁</button>
+        <button id="fullscreenEqBtn" class="fs-ctrl-btn" title="Equalizer">🎚️</button>
+      </div>
+
+      <div class="fs-bottom-bar">
+        <button id="fullscreenDownloadBtn" class="btn btn-pill" title="Download Song">
+          <span>⬇️</span> Download Song
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ========================================================================
+       Equalizer Modal (Web Audio API)
+       ======================================================================== -->
+  <div id="equalizerModal" class="eq-modal" style="display: none;">
+    <div class="eq-dialog">
+      <div class="eq-header">
+        <div class="eq-title-wrap">
+          <span class="eq-icon">🎚️</span>
+          <h3>Audio Equalizer &amp; Bass Boost</h3>
+        </div>
+        <button id="closeEqBtn" class="modal-close-btn" title="Close Equalizer">✕</button>
+      </div>
+
+      <div class="eq-presets-wrap">
+        <span class="eq-presets-label">Presets:</span>
+        <div class="eq-presets-chips">
+          <button class="chip eq-preset-chip active" data-preset="flat">Flat</button>
+          <button class="chip eq-preset-chip" data-preset="bass">Bass Boost</button>
+          <button class="chip eq-preset-chip" data-preset="vocal">Vocal</button>
+          <button class="chip eq-preset-chip" data-preset="party">Party / Dance</button>
+          <button class="chip eq-preset-chip" data-preset="acoustic">Acoustic</button>
+          <button class="chip eq-preset-chip" data-preset="treble">Treble Boost</button>
+        </div>
+      </div>
+
+      <div class="eq-sliders-wrap">
+        <div class="eq-slider-col">
+          <span class="eq-band-label">Bass (80Hz)</span>
+          <input type="range" id="eqBassSlider" class="eq-slider" min="-12" max="12" step="1" value="0" />
+          <span id="eqBassVal" class="eq-val-display">0 dB</span>
+        </div>
+        <div class="eq-slider-col">
+          <span class="eq-band-label">Mid (1kHz)</span>
+          <input type="range" id="eqMidSlider" class="eq-slider" min="-12" max="12" step="1" value="0" />
+          <span id="eqMidVal" class="eq-val-display">0 dB</span>
+        </div>
+        <div class="eq-slider-col">
+          <span class="eq-band-label">Treble (6kHz)</span>
+          <input type="range" id="eqTrebleSlider" class="eq-slider" min="-12" max="12" step="1" value="0" />
+          <span id="eqTrebleVal" class="eq-val-display">0 dB</span>
+        </div>
+      </div>
+
+      <div class="eq-actions-row">
+        <button id="resetEqBtn" class="btn btn-pill" style="font-size:0.82rem; padding:6px 14px; background:rgba(255,255,255,0.08);">
+          Reset to Flat
+        </button>
+        <span class="eq-status-indicator" style="font-size:0.78rem; color:var(--text-dim);">Studio Audio Processing Active</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- ========================================================================
+       Lyrics Viewer Modal
+       ======================================================================== -->
+  <div id="lyricsModal" class="lyrics-modal" style="display: none;">
+    <div class="lyrics-dialog">
+      <div class="lyrics-header">
+        <div class="lyrics-title-wrap">
+          <span class="lyrics-icon">📜</span>
+          <h3 id="lyricsSongTitle">Song Lyrics</h3>
+        </div>
+        <button id="closeLyricsBtn" class="modal-close-btn" title="Close Lyrics">✕</button>
+      </div>
+      <div id="lyricsContent" class="lyrics-body">
+        <!-- Dynamic lyrics text -->
+      </div>
+    </div>
+  </div>
+
+  <!-- Hidden file input for Favourites JSON Import -->
+  <input type="file" id="favImportInput" accept=".json" style="display: none;" />
+
   <!-- JavaScript Application Logic -->
-  <script src="static/js/songs_data.js?v=3.39.0"></script>
-  <script src="static/js/app.js?v=3.39.0"></script>
+  <script src="static/js/songs_data.js?v=3.40.0"></script>
+  <script src="static/js/app.js?v=3.40.0"></script>
 </body>
 </html>

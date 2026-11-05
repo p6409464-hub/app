@@ -39,6 +39,28 @@
   --navbar-height: 74px;
 }
 
+:root[data-theme="light"] {
+  --bg-deep: #f8fafc;
+  --bg-surface: #f1f5f9;
+  --bg-card: rgba(255, 255, 255, 0.9);
+  --bg-card-hover: rgba(241, 245, 249, 0.98);
+  --border-subtle: rgba(147, 51, 234, 0.25);
+  --border-glow: rgba(168, 85, 247, 0.45);
+  
+  --gradient-main: linear-gradient(135deg, #7c3aed 0%, #2563eb 100%);
+  --gradient-neon: linear-gradient(135deg, #9333ea 0%, #db2777 50%, #2563eb 100%);
+  --gradient-card: linear-gradient(180deg, rgba(255, 255, 255, 0.95) 0%, rgba(248, 250, 252, 0.95) 100%);
+  --gradient-player: linear-gradient(90deg, rgba(255, 255, 255, 0.98) 0%, rgba(248, 250, 252, 0.98) 50%, rgba(255, 255, 255, 0.98) 100%);
+  
+  --text-main: #0f172a;
+  --text-muted: #334155;
+  --text-dim: #64748b;
+  
+  --shadow-sm: 0 4px 12px rgba(0, 0, 0, 0.08);
+  --shadow-glow: 0 0 25px rgba(147, 51, 234, 0.2);
+  --shadow-card: 0 8px 32px 0 rgba(0, 0, 0, 0.08);
+}
+
 * {
   margin: 0;
   padding: 0;
@@ -2956,4 +2978,630 @@ body {
 .toast-action-btn:hover {
   background: rgba(255, 255, 255, 0.35) !important;
   transform: scale(1.04);
+}
+
+
+/* ==========================================================================
+   Voice Search Button & Animations
+   ========================================================================== */
+.voice-search-btn {
+  background: transparent;
+  border: none;
+  font-size: 1.15rem;
+  cursor: pointer;
+  padding: 6px 8px;
+  color: var(--text-muted);
+  transition: all 0.2s ease;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: var(--radius-full);
+}
+
+.voice-search-btn:hover {
+  color: var(--accent-pink);
+  transform: scale(1.12);
+}
+
+.voice-search-btn.is-listening {
+  color: #ef4444;
+  animation: pulseMic 1.2s infinite ease-in-out;
+}
+
+@keyframes pulseMic {
+  0% { transform: scale(1); filter: drop-shadow(0 0 2px rgba(239, 68, 68, 0.5)); }
+  50% { transform: scale(1.25); filter: drop-shadow(0 0 10px rgba(239, 68, 68, 0.9)); }
+  100% { transform: scale(1); filter: drop-shadow(0 0 2px rgba(239, 68, 68, 0.5)); }
+}
+
+/* ==========================================================================
+   Typeahead Search Suggestions Dropdown
+   ========================================================================== */
+.search-container {
+  position: relative;
+}
+
+.search-suggestions-box {
+  position: absolute;
+  top: calc(100% + 8px);
+  left: 0;
+  right: 0;
+  background: var(--bg-surface);
+  border: 1px solid var(--border-glow);
+  border-radius: var(--radius-md);
+  box-shadow: 0 16px 36px rgba(0, 0, 0, 0.5), 0 0 20px rgba(168, 85, 247, 0.2);
+  backdrop-filter: blur(16px);
+  max-height: 380px;
+  overflow-y: auto;
+  z-index: 1000;
+  padding: 6px;
+}
+
+.suggestion-item {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 8px 12px;
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.suggestion-item:hover, .suggestion-item.selected {
+  background: rgba(168, 85, 247, 0.22);
+}
+
+.suggestion-thumb {
+  width: 40px;
+  height: 40px;
+  border-radius: 6px;
+  object-fit: cover;
+  flex-shrink: 0;
+}
+
+.suggestion-meta {
+  flex: 1;
+  min-width: 0;
+}
+
+.suggestion-title {
+  font-size: 0.9rem;
+  font-weight: 600;
+  color: var(--text-main);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.suggestion-subtitle {
+  font-size: 0.76rem;
+  color: var(--text-muted);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.suggestion-badge {
+  font-size: 0.7rem;
+  padding: 2px 8px;
+  border-radius: 10px;
+  background: rgba(168, 85, 247, 0.2);
+  color: #c084fc;
+  flex-shrink: 0;
+}
+
+/* ==========================================================================
+   Version Badges (Original OST, Remix, Cover, Live, Lofi)
+   ========================================================================== */
+.version-badge {
+  position: absolute;
+  top: 8px;
+  left: 8px;
+  padding: 3px 8px;
+  border-radius: 12px;
+  font-size: 0.7rem;
+  font-weight: 700;
+  letter-spacing: 0.3px;
+  text-transform: uppercase;
+  z-index: 2;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.4);
+}
+
+.version-original {
+  background: linear-gradient(135deg, #059669 0%, #10b981 100%);
+  color: #ffffff;
+}
+
+.version-remix {
+  background: linear-gradient(135deg, #7c3aed 0%, #a855f7 100%);
+  color: #ffffff;
+}
+
+.version-cover {
+  background: linear-gradient(135deg, #0284c7 0%, #38bdf8 100%);
+  color: #ffffff;
+}
+
+.version-live {
+  background: linear-gradient(135deg, #ea580c 0%, #f97316 100%);
+  color: #ffffff;
+}
+
+.version-lofi {
+  background: linear-gradient(135deg, #d97706 0%, #f59e0b 100%);
+  color: #ffffff;
+}
+
+/* ==========================================================================
+   Playback Speed & Control Buttons
+   ========================================================================== */
+.speed-btn, .f-speed-btn, .fs-ctrl-btn {
+  font-weight: 700;
+  font-size: 0.82rem;
+  letter-spacing: 0.2px;
+}
+
+.card-queue-btn {
+  padding: 4px 8px;
+  font-size: 0.75rem;
+  background: rgba(255, 255, 255, 0.08);
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  border-radius: 6px;
+  color: var(--text-main);
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.card-queue-btn:hover {
+  background: rgba(168, 85, 247, 0.25);
+  border-color: rgba(168, 85, 247, 0.5);
+  color: #ffffff;
+}
+
+/* ==========================================================================
+   Dedicated Favourites View, Multi-Select & ZIP Toolbar
+   ========================================================================== */
+.fav-toolbar {
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  margin: 12px 0 18px 0;
+  background: rgba(30, 20, 60, 0.5);
+  border: 1px solid rgba(168, 85, 247, 0.25);
+  border-radius: var(--radius-md);
+  padding: 14px 16px;
+}
+
+.fav-toolbar-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.fav-search-wrap {
+  position: relative;
+  flex: 1;
+  min-width: 220px;
+}
+
+.fav-search-input {
+  width: 100%;
+  padding: 8px 12px 8px 34px;
+  background: rgba(15, 10, 30, 0.8);
+  border: 1px solid rgba(168, 85, 247, 0.3);
+  border-radius: var(--radius-full);
+  color: var(--text-main);
+  font-size: 0.88rem;
+  outline: none;
+}
+
+.fav-search-input:focus {
+  border-color: var(--accent-pink);
+  box-shadow: 0 0 10px rgba(236, 72, 153, 0.3);
+}
+
+.fav-search-icon {
+  position: absolute;
+  left: 12px;
+  top: 50%;
+  transform: translateY(-50%);
+  font-size: 0.82rem;
+  color: var(--text-muted);
+}
+
+.fav-sort-select {
+  padding: 8px 14px;
+  background: rgba(15, 10, 30, 0.8);
+  border: 1px solid rgba(168, 85, 247, 0.3);
+  border-radius: var(--radius-full);
+  color: var(--text-main);
+  font-size: 0.85rem;
+  cursor: pointer;
+  outline: none;
+}
+
+.fav-actions-row {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+/* Bulk Selection Action Bar */
+.bulk-action-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 10px;
+  padding: 10px 14px;
+  background: linear-gradient(135deg, rgba(124, 58, 237, 0.25) 0%, rgba(59, 130, 246, 0.25) 100%);
+  border: 1px solid rgba(168, 85, 247, 0.4);
+  border-radius: var(--radius-md);
+  margin-bottom: 16px;
+}
+
+.song-card.select-mode {
+  cursor: pointer;
+  user-select: none;
+}
+
+.card-select-checkbox {
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  width: 22px;
+  height: 22px;
+  accent-color: #a855f7;
+  cursor: pointer;
+  z-index: 5;
+  transform: scale(1.2);
+}
+
+/* ZIP Packaging Progress Bar */
+.zip-progress-container {
+  width: 100%;
+  background: rgba(15, 10, 30, 0.9);
+  border: 1px solid rgba(168, 85, 247, 0.4);
+  border-radius: var(--radius-md);
+  padding: 12px 16px;
+  margin: 12px 0 16px 0;
+}
+
+.zip-progress-info {
+  display: flex;
+  justify-content: space-between;
+  font-size: 0.85rem;
+  color: var(--text-main);
+  margin-bottom: 8px;
+}
+
+.zip-progress-bar {
+  width: 100%;
+  height: 8px;
+  background: rgba(255, 255, 255, 0.1);
+  border-radius: 4px;
+  overflow: hidden;
+}
+
+.zip-progress-fill {
+  height: 100%;
+  background: var(--gradient-neon);
+  width: 0%;
+  transition: width 0.2s ease;
+}
+
+/* ==========================================================================
+   Full-Screen / Expanded Player Modal
+   ======================================================================== */
+.fullscreen-player-modal {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100vw;
+  height: 100vh;
+  z-index: 9999;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  backdrop-filter: blur(28px);
+  background: rgba(8, 6, 18, 0.88);
+}
+
+.fs-backdrop {
+  position: absolute;
+  inset: 0;
+  background: radial-gradient(circle at center, rgba(147, 51, 234, 0.25) 0%, transparent 70%);
+}
+
+.fs-player-container {
+  position: relative;
+  width: 90%;
+  max-width: 480px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 20px;
+  padding: 24px;
+  z-index: 2;
+}
+
+.fs-top-bar {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.fs-close-btn, .fs-icon-btn, .modal-close-btn {
+  background: rgba(255, 255, 255, 0.1);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  color: var(--text-main);
+  border-radius: var(--radius-full);
+  width: 38px;
+  height: 38px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.1rem;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.fs-close-btn:hover, .fs-icon-btn:hover, .modal-close-btn:hover {
+  background: rgba(255, 255, 255, 0.25);
+  transform: scale(1.08);
+}
+
+.fs-now-playing-label {
+  font-size: 0.78rem;
+  font-weight: 700;
+  letter-spacing: 1.5px;
+  color: var(--text-muted);
+}
+
+.fs-artwork-wrap {
+  width: 280px;
+  height: 280px;
+  border-radius: var(--radius-lg);
+  box-shadow: 0 20px 50px rgba(0, 0, 0, 0.6), 0 0 30px rgba(168, 85, 247, 0.35);
+  overflow: hidden;
+  border: 1px solid rgba(168, 85, 247, 0.3);
+}
+
+.fs-thumb-img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.fs-meta-wrap {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.fs-title-artist {
+  flex: 1;
+  min-width: 0;
+}
+
+.fs-title {
+  font-size: 1.35rem;
+  font-weight: 700;
+  color: var(--text-main);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.fs-artist {
+  font-size: 0.95rem;
+  color: var(--text-muted);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.fs-album {
+  font-size: 0.8rem;
+  color: #c084fc;
+}
+
+.fs-fav-btn {
+  font-size: 1.5rem;
+  background: transparent;
+  border: none;
+  cursor: pointer;
+}
+
+.fs-seekbar-wrap {
+  width: 100%;
+}
+
+.fs-seekbar-slider {
+  width: 100%;
+  height: 6px;
+  border-radius: 3px;
+  accent-color: #ec4899;
+  cursor: pointer;
+}
+
+.fs-time-row {
+  display: flex;
+  justify-content: space-between;
+  font-size: 0.8rem;
+  color: var(--text-muted);
+  margin-top: 4px;
+}
+
+.fs-controls-wrap {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 16px;
+  width: 100%;
+}
+
+.fs-ctrl-btn {
+  background: transparent;
+  border: none;
+  font-size: 1.25rem;
+  color: var(--text-main);
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.fs-ctrl-btn:hover {
+  transform: scale(1.15);
+  color: #c084fc;
+}
+
+.fs-play-btn {
+  width: 64px;
+  height: 64px;
+  border-radius: var(--radius-full);
+  background: var(--gradient-neon);
+  border: none;
+  color: #ffffff;
+  font-size: 1.6rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  box-shadow: 0 8px 25px rgba(236, 72, 153, 0.45);
+  transition: all 0.2s ease;
+}
+
+.fs-play-btn:hover {
+  transform: scale(1.08);
+}
+
+.fs-bottom-bar {
+  width: 100%;
+  display: flex;
+  justify-content: center;
+}
+
+/* ==========================================================================
+   Equalizer Modal & Sliders
+   ========================================================================== */
+.eq-modal, .lyrics-modal {
+  position: fixed;
+  inset: 0;
+  z-index: 10000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(0, 0, 0, 0.75);
+  backdrop-filter: blur(14px);
+  padding: 16px;
+}
+
+.eq-dialog, .lyrics-dialog {
+  background: var(--bg-surface);
+  border: 1px solid var(--border-glow);
+  border-radius: var(--radius-lg);
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.7);
+  width: 100%;
+  max-width: 520px;
+  padding: 24px;
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+}
+
+.eq-header, .lyrics-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.eq-title-wrap, .lyrics-title-wrap {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.eq-presets-wrap {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.eq-presets-label {
+  font-size: 0.82rem;
+  color: var(--text-muted);
+  font-weight: 600;
+}
+
+.eq-presets-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.eq-preset-chip {
+  font-size: 0.8rem;
+  padding: 4px 12px;
+}
+
+.eq-sliders-wrap {
+  display: flex;
+  justify-content: space-around;
+  gap: 16px;
+  padding: 18px 0;
+  background: rgba(15, 10, 30, 0.6);
+  border-radius: var(--radius-md);
+  border: 1px solid rgba(168, 85, 247, 0.2);
+}
+
+.eq-slider-col {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+}
+
+.eq-band-label {
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: var(--text-muted);
+}
+
+.eq-slider {
+  width: 100px;
+  accent-color: #a855f7;
+  cursor: pointer;
+}
+
+.eq-val-display {
+  font-size: 0.85rem;
+  font-weight: 700;
+  color: #c084fc;
+}
+
+.eq-actions-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+/* ==========================================================================
+   Lyrics Modal Body
+   ========================================================================== */
+.lyrics-body {
+  max-height: 400px;
+  overflow-y: auto;
+  line-height: 1.8;
+  font-size: 1.05rem;
+  color: var(--text-main);
+  text-align: center;
+  padding: 12px;
+  white-space: pre-wrap;
 }

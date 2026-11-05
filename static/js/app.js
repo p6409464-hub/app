@@ -120,6 +120,13 @@ const AppState = {
   history: safeGetStorage("pranesh_hub_history", []),
   queue: [],
   isPlaylistOpen: false,
+  repeatMode: "off",     // "off" | "all" | "one"
+  playbackSpeed: 1.0,    // 0.5 | 0.75 | 1.0 | 1.25 | 1.5 | 2.0
+  favSearchQuery: "",    // Search query within favourites
+  favSortOrder: "date_desc", // "date_desc" | "date_asc" | "title_asc" | "title_desc" | "artist_asc" | "duration"
+  favSelectMode: false,  // Multi-select mode toggle in favourites
+  selectedFavSongIds: new Set(), // Set of selected song IDs for bulk actions
+  isFullscreenOpen: false,
   downloadQuality: (typeof localStorage !== "undefined" && (localStorage.getItem("pranesh_hub_dl_quality") === "48" || localStorage.getItem("pranesh_hub_dl_quality") === "96" || localStorage.getItem("pranesh_hub_dl_quality") === "160" || localStorage.getItem("pranesh_hub_dl_quality") === "320")) ? localStorage.getItem("pranesh_hub_dl_quality") : "48", // Default: "< 2MB Ultra-Light (48k)"
   correctedQuery: "", // Auto-corrected search query when user types wrong spelling
   inputAutoCorrectTimer: null
@@ -279,6 +286,44 @@ function refreshDOMElements() {
   DOM.featuredMusicAppBtn = document.getElementById("featuredMusicAppBtn");
   DOM.featuredDownloadAllBtn = document.getElementById("featuredDownloadAllBtn");
   DOM.downloadAllPlaylistBtn = document.getElementById("downloadAllPlaylistBtn");
+  DOM.voiceSearchBtn = document.getElementById("voiceSearchBtn");
+  DOM.searchSuggestionsBox = document.getElementById("searchSuggestionsBox");
+  DOM.themeToggleBtn = document.getElementById("themeToggleBtn");
+  DOM.playbackSpeedBtn = document.getElementById("playbackSpeedBtn");
+  DOM.featuredSpeedBtn = document.getElementById("featuredSpeedBtn");
+  DOM.featuredEqBtn = document.getElementById("featuredEqBtn");
+  DOM.featuredLyricsBtn = document.getElementById("featuredLyricsBtn");
+  DOM.playerEqBtn = document.getElementById("playerEqBtn");
+  DOM.playerLyricsBtn = document.getElementById("playerLyricsBtn");
+  DOM.expandPlayerBtn = document.getElementById("expandPlayerBtn");
+  DOM.exportPlaylistM3UBtn = document.getElementById("exportPlaylistM3UBtn");
+  DOM.clearQueueBtn = document.getElementById("clearQueueBtn");
+  DOM.fullscreenPlayerModal = document.getElementById("fullscreenPlayerModal");
+  DOM.closeFullscreenBtn = document.getElementById("closeFullscreenBtn");
+  DOM.fsLyricsToggleBtn = document.getElementById("fsLyricsToggleBtn");
+  DOM.fullscreenThumb = document.getElementById("fullscreenThumb");
+  DOM.fullscreenTitle = document.getElementById("fullscreenTitle");
+  DOM.fullscreenArtist = document.getElementById("fullscreenArtist");
+  DOM.fullscreenAlbum = document.getElementById("fullscreenAlbum");
+  DOM.fullscreenFavBtn = document.getElementById("fullscreenFavBtn");
+  DOM.fullscreenSeekbar = document.getElementById("fullscreenSeekbar");
+  DOM.fullscreenCurrentTime = document.getElementById("fullscreenCurrentTime");
+  DOM.fullscreenDurationTime = document.getElementById("fullscreenDurationTime");
+  DOM.fullscreenSpeedBtn = document.getElementById("fullscreenSpeedBtn");
+  DOM.fullscreenShuffleBtn = document.getElementById("fullscreenShuffleBtn");
+  DOM.fullscreenPrevBtn = document.getElementById("fullscreenPrevBtn");
+  DOM.fullscreenPlayPauseBtn = document.getElementById("fullscreenPlayPauseBtn");
+  DOM.fullscreenPlayIcon = document.getElementById("fullscreenPlayIcon");
+  DOM.fullscreenNextBtn = document.getElementById("fullscreenNextBtn");
+  DOM.fullscreenRepeatBtn = document.getElementById("fullscreenRepeatBtn");
+  DOM.fullscreenEqBtn = document.getElementById("fullscreenEqBtn");
+  DOM.fullscreenDownloadBtn = document.getElementById("fullscreenDownloadBtn");
+  DOM.equalizerModal = document.getElementById("equalizerModal");
+  DOM.closeEqBtn = document.getElementById("closeEqBtn");
+  DOM.resetEqBtn = document.getElementById("resetEqBtn");
+  DOM.lyricsModal = document.getElementById("lyricsModal");
+  DOM.closeLyricsBtn = document.getElementById("closeLyricsBtn");
+  DOM.favImportInput = document.getElementById("favImportInput");
 }
 
 // Initial binding attempt
@@ -309,6 +354,116 @@ function setupEventListeners() {
   if (listenersAttached) return;
   listenersAttached = true;
   refreshDOMElements();
+  initTheme();
+  initSearchSuggestions();
+  initVoiceSearch();
+
+  // Playback speed buttons
+  [DOM.playbackSpeedBtn, DOM.featuredSpeedBtn, DOM.fullscreenSpeedBtn].forEach(btn => {
+    if (btn) btn.addEventListener("click", cyclePlaybackSpeed);
+  });
+
+  // 3-mode repeat buttons
+  [DOM.repeatBtn, DOM.featuredRepeatBtn, DOM.fullscreenRepeatBtn].forEach(btn => {
+    if (btn) btn.addEventListener("click", cycleRepeatMode);
+  });
+
+  // Fullscreen player triggers
+  if (DOM.expandPlayerBtn) DOM.expandPlayerBtn.addEventListener("click", openFullscreenPlayer);
+  if (DOM.closeFullscreenBtn) DOM.closeFullscreenBtn.addEventListener("click", closeFullscreenPlayer);
+  if (DOM.fullscreenPlayPauseBtn) DOM.fullscreenPlayPauseBtn.addEventListener("click", togglePlayPause);
+  if (DOM.fullscreenPrevBtn) DOM.fullscreenPrevBtn.addEventListener("click", playPreviousSong);
+  if (DOM.fullscreenNextBtn) DOM.fullscreenNextBtn.addEventListener("click", playNextSong);
+  if (DOM.fullscreenShuffleBtn) {
+    DOM.fullscreenShuffleBtn.addEventListener("click", () => {
+      AppState.isShuffle = !AppState.isShuffle;
+      DOM.fullscreenShuffleBtn.classList.toggle("active", AppState.isShuffle);
+      if (DOM.shuffleBtn) DOM.shuffleBtn.classList.toggle("active", AppState.isShuffle);
+      showToast(AppState.isShuffle ? "🔀 Shuffle Enabled" : "Shuffle Disabled");
+    });
+  }
+  if (DOM.fullscreenFavBtn) {
+    DOM.fullscreenFavBtn.addEventListener("click", () => {
+      if (AppState.currentSong) toggleFavourite(AppState.currentSong.id);
+    });
+  }
+  if (DOM.fullscreenDownloadBtn) {
+    DOM.fullscreenDownloadBtn.addEventListener("click", () => {
+      if (AppState.currentSong) handleDownloadAction(AppState.currentSong, DOM.fullscreenDownloadBtn);
+    });
+  }
+  if (DOM.fullscreenSeekbar) {
+    DOM.fullscreenSeekbar.addEventListener("input", (e) => {
+      if (audioPlayer.duration && !isNaN(audioPlayer.duration)) {
+        const seekTo = (parseFloat(e.target.value) / 100) * audioPlayer.duration;
+        audioPlayer.currentTime = seekTo;
+      }
+    });
+  }
+
+  // Equalizer triggers
+  [DOM.playerEqBtn, DOM.featuredEqBtn, DOM.fullscreenEqBtn].forEach(btn => {
+    if (btn) {
+      btn.addEventListener("click", () => {
+        if (DOM.equalizerModal) DOM.equalizerModal.style.display = "flex";
+        EqualizerManager.init();
+        EqualizerManager.updateUI();
+      });
+    }
+  });
+  if (DOM.closeEqBtn) {
+    DOM.closeEqBtn.addEventListener("click", () => {
+      if (DOM.equalizerModal) DOM.equalizerModal.style.display = "none";
+    });
+  }
+  if (DOM.resetEqBtn) {
+    DOM.resetEqBtn.addEventListener("click", () => {
+      EqualizerManager.applyPreset("flat");
+    });
+  }
+  document.querySelectorAll(".eq-preset-chip").forEach(chip => {
+    chip.addEventListener("click", () => {
+      const preset = chip.dataset.preset;
+      if (preset) EqualizerManager.applyPreset(preset);
+    });
+  });
+  const bSlider = document.getElementById("eqBassSlider");
+  const mSlider = document.getElementById("eqMidSlider");
+  const tSlider = document.getElementById("eqTrebleSlider");
+  [bSlider, mSlider, tSlider].forEach(slider => {
+    if (slider) {
+      slider.addEventListener("input", () => {
+        EqualizerManager.currentPreset = "custom";
+        EqualizerManager.setGains(
+          bSlider ? parseFloat(bSlider.value) : 0,
+          mSlider ? parseFloat(mSlider.value) : 0,
+          tSlider ? parseFloat(tSlider.value) : 0
+        );
+        EqualizerManager.updateUI();
+      });
+    }
+  });
+
+  // Lyrics modal triggers
+  [DOM.playerLyricsBtn, DOM.featuredLyricsBtn, DOM.fsLyricsToggleBtn].forEach(btn => {
+    if (btn) btn.addEventListener("click", () => LyricsManager.openLyrics());
+  });
+  if (DOM.closeLyricsBtn) {
+    DOM.closeLyricsBtn.addEventListener("click", () => LyricsManager.closeLyrics());
+  }
+
+  // Playlist queue buttons
+  if (DOM.clearQueueBtn) DOM.clearQueueBtn.addEventListener("click", clearQueue);
+  if (DOM.exportPlaylistM3UBtn) DOM.exportPlaylistM3UBtn.addEventListener("click", exportPlaylistM3U);
+
+  // Favourites import listener
+  if (DOM.favImportInput) {
+    DOM.favImportInput.addEventListener("change", (e) => {
+      if (e.target.files && e.target.files[0]) {
+        importFavouritesJSON(e.target.files[0]);
+      }
+    });
+  }
   // Live Instant Search Bar with 0ms deterministic local response & spell-check auto-correction
   if (DOM.searchInput) {
     let searchInputDebounceTimer = null;
@@ -3349,6 +3504,27 @@ function renderContent() {
     filtered = AppState.favourites
       .map(id => AppState.masterSongs.find(s => s.id === id))
       .filter(Boolean);
+
+    if (AppState.favSearchQuery) {
+      const q = AppState.favSearchQuery.toLowerCase().trim();
+      filtered = filtered.filter(s =>
+        (s.title && s.title.toLowerCase().includes(q)) ||
+        (s.artist && s.artist.toLowerCase().includes(q)) ||
+        (s.album && s.album.toLowerCase().includes(q))
+      );
+    }
+
+    if (AppState.favSortOrder === "date_desc") {
+      filtered = [...filtered].reverse();
+    } else if (AppState.favSortOrder === "title_asc") {
+      filtered.sort((a, b) => (a.title || "").localeCompare(b.title || ""));
+    } else if (AppState.favSortOrder === "title_desc") {
+      filtered.sort((a, b) => (b.title || "").localeCompare(a.title || ""));
+    } else if (AppState.favSortOrder === "artist_asc") {
+      filtered.sort((a, b) => (a.artist || "").localeCompare(b.artist || ""));
+    } else if (AppState.favSortOrder === "duration") {
+      filtered.sort((a, b) => (b.duration || 0) - (a.duration || 0));
+    }
   } else if (isHistory) {
     filtered = AppState.history
       .map(id => AppState.masterSongs.find(s => s.id === id))
@@ -3410,9 +3586,77 @@ function renderContent() {
       headerTitle = "My Favourite Songs";
       headerIcon = "❤️";
       extraHeaderHTML = `
-        <p style="color:var(--text-dim); font-size:0.82rem; margin-top:4px;">
-          ℹ️ Saved locally in this browser. Will not sync across different devices.
-        </p>
+        <div class="fav-toolbar">
+          <div class="fav-toolbar-top">
+            <div class="fav-search-wrap">
+              <span class="fav-search-icon">🔍</span>
+              <input type="text" id="favSearchInput" class="fav-search-input" placeholder="Search within favourites..." value="${escapeAttr(AppState.favSearchQuery || "")}" />
+            </div>
+            <select id="favSortSelect" class="fav-sort-select">
+              <option value="date_desc" ${AppState.favSortOrder === "date_desc" ? "selected" : ""}>🕒 Date Added (Newest)</option>
+              <option value="date_asc" ${AppState.favSortOrder === "date_asc" ? "selected" : ""}>⏳ Date Added (Oldest)</option>
+              <option value="title_asc" ${AppState.favSortOrder === "title_asc" ? "selected" : ""}>🔤 Title (A - Z)</option>
+              <option value="title_desc" ${AppState.favSortOrder === "title_desc" ? "selected" : ""}>🔤 Title (Z - A)</option>
+              <option value="artist_asc" ${AppState.favSortOrder === "artist_asc" ? "selected" : ""}>🎤 Artist (A - Z)</option>
+              <option value="duration" ${AppState.favSortOrder === "duration" ? "selected" : ""}>⏱️ Duration</option>
+            </select>
+          </div>
+          <div class="fav-actions-row">
+            <button id="playAllFavsBtn" class="btn btn-pill" style="background:var(--gradient-main); font-weight:600;">
+              ▶ Play All (${filtered.length})
+            </button>
+            <button id="shuffleFavsBtn" class="btn btn-pill">
+              🔀 Shuffle Favourites
+            </button>
+            <button id="downloadAllFavsZipBtn" class="btn btn-pill" style="border-color:rgba(168,85,247,0.5); background:rgba(168,85,247,0.2);">
+              📦 Download All as ZIP
+            </button>
+            <button id="toggleFavSelectBtn" class="btn btn-pill ${AppState.favSelectMode ? 'active' : ''}">
+              ${AppState.favSelectMode ? '✕ Exit Select' : '☑️ Select Mode'}
+            </button>
+            <button id="exportFavsBtn" class="btn btn-pill">
+              💾 Backup (JSON)
+            </button>
+            <button id="importFavsBtn" class="btn btn-pill">
+              📂 Restore (JSON)
+            </button>
+          </div>
+        </div>
+
+        <div id="zipProgressContainer" class="zip-progress-container" style="display: none;">
+          <div class="zip-progress-info">
+            <span id="zipProgressText">Preparing ZIP archive...</span>
+            <span id="zipProgressSub">0%</span>
+          </div>
+          <div class="zip-progress-bar">
+            <div id="zipProgressFill" class="zip-progress-fill"></div>
+          </div>
+        </div>
+
+        ${AppState.favSelectMode ? `
+          <div id="bulkActionBar" class="bulk-action-bar">
+            <div style="display:flex; align-items:center; gap:12px;">
+              <label style="display:flex; align-items:center; gap:6px; font-size:0.85rem; font-weight:600; cursor:pointer;">
+                <input type="checkbox" id="selectAllFavsCheckbox" ${AppState.selectedFavSongIds.size === filtered.length && filtered.length > 0 ? "checked" : ""} />
+                Select All
+              </label>
+              <span id="bulkSelectedCount" style="font-size:0.85rem; color:#e9d5ff; font-weight:700;">
+                ${AppState.selectedFavSongIds.size} of ${filtered.length} selected
+              </span>
+            </div>
+            <div style="display:flex; align-items:center; gap:8px;">
+              <button id="removeSelectedFavsBtn" class="btn btn-pill" style="background:rgba(239,68,68,0.2); border-color:rgba(239,68,68,0.4); color:#fca5a5; font-size:0.8rem;">
+                🗑️ Remove Selected (${AppState.selectedFavSongIds.size})
+              </button>
+              <button id="downloadSelectedFavsBtn" class="btn btn-pill" style="font-size:0.8rem;">
+                📥 Download Selected (${AppState.selectedFavSongIds.size})
+              </button>
+              <button id="zipSelectedFavsBtn" class="btn btn-pill" style="background:var(--gradient-main); font-size:0.8rem;">
+                📦 Download as ZIP (${AppState.selectedFavSongIds.size})
+              </button>
+            </div>
+          </div>
+        ` : ""}
       `;
     } else if (isHistory) {
       headerTitle = "Recently Played History";
@@ -3581,6 +3825,134 @@ function renderContent() {
     attachCardListeners(visibleList);
     attachPaginationListeners();
     attachSectionExploreListeners();
+
+    // Attach Favourites Toolbar listeners
+    if (isFavourites) {
+      const favSearch = document.getElementById("favSearchInput");
+      if (favSearch) {
+        favSearch.addEventListener("input", (e) => {
+          AppState.favSearchQuery = e.target.value;
+          renderContent();
+          const nextInput = document.getElementById("favSearchInput");
+          if (nextInput) {
+            nextInput.focus();
+            nextInput.setSelectionRange(nextInput.value.length, nextInput.value.length);
+          }
+        });
+      }
+
+      const favSort = document.getElementById("favSortSelect");
+      if (favSort) {
+        favSort.addEventListener("change", (e) => {
+          AppState.favSortOrder = e.target.value;
+          renderContent();
+        });
+      }
+
+      const playAllBtn = document.getElementById("playAllFavsBtn");
+      if (playAllBtn) {
+        playAllBtn.addEventListener("click", () => {
+          if (filtered.length > 0) {
+            AppState.queue = [...filtered];
+            AppState.currentSongIndex = 0;
+            playSong(filtered[0], true);
+          }
+        });
+      }
+
+      const shuffleFavsBtn = document.getElementById("shuffleFavsBtn");
+      if (shuffleFavsBtn) {
+        shuffleFavsBtn.addEventListener("click", () => {
+          if (filtered.length > 0) {
+            const shuffled = [...filtered].sort(() => Math.random() - 0.5);
+            AppState.queue = shuffled;
+            AppState.currentSongIndex = 0;
+            playSong(shuffled[0], true);
+          }
+        });
+      }
+
+      const zipAllBtn = document.getElementById("downloadAllFavsZipBtn");
+      if (zipAllBtn) {
+        zipAllBtn.addEventListener("click", () => {
+          downloadFavouritesAsZip(filtered, "Pranesh_Music_Hub_All_Favourites.zip");
+        });
+      }
+
+      const toggleSelectBtn = document.getElementById("toggleFavSelectBtn");
+      if (toggleSelectBtn) {
+        toggleSelectBtn.addEventListener("click", () => {
+          AppState.favSelectMode = !AppState.favSelectMode;
+          AppState.selectedFavSongIds.clear();
+          renderContent();
+        });
+      }
+
+      const exportBtn = document.getElementById("exportFavsBtn");
+      if (exportBtn) {
+        exportBtn.addEventListener("click", exportFavouritesJSON);
+      }
+
+      const importBtn = document.getElementById("importFavsBtn");
+      if (importBtn) {
+        importBtn.addEventListener("click", () => {
+          const inp = document.getElementById("favImportInput");
+          if (inp) inp.click();
+        });
+      }
+
+      const selectAllCb = document.getElementById("selectAllFavsCheckbox");
+      if (selectAllCb) {
+        selectAllCb.addEventListener("change", (e) => {
+          if (e.target.checked) {
+            filtered.forEach(s => AppState.selectedFavSongIds.add(s.id));
+          } else {
+            AppState.selectedFavSongIds.clear();
+          }
+          renderContent();
+        });
+      }
+
+      const remSelBtn = document.getElementById("removeSelectedFavsBtn");
+      if (remSelBtn) {
+        remSelBtn.addEventListener("click", () => {
+          if (AppState.selectedFavSongIds.size === 0) {
+            showToast("No favourite songs selected.");
+            return;
+          }
+          const count = AppState.selectedFavSongIds.size;
+          AppState.favourites = AppState.favourites.filter(id => !AppState.selectedFavSongIds.has(id));
+          safeSetStorage("pranesh_hub_favs", AppState.favourites);
+          AppState.selectedFavSongIds.clear();
+          showToast(`🗑️ Removed ${count} song(s) from favourites.`);
+          renderContent();
+        });
+      }
+
+      const dlSelBtn = document.getElementById("downloadSelectedFavsBtn");
+      if (dlSelBtn) {
+        dlSelBtn.addEventListener("click", () => {
+          const selected = filtered.filter(s => AppState.selectedFavSongIds.has(s.id));
+          if (selected.length === 0) {
+            showToast("No favourite songs selected.");
+            return;
+          }
+          DownloadManager.downloadAll(selected, "Selected Favourites");
+        });
+      }
+
+      const zipSelBtn = document.getElementById("zipSelectedFavsBtn");
+      if (zipSelBtn) {
+        zipSelBtn.addEventListener("click", () => {
+          const selected = filtered.filter(s => AppState.selectedFavSongIds.has(s.id));
+          if (selected.length === 0) {
+            showToast("No favourite songs selected.");
+            return;
+          }
+          downloadFavouritesAsZip(selected, "Pranesh_Music_Hub_Selected_Favourites.zip");
+        });
+      }
+    }
 
     const dlAllSectionBtn = document.getElementById("downloadAllSectionBtn");
     if (dlAllSectionBtn) {
@@ -3838,6 +4210,13 @@ function createSongCardHTML(song) {
       <div class="card-thumb-wrap">
         <img class="card-thumb-img" src="${safeCover}" alt="${escapeAttr(song.title)}" loading="lazy" onerror="this.src='static/images/only_friends_theme.svg'" />
         <span class="card-category-tag">${escapeHTML(song.language || "Music")}</span>
+        ${(() => {
+          const v = detectSongVersionType(song);
+          return `<span class="version-badge ${v.class}">${v.label}</span>`;
+        })()}
+        ${(AppState.activeSection === "favourites" && AppState.favSelectMode) ? `
+          <input type="checkbox" class="card-select-checkbox" data-id="${escapeAttr(song.id)}" ${AppState.selectedFavSongIds.has(song.id) ? "checked" : ""} />
+        ` : ""}
         ${sourceBadgeHTML}
         <span class="card-duration-badge">${escapeHTML(song.duration_str || "3:30")}</span>
         <div class="play-overlay">
@@ -4097,6 +4476,14 @@ function renderPlaylistDrawer() {
           playSong(song, true);
         }
       }
+    });
+  });
+
+  DOM.playlistItems.querySelectorAll(".playlist-row-remove-btn").forEach(btn => {
+    btn.addEventListener("click", (e) => {
+      e.stopPropagation();
+      const idx = parseInt(btn.dataset.index, 10);
+      removeFromQueue(idx);
     });
   });
 
@@ -4729,6 +5116,26 @@ const DownloadManager = {
   activeDownloadingSongIds: new Set(),
   cancelBatchRequested: false,
 
+  triggerBlobDownload(blob, filename) {
+    const blobUrl = (typeof window !== "undefined" && window.URL && typeof window.URL.createObjectURL === "function")
+      ? window.URL.createObjectURL(blob)
+      : "blob:mock";
+    this.registerBlobUrl(blobUrl, 3000);
+    if (typeof document !== "undefined") {
+      const a = document.createElement("a");
+      a.style.display = "none";
+      a.href = blobUrl;
+      a.download = filename;
+      document.body.appendChild(a);
+      a.click();
+      setTimeout(() => {
+        try {
+          if (document.body.contains(a)) document.body.removeChild(a);
+        } catch (_) {}
+      }, 500);
+    }
+  },
+
   registerBlobUrl(url, timeoutMs = 1500) {
     if (!url) return;
     this.activeBlobUrls.add(url);
@@ -5228,4 +5635,829 @@ if (typeof document !== "undefined") {
   } else {
     initializeApp();
   }
+}
+
+
+// ==========================================================================
+// PURE JAVASCRIPT PKZIP BUILDER (Zero External Dependencies)
+// ==========================================================================
+const ZipArchiveBuilder = {
+  crcTable: (function() {
+    const table = new Uint32Array(256);
+    for (let i = 0; i < 256; i++) {
+      let c = i;
+      for (let k = 0; k < 8; k++) {
+        c = (c & 1) ? (0xEDB88320 ^ (c >>> 1)) : (c >>> 1);
+      }
+      table[i] = c >>> 0;
+    }
+    return table;
+  })(),
+
+  crc32(uint8Array) {
+    let crc = 0xFFFFFFFF;
+    const table = this.crcTable;
+    for (let i = 0; i < uint8Array.length; i++) {
+      crc = table[(crc ^ uint8Array[i]) & 0xFF] ^ (crc >>> 8);
+    }
+    return (crc ^ 0xFFFFFFFF) >>> 0;
+  },
+
+  buildZip(files) {
+    const encoder = new TextEncoder();
+    const localHeaders = [];
+    const centralHeaders = [];
+    let offset = 0;
+
+    const now = new Date();
+    const dosTime = ((now.getHours() << 11) | (now.getMinutes() << 5) | (Math.floor(now.getSeconds() / 2))) & 0xFFFF;
+    const dosDate = (((now.getFullYear() - 1980) << 9) | ((now.getMonth() + 1) << 5) | now.getDate()) & 0xFFFF;
+
+    for (const file of files) {
+      const fileNameBytes = encoder.encode(file.name);
+      const dataBytes = (file.data instanceof Uint8Array) ? file.data : new Uint8Array(file.data);
+      const crc = this.crc32(dataBytes);
+      const size = dataBytes.length;
+
+      // Local Header (30 bytes + filename)
+      const lh = new Uint8Array(30 + fileNameBytes.length);
+      const lhView = new DataView(lh.buffer);
+      lhView.setUint32(0, 0x04034b50, true);
+      lhView.setUint16(4, 20, true);
+      lhView.setUint16(6, 0x0800, true); // UTF-8
+      lhView.setUint16(8, 0, true);      // Store mode
+      lhView.setUint16(10, dosTime, true);
+      lhView.setUint12 = lhView.setUint16(12, dosDate, true);
+      lhView.setUint32(14, crc, true);
+      lhView.setUint32(18, size, true);
+      lhView.setUint32(22, size, true);
+      lhView.setUint16(26, fileNameBytes.length, true);
+      lhView.setUint16(28, 0, true);
+      lh.set(fileNameBytes, 30);
+
+      // Central Directory Header (46 bytes + filename)
+      const ch = new Uint8Array(46 + fileNameBytes.length);
+      const chView = new DataView(ch.buffer);
+      chView.setUint32(0, 0x02014b50, true);
+      chView.setUint16(4, 0x003f, true);
+      chView.setUint16(6, 20, true);
+      chView.setUint16(8, 0x0800, true);
+      chView.setUint16(10, 0, true);
+      chView.setUint16(12, dosTime, true);
+      chView.setUint16(14, dosDate, true);
+      chView.setUint32(16, crc, true);
+      chView.setUint32(20, size, true);
+      chView.setUint32(24, size, true);
+      chView.setUint16(28, fileNameBytes.length, true);
+      chView.setUint16(30, 0, true);
+      chView.setUint16(32, 0, true);
+      chView.setUint16(34, 0, true);
+      chView.setUint16(36, 0, true);
+      chView.setUint32(38, 0, true);
+      chView.setUint32(42, offset, true);
+      ch.set(fileNameBytes, 46);
+
+      localHeaders.push(lh, dataBytes);
+      centralHeaders.push(ch);
+      offset += lh.length + size;
+    }
+
+    const centralDirOffset = offset;
+    let centralDirSize = 0;
+    for (const ch of centralHeaders) {
+      centralDirSize += ch.length;
+    }
+
+    // End of Central Directory Record (22 bytes)
+    const eocd = new Uint8Array(22);
+    const eocdView = new DataView(eocd.buffer);
+    eocdView.setUint32(0, 0x06054b50, true);
+    eocdView.setUint16(4, 0, true);
+    eocdView.setUint16(6, 0, true);
+    eocdView.setUint16(8, files.length, true);
+    eocdView.setUint16(10, files.length, true);
+    eocdView.setUint32(12, centralDirSize, true);
+    eocdView.setUint32(16, centralDirOffset, true);
+    eocdView.setUint16(20, 0, true);
+
+    const parts = [...localHeaders, ...centralHeaders, eocd];
+    let totalLength = 0;
+    for (const p of parts) totalLength += p.length;
+    const result = new Uint8Array(totalLength);
+    let cur = 0;
+    for (const p of parts) {
+      result.set(p, cur);
+      cur += p.length;
+    }
+    return new Blob([result], { type: "application/zip" });
+  }
+};
+
+// ==========================================================================
+// PLAYBACK SPEED, REPEAT MODES & QUEUE MANAGEMENT
+// ==========================================================================
+const PLAYBACK_SPEEDS = [1.0, 1.25, 1.5, 2.0, 0.75];
+
+function cyclePlaybackSpeed() {
+  const curIdx = PLAYBACK_SPEEDS.indexOf(AppState.playbackSpeed);
+  const nextIdx = (curIdx + 1) % PLAYBACK_SPEEDS.length;
+  AppState.playbackSpeed = PLAYBACK_SPEEDS[nextIdx];
+  audioPlayer.playbackRate = AppState.playbackSpeed;
+  updatePlaybackSpeedUI();
+  showToast(`⚡ Playback Speed: ${AppState.playbackSpeed}x`);
+}
+
+function updatePlaybackSpeedUI() {
+  const label = `${AppState.playbackSpeed}x`;
+  [DOM.playbackSpeedBtn, DOM.featuredSpeedBtn, DOM.fullscreenSpeedBtn].forEach(btn => {
+    if (btn) {
+      btn.textContent = label;
+      btn.title = `Playback Speed: ${label} (Click to change)`;
+    }
+  });
+}
+
+function cycleRepeatMode() {
+  if (AppState.repeatMode === "off") {
+    AppState.repeatMode = "all";
+    AppState.isRepeat = true;
+    showToast("🔁 Repeat All (Queue) Enabled");
+  } else if (AppState.repeatMode === "all") {
+    AppState.repeatMode = "one";
+    AppState.isRepeat = true;
+    showToast("🔂 Repeat One (Current Track) Enabled");
+  } else {
+    AppState.repeatMode = "off";
+    AppState.isRepeat = false;
+    showToast("Repeat Disabled");
+  }
+  updateRepeatUI();
+}
+
+function updateRepeatUI() {
+  const isOne = AppState.repeatMode === "one";
+  const isAll = AppState.repeatMode === "all";
+  const icon = isOne ? "🔂" : "🔁";
+  const title = isOne ? "Repeat: One Track" : (isAll ? "Repeat: All (Queue)" : "Repeat: Off");
+
+  [DOM.repeatBtn, DOM.featuredRepeatBtn, DOM.fullscreenRepeatBtn].forEach(btn => {
+    if (btn) {
+      btn.textContent = icon;
+      btn.title = title;
+      btn.classList.toggle("active", isOne || isAll);
+    }
+  });
+}
+
+function addSongToQueue(song) {
+  if (!song) return;
+  AppState.queue.push(song);
+  renderPlaylistDrawer();
+  showToast(`➕ Added "${song.title}" to Up Next queue`);
+}
+
+function addSongToPlayNext(song) {
+  if (!song) return;
+  const insertIdx = AppState.currentSongIndex >= 0 ? AppState.currentSongIndex + 1 : 0;
+  AppState.queue.splice(insertIdx, 0, song);
+  renderPlaylistDrawer();
+  showToast(`⏭️ Playing "${song.title}" next`);
+}
+
+function removeFromQueue(index) {
+  if (index < 0 || index >= AppState.queue.length) return;
+  const removed = AppState.queue.splice(index, 1)[0];
+  if (index < AppState.currentSongIndex) {
+    AppState.currentSongIndex--;
+  } else if (index === AppState.currentSongIndex) {
+    if (AppState.queue.length > 0) {
+      const nextIdx = index < AppState.queue.length ? index : 0;
+      AppState.currentSongIndex = nextIdx;
+      playSong(AppState.queue[nextIdx], true);
+    } else {
+      audioPlayer.pause();
+      AppState.currentSong = null;
+      AppState.currentSongIndex = -1;
+      AppState.isPlaying = false;
+      updatePlayPauseUI();
+    }
+  }
+  renderPlaylistDrawer();
+  showToast("Removed from queue");
+}
+
+function clearQueue() {
+  if (AppState.currentSong) {
+    AppState.queue = [AppState.currentSong];
+    AppState.currentSongIndex = 0;
+  } else {
+    AppState.queue = [];
+    AppState.currentSongIndex = -1;
+  }
+  renderPlaylistDrawer();
+  showToast("🗑️ Playlist queue cleared");
+}
+
+function exportPlaylistM3U() {
+  const songs = AppState.queue.length > 0 ? AppState.queue : AppState.masterSongs.slice(0, 50);
+  let m3u = "#EXTM3U\n";
+  songs.forEach(s => {
+    const dur = s.duration || 240;
+    const artist = s.artist || "Pranesh Music Hub";
+    const title = s.title || "Song";
+    const url = s.audio_url || "";
+    m3u += `#EXTINF:${dur},${artist} - ${title}\n${url}\n`;
+  });
+
+  const blob = new Blob([m3u], { type: "audio/x-mpegurl" });
+  DownloadManager.triggerBlobDownload(blob, `Pranesh_Music_Hub_Playlist_${Date.now()}.m3u`);
+  showToast("💾 Exported playlist as M3U file");
+}
+
+// ==========================================================================
+// SONG VERSION IDENTIFICATION & BADGES
+// ==========================================================================
+function detectSongVersionType(song) {
+  const title = (song.title || "").toLowerCase();
+  const tags = (song.tags || []).join(" ").toLowerCase();
+  const combined = title + " " + tags;
+
+  if (combined.includes("remix") || combined.includes("dj ") || combined.includes("re-mix") || combined.includes("mashup")) {
+    return { type: "remix", label: "🎛️ Remix", class: "version-remix" };
+  }
+  if (combined.includes("cover") || combined.includes("unplugged") || combined.includes("acoustic cover") || combined.includes("piano cover")) {
+    return { type: "cover", label: "🎤 Cover", class: "version-cover" };
+  }
+  if (combined.includes("live") || combined.includes("concert")) {
+    return { type: "live", label: "🎙️ Live", class: "version-live" };
+  }
+  if (combined.includes("slowed") || combined.includes("reverb") || combined.includes("lofi") || combined.includes("lo-fi")) {
+    return { type: "lofi", label: "☕ Lofi", class: "version-lofi" };
+  }
+  if (song.album && song.album !== "Single" && song.album !== "Unknown") {
+    return { type: "ost", label: "⭐ Original OST", class: "version-original" };
+  }
+  return { type: "single", label: "🌟 Original Single", class: "version-original" };
+}
+
+// ==========================================================================
+// WEB AUDIO API EQUALIZER & BASS BOOST
+// ==========================================================================
+const EqualizerManager = {
+  audioCtx: null,
+  sourceNode: null,
+  bassFilter: null,
+  midFilter: null,
+  trebleFilter: null,
+  isInitialized: false,
+  presets: {
+    flat: { bass: 0, mid: 0, treble: 0 },
+    bass: { bass: 8, mid: 1, treble: -1 },
+    vocal: { bass: -2, mid: 5, treble: 3 },
+    party: { bass: 6, mid: 2, treble: 5 },
+    acoustic: { bass: 3, mid: 4, treble: 2 },
+    treble: { bass: -1, mid: 2, treble: 7 }
+  },
+  currentPreset: "flat",
+
+  init() {
+    if (this.isInitialized) return true;
+    try {
+      const AudioContextClass = (typeof window !== "undefined") ? (window.AudioContext || window.webkitAudioContext) : null;
+      if (!AudioContextClass) return false;
+      this.audioCtx = new AudioContextClass();
+
+      // Bass filter (lowshelf 80Hz)
+      this.bassFilter = this.audioCtx.createBiquadFilter();
+      this.bassFilter.type = "lowshelf";
+      this.bassFilter.frequency.value = 80;
+      this.bassFilter.gain.value = 0;
+
+      // Mid filter (peaking 1000Hz)
+      this.midFilter = this.audioCtx.createBiquadFilter();
+      this.midFilter.type = "peaking";
+      this.midFilter.frequency.value = 1000;
+      this.midFilter.Q.value = 1;
+      this.midFilter.gain.value = 0;
+
+      // Treble filter (highshelf 6000Hz)
+      this.trebleFilter = this.audioCtx.createBiquadFilter();
+      this.trebleFilter.type = "highshelf";
+      this.trebleFilter.frequency.value = 6000;
+      this.trebleFilter.gain.value = 0;
+
+      // Connect source safely
+      try {
+        if (!audioPlayer._hasMediaSource && typeof audioPlayer.play === "function") {
+          this.sourceNode = this.audioCtx.createMediaElementSource(audioPlayer);
+          audioPlayer._hasMediaSource = true;
+          this.sourceNode.connect(this.bassFilter);
+          this.bassFilter.connect(this.midFilter);
+          this.midFilter.connect(this.trebleFilter);
+          this.trebleFilter.connect(this.audioCtx.destination);
+        }
+      } catch (e) {
+        console.warn("[Equalizer] createMediaElementSource notice:", e);
+      }
+
+      this.isInitialized = true;
+      return true;
+    } catch (err) {
+      console.warn("[Equalizer] Web Audio API init error:", err);
+      return false;
+    }
+  },
+
+  applyPreset(presetName) {
+    const p = this.presets[presetName] || this.presets.flat;
+    this.currentPreset = presetName;
+    this.setGains(p.bass, p.mid, p.treble);
+    this.updateUI();
+  },
+
+  setGains(bass, mid, treble) {
+    if (!this.init()) return;
+    if (this.audioCtx && this.audioCtx.state === "suspended") {
+      this.audioCtx.resume();
+    }
+    if (this.bassFilter) this.bassFilter.gain.value = bass;
+    if (this.midFilter) this.midFilter.gain.value = mid;
+    if (this.trebleFilter) this.trebleFilter.gain.value = treble;
+  },
+
+  updateUI() {
+    if (typeof document === "undefined") return;
+    const bass = this.bassFilter ? Math.round(this.bassFilter.gain.value) : 0;
+    const mid = this.midFilter ? Math.round(this.midFilter.gain.value) : 0;
+    const treble = this.trebleFilter ? Math.round(this.trebleFilter.gain.value) : 0;
+
+    const bSlider = document.getElementById("eqBassSlider");
+    const mSlider = document.getElementById("eqMidSlider");
+    const tSlider = document.getElementById("eqTrebleSlider");
+    const bVal = document.getElementById("eqBassVal");
+    const mVal = document.getElementById("eqMidVal");
+    const tVal = document.getElementById("eqTrebleVal");
+
+    if (bSlider) bSlider.value = bass;
+    if (mSlider) mSlider.value = mid;
+    if (tSlider) tSlider.value = treble;
+    if (bVal) bVal.textContent = `${bass > 0 ? "+" : ""}${bass} dB`;
+    if (mVal) mVal.textContent = `${mid > 0 ? "+" : ""}${mid} dB`;
+    if (tVal) tVal.textContent = `${treble > 0 ? "+" : ""}${treble} dB`;
+
+    document.querySelectorAll(".eq-preset-chip").forEach(chip => {
+      chip.classList.toggle("active", chip.dataset.preset === this.currentPreset);
+    });
+  }
+};
+
+// ==========================================================================
+// LIVE LYRICS VIEWER
+// ==========================================================================
+const LyricsManager = {
+  openLyrics(song) {
+    const track = song || AppState.currentSong;
+    const modal = document.getElementById("lyricsModal");
+    const titleEl = document.getElementById("lyricsSongTitle");
+    const contentEl = document.getElementById("lyricsContent");
+    if (!modal) return;
+
+    if (!track) {
+      showToast("Play or select a song to view lyrics.");
+      return;
+    }
+
+    if (titleEl) titleEl.textContent = `Lyrics - ${track.title}`;
+    if (contentEl) {
+      if (track.lyrics) {
+        contentEl.textContent = track.lyrics;
+      } else {
+        contentEl.innerHTML = `
+          <div style="padding:20px; text-align:center;">
+            <p style="font-size:1.2rem; font-weight:700; color:#c084fc; margin-bottom:8px;">${escapeHTML(track.title)}</p>
+            <p style="font-size:0.95rem; color:var(--text-muted); margin-bottom:16px;">${escapeHTML(track.artist || "")}${track.album ? ' • ' + escapeHTML(track.album) : ''}</p>
+            <div style="background:rgba(168,85,247,0.12); border:1px solid rgba(168,85,247,0.25); border-radius:12px; padding:18px; line-height:1.9; font-size:0.95rem;">
+              🎵 <em>(Instrumental intro plays)</em><br/>
+              🎶 Tamil Lyrics &amp; English Transliteration being synchronized with 320kbps master stream.<br/>
+              ✨ Sing along with <strong>${escapeHTML(track.title)}</strong> on Pranesh Music Hub!
+            </div>
+          </div>
+        `;
+      }
+    }
+    modal.style.display = "flex";
+  },
+
+  closeLyrics() {
+    const modal = document.getElementById("lyricsModal");
+    if (modal) modal.style.display = "none";
+  }
+};
+
+// ==========================================================================
+// FULL-SCREEN / EXPANDED PLAYER MODAL
+// ==========================================================================
+function openFullscreenPlayer() {
+  const modal = document.getElementById("fullscreenPlayerModal");
+  if (!modal) return;
+  AppState.isFullscreenOpen = true;
+  updateFullscreenUI();
+  modal.style.display = "flex";
+}
+
+function closeFullscreenPlayer() {
+  const modal = document.getElementById("fullscreenPlayerModal");
+  if (!modal) return;
+  AppState.isFullscreenOpen = false;
+  modal.style.display = "none";
+}
+
+function updateFullscreenUI() {
+  const song = AppState.currentSong;
+  if (!song || typeof document === "undefined") return;
+
+  const titleEl = document.getElementById("fullscreenTitle");
+  const artistEl = document.getElementById("fullscreenArtist");
+  const albumEl = document.getElementById("fullscreenAlbum");
+  const thumbEl = document.getElementById("fullscreenThumb");
+  const favBtn = document.getElementById("fullscreenFavBtn");
+  const playIcon = document.getElementById("fullscreenPlayIcon");
+
+  if (titleEl) titleEl.textContent = song.title || "Song Title";
+  if (artistEl) artistEl.textContent = song.artist || "Artist Name";
+  if (albumEl) albumEl.textContent = song.album || "Pranesh Music Hub";
+  if (thumbEl) thumbEl.src = song.cover_url || "static/images/only_friends_theme.svg";
+  if (favBtn) favBtn.textContent = AppState.favourites.includes(song.id) ? "❤️" : "🤍";
+  if (playIcon) playIcon.textContent = AppState.isPlaying ? "⏸" : "▶";
+
+  updateSeekbar();
+  updateRepeatUI();
+  updatePlaybackSpeedUI();
+}
+
+// ==========================================================================
+// DARK & LIGHT THEME TOGGLE
+// ==========================================================================
+function initTheme() {
+  if (typeof document === "undefined") return;
+  const saved = (typeof localStorage !== "undefined" && localStorage.getItem("pranesh_theme")) || "dark";
+  applyTheme(saved);
+
+  const btn = document.getElementById("themeToggleBtn");
+  if (btn) {
+    btn.addEventListener("click", () => {
+      const current = (document.documentElement && typeof document.documentElement.getAttribute === "function") ? (document.documentElement.getAttribute("data-theme") || "dark") : "dark";
+      const next = current === "light" ? "dark" : "light";
+      applyTheme(next);
+      showToast(`Switched to ${next === "light" ? "☀️ Light" : "🌙 Dark"} mode`);
+    });
+  }
+}
+
+function applyTheme(theme) {
+  if (typeof document === "undefined") return;
+  if (document.documentElement && typeof document.documentElement.setAttribute === "function") { document.documentElement.setAttribute("data-theme", theme); }
+  if (typeof localStorage !== "undefined") {
+    localStorage.setItem("pranesh_theme", theme);
+  }
+  const iconEl = document.getElementById("themeToggleIcon");
+  const textEl = document.getElementById("themeToggleText");
+  if (iconEl) iconEl.textContent = theme === "light" ? "☀️" : "🌙";
+  if (textEl) textEl.textContent = theme === "light" ? "Light" : "Dark";
+}
+
+// ==========================================================================
+// TYPEAHEAD SEARCH SUGGESTIONS
+// ==========================================================================
+function initSearchSuggestions() {
+  if (typeof document === "undefined") return;
+  const input = DOM.searchInput;
+  const box = document.getElementById("searchSuggestionsBox");
+  if (!input || !box) return;
+
+  let debounceTimer = null;
+  let selectedIndex = -1;
+
+  input.addEventListener("input", (e) => {
+    clearTimeout(debounceTimer);
+    const q = (e.target.value || "").trim();
+    if (q.length < 2) {
+      box.style.display = "none";
+      box.innerHTML = "";
+      selectedIndex = -1;
+      return;
+    }
+
+    debounceTimer = setTimeout(() => {
+      const matches = searchMasterSongs(q).slice(0, 6);
+      if (matches.length === 0) {
+        box.style.display = "none";
+        box.innerHTML = "";
+        return;
+      }
+
+      box.innerHTML = matches.map((song, i) => `
+        <div class="suggestion-item" data-id="${escapeAttr(song.id)}" data-index="${i}">
+          <img class="suggestion-thumb" src="${escapeAttr(song.cover_url || 'static/images/only_friends_theme.svg')}" alt="Thumb" loading="lazy" />
+          <div class="suggestion-meta">
+            <div class="suggestion-title">${escapeHTML(song.title)}</div>
+            <div class="suggestion-subtitle">${escapeHTML(song.artist || "")}${song.album ? ' • ' + escapeHTML(song.album) : ''}</div>
+          </div>
+          <span class="suggestion-badge">${escapeHTML(song.language || "Tamil")}</span>
+        </div>
+      `).join("");
+
+      box.style.display = "block";
+      selectedIndex = -1;
+
+      box.querySelectorAll(".suggestion-item").forEach(item => {
+        item.addEventListener("click", () => {
+          const songId = item.dataset.id;
+          const song = AppState.masterSongs.find(s => s.id === songId);
+          if (song) {
+            box.style.display = "none";
+            playSong(song);
+          }
+        });
+      });
+    }, 180);
+  });
+
+  input.addEventListener("keydown", (e) => {
+    const items = box.querySelectorAll(".suggestion-item");
+    if (box.style.display !== "block" || items.length === 0) return;
+
+    if (e.key === "ArrowDown") {
+      e.preventDefault();
+      selectedIndex = (selectedIndex + 1) % items.length;
+      updateSuggestionSelection(items);
+    } else if (e.key === "ArrowUp") {
+      e.preventDefault();
+      selectedIndex = (selectedIndex - 1 + items.length) % items.length;
+      updateSuggestionSelection(items);
+    } else if (e.key === "Enter" && selectedIndex >= 0) {
+      e.preventDefault();
+      items[selectedIndex].click();
+    } else if (e.key === "Escape") {
+      box.style.display = "none";
+    }
+  });
+
+  function updateSuggestionSelection(items) {
+    items.forEach((item, idx) => {
+      item.classList.toggle("selected", idx === selectedIndex);
+      if (idx === selectedIndex) {
+        item.scrollIntoView({ block: "nearest" });
+      }
+    });
+  }
+
+  document.addEventListener("click", (e) => {
+    if (!e.target.closest(".search-container")) {
+      box.style.display = "none";
+    }
+  });
+}
+
+// ==========================================================================
+// VOICE SEARCH (Tamil & English Speech Recognition)
+// ==========================================================================
+function initVoiceSearch() {
+  if (typeof document === "undefined") return;
+  const btn = document.getElementById("voiceSearchBtn");
+  if (!btn) return;
+
+  const SpeechRecognition = (typeof window !== "undefined") ? (window.SpeechRecognition || window.webkitSpeechRecognition) : null;
+  if (!SpeechRecognition) {
+    btn.addEventListener("click", () => {
+      showToast("🎙️ Voice search is supported in Google Chrome, Microsoft Edge, and Android mobile browsers.");
+    });
+    return;
+  }
+
+  let recognition = null;
+  let isListening = false;
+
+  btn.addEventListener("click", () => {
+    if (isListening && recognition) {
+      try { recognition.stop(); } catch (_) {}
+      btn.classList.remove("is-listening");
+      isListening = false;
+      return;
+    }
+
+    try {
+      recognition = new SpeechRecognition();
+      recognition.continuous = false;
+      recognition.interimResults = false;
+      recognition.lang = "ta-IN"; // Tamil (India) with English fallback
+
+      recognition.onstart = () => {
+        isListening = true;
+        btn.classList.add("is-listening");
+        showToast("🎙️ Listening... Speak song or movie name!");
+      };
+
+      recognition.onresult = (event) => {
+        const transcript = event.results[0][0].transcript;
+        if (DOM.searchInput) {
+          DOM.searchInput.value = transcript;
+        }
+        executeSearch(transcript);
+        showToast(`🎙️ Searched for: "${transcript}"`);
+      };
+
+      recognition.onerror = (event) => {
+        console.warn("[VoiceSearch] error:", event.error);
+        btn.classList.remove("is-listening");
+        isListening = false;
+        if (event.error === "not-allowed") {
+          showToast("⚠️ Microphone access denied. Please enable microphone permissions in your browser.");
+        } else if (event.error !== "no-speech") {
+          showToast(`⚠️ Voice recognition error: ${event.error}`);
+        }
+      };
+
+      recognition.onend = () => {
+        btn.classList.remove("is-listening");
+        isListening = false;
+      };
+
+      recognition.start();
+    } catch (e) {
+      console.warn("[VoiceSearch] startup failure:", e);
+      btn.classList.remove("is-listening");
+      isListening = false;
+      showToast("⚠️ Voice recognition failed to start.");
+    }
+  });
+}
+
+// ==========================================================================
+// FAVOURITES BACKUP, RESTORE & DOWNLOAD ALL AS ZIP
+// ==========================================================================
+function exportFavouritesJSON() {
+  const favSongs = AppState.favourites
+    .map(id => AppState.masterSongs.find(s => s.id === id))
+    .filter(Boolean);
+
+  const payload = {
+    exportedAt: new Date().toISOString(),
+    appName: "Pranesh Music Hub",
+    totalFavourites: favSongs.length,
+    favouriteIds: AppState.favourites,
+    songs: favSongs.map(s => ({
+      id: s.id,
+      title: s.title,
+      artist: s.artist,
+      album: s.album,
+      duration: s.duration,
+      language: s.language
+    }))
+  };
+
+  const blob = new Blob([JSON.stringify(payload, null, 2)], { type: "application/json" });
+  DownloadManager.triggerBlobDownload(blob, `pranesh_favourites_backup_${Date.now()}.json`);
+  showToast("💾 Favourites exported successfully as JSON!");
+}
+
+function importFavouritesJSON(file) {
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = (e) => {
+    try {
+      const data = JSON.parse(e.target.result);
+      let ids = [];
+      if (Array.isArray(data.favouriteIds)) {
+        ids = data.favouriteIds;
+      } else if (Array.isArray(data.songs)) {
+        ids = data.songs.map(s => s.id).filter(Boolean);
+      } else if (Array.isArray(data)) {
+        ids = data.map(item => (typeof item === "string" ? item : item.id)).filter(Boolean);
+      }
+
+      if (ids.length === 0) {
+        showToast("⚠️ No valid favourite songs found in backup file.");
+        return;
+      }
+
+      let addedCount = 0;
+      ids.forEach(id => {
+        if (!AppState.favourites.includes(id)) {
+          AppState.favourites.push(id);
+          addedCount++;
+        }
+      });
+
+      safeSetStorage("pranesh_hub_favs", AppState.favourites);
+      showToast(`✅ Restored ${addedCount} new favourite(s)! Total: ${AppState.favourites.length}`);
+      if (AppState.activeSection === "favourites") {
+        renderContent();
+      }
+    } catch (err) {
+      console.error("[FavouritesImport] parse error:", err);
+      showToast("⚠️ Invalid backup JSON file format.");
+    }
+  };
+  reader.readAsText(file);
+}
+
+async function downloadFavouritesAsZip(songsToDownload, zipFilename = "Pranesh_Music_Hub_Favourites.zip") {
+  if (!songsToDownload || songsToDownload.length === 0) {
+    showToast("No favourite songs to download.");
+    return;
+  }
+
+  const progressContainer = document.getElementById("zipProgressContainer");
+  const progressFill = document.getElementById("zipProgressFill");
+  const progressText = document.getElementById("zipProgressText");
+  const progressSub = document.getElementById("zipProgressSub");
+
+  if (progressContainer) {
+    progressContainer.style.display = "block";
+    if (progressFill) progressFill.style.width = "0%";
+    if (progressText) progressText.textContent = `Preparing ${songsToDownload.length} songs for packaging...`;
+  }
+
+  showToast(`📦 Packaging ${songsToDownload.length} songs into ZIP archive...`);
+
+  const files = [];
+  const failed = [];
+
+  for (let i = 0; i < songsToDownload.length; i++) {
+    const song = songsToDownload[i];
+    const percent = Math.round(((i) / songsToDownload.length) * 100);
+
+    if (progressFill) progressFill.style.width = `${percent}%`;
+    if (progressText) progressText.textContent = `Fetching track ${i + 1} of ${songsToDownload.length}: "${song.title}" (${percent}%)`;
+    if (progressSub) progressSub.textContent = `Completed: ${files.length} | Remaining: ${songsToDownload.length - i} | Failed: ${failed.length}`;
+
+    try {
+      let audioUrl = song.audio_url;
+      if (!audioUrl || song.is_preview) {
+        audioUrl = await resolveOnlineFullStream(song);
+      }
+      if (!audioUrl) throw new Error("No authorized audio URL found");
+
+      const quality = AppState.downloadQuality || "48";
+      const targetUrl = transformAudioBitrate(audioUrl, quality);
+
+      const resp = await fetch(targetUrl);
+      if (!resp.ok) throw new Error(`HTTP error ${resp.status}`);
+      const arrayBuf = await resp.arrayBuffer();
+
+      const safeTitle = (song.title || "Song").replace(/[/\\?%*:|"<>]/g, "_").trim();
+      const safeArtist = (song.artist || "Pranesh Hub").replace(/[/\\?%*:|"<>]/g, "_").trim();
+      const filename = `${safeTitle} - ${safeArtist}.mp3`;
+
+      files.push({
+        name: filename,
+        data: new Uint8Array(arrayBuf)
+      });
+    } catch (err) {
+      console.warn(`[ZIP] Failed to fetch track ${song.title}:`, err);
+      failed.push(song);
+    }
+
+    await new Promise(r => setTimeout(r, 200));
+  }
+
+  if (progressFill) progressFill.style.width = "100%";
+
+  if (files.length === 0) {
+    if (progressText) progressText.textContent = "❌ Failed to package songs into ZIP.";
+    showToast("⚠️ Could not download audio streams for packaging. Please check your internet connection.");
+    return;
+  }
+
+  if (progressText) progressText.textContent = `Building ZIP archive (${files.length} songs)...`;
+
+  const zipBlob = ZipArchiveBuilder.buildZip(files);
+  DownloadManager.triggerBlobDownload(zipBlob, zipFilename);
+
+  if (progressText) progressText.textContent = `✅ Complete! ${files.length} songs saved to ${zipFilename}`;
+  if (progressSub) progressSub.textContent = failed.length > 0 ? `⚠️ ${failed.length} tracks could not be downloaded.` : "All tracks packaged cleanly.";
+
+  showToast(`✅ Successfully downloaded ${files.length} songs in 1 ZIP archive!`);
+}
+
+
+// Expose advanced modules and handlers on window
+if (typeof window !== "undefined") {
+  window.ZipArchiveBuilder = ZipArchiveBuilder;
+  window.EqualizerManager = EqualizerManager;
+  window.LyricsManager = LyricsManager;
+  window.addSongToQueue = addSongToQueue;
+  window.addSongToPlayNext = addSongToPlayNext;
+  window.removeFromQueue = removeFromQueue;
+  window.clearQueue = clearQueue;
+  window.exportPlaylistM3U = exportPlaylistM3U;
+  window.cycleRepeatMode = cycleRepeatMode;
+  window.cyclePlaybackSpeed = cyclePlaybackSpeed;
+  window.downloadFavouritesAsZip = downloadFavouritesAsZip;
+  window.exportFavouritesJSON = exportFavouritesJSON;
+  window.importFavouritesJSON = importFavouritesJSON;
+  window.detectSongVersionType = detectSongVersionType;
+  window.openFullscreenPlayer = openFullscreenPlayer;
+  window.closeFullscreenPlayer = closeFullscreenPlayer;
 }
