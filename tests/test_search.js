@@ -2420,6 +2420,7 @@ console.log("[PASS] Immediate state clearing verified: previous search results w
 
   // Speed up delay between downloads in testing environment
   global.window.__DOWNLOAD_DELAY_MS__ = 5;
+  if (AppState.downloadedSongIds) AppState.downloadedSongIds.clear();
 
   // 1. Verify song deduplication before individual downloads
   const songsWithDups = [
@@ -2454,6 +2455,7 @@ console.log("[PASS] Immediate state clearing verified: previous search results w
   const twentySongs = AppState.masterSongs.slice(0, 20);
   assert.strictEqual(twentySongs.length, 20, "Must have 20 songs for 20-song download verification");
   downloadedFiles = [];
+  if (AppState.downloadedSongIds) AppState.downloadedSongIds.clear();
 
   const progressContainer = createMockElement("favDownloadProgressContainer");
   const progressFill = createMockElement("favDownloadProgressFill");
@@ -2612,6 +2614,7 @@ console.log("[PASS] Immediate state clearing verified: previous search results w
   // Test 54: Verifying Favourite Songs Dropdown by Type (Melody, Kuthu, Love, Sad Melody, Folk, Film Album) & Separate Download Buttons
   // ========================================================================
   console.log("\nTest 54: Verifying Favourite Songs Dropdown by Type & Separate Download Buttons...");
+  if (AppState.downloadedSongIds) AppState.downloadedSongIds.clear();
 
   // 1. songMatchesFavType logic validation
   assert(typeof songMatchesFavType === "function", "songMatchesFavType must be defined");
@@ -2873,8 +2876,88 @@ console.log("[PASS] Immediate state clearing verified: previous search results w
 
   console.log("[PASS] Test 56: Multi-Genre Classification Engine, Rules 8, 9, 10, 11, 12, Dropdown & Badges fully verified!");
 
+  
+  // ========================================================================
+  // Test 57: Verifying Incremental Favourite Downloads (Download Newly Added Songs Only & Skip Old Songs Without Prompting)
+  // Requirements:
+  // 1. Download initial favourite songs -> marked as downloaded.
+  // 2. Add new song to favourites.
+  // 3. Trigger Download All -> Must download ONLY the new added song.
+  // 4. Must NOT re-download old songs.
+  // 5. Must NOT ask to download again.
+  // 6. Reflect "✓ Downloaded" state on card buttons and "Download New (X) • Y Saved" on toolbar.
+  // ========================================================================
+  console.log("\nTest 57: Verifying Incremental Favourite Downloads (New Songs Only & Zero Re-prompts)...");
+
+  assert(typeof isSongDownloaded === "function", "isSongDownloaded must be defined");
+  assert(typeof markSongDownloaded === "function", "markSongDownloaded must be defined");
+
+  // Clear any existing downloaded IDs for clean test
+  AppState.downloadedSongIds.clear();
+
+  const favTrack1 = AppState.masterSongs[0];
+  const favTrack2 = AppState.masterSongs[1];
+  const favTrack3 = AppState.masterSongs[2];
+
+  assert(!isSongDownloaded(favTrack1.id), "Track 1 must initially not be downloaded");
+  assert(!isSongDownloaded(favTrack2.id), "Track 2 must initially not be downloaded");
+  assert(!isSongDownloaded(favTrack3.id), "Track 3 must initially not be downloaded");
+
+  // Step 1: Download initial favourites [favTrack1, favTrack2]
+  console.log("Step 1: Downloading initial favourite songs [favTrack1, favTrack2]...");
+  const resStep1 = await downloadFavouritesSequentially([favTrack1, favTrack2], "Favourite Songs");
+  assert.strictEqual(resStep1.completed.length, 2, "Both initial favourite songs must be completed");
+  assert.strictEqual(isSongDownloaded(favTrack1.id), true, "favTrack1 must be marked as downloaded");
+  assert.strictEqual(isSongDownloaded(favTrack2.id), true, "favTrack2 must be marked as downloaded");
+  assert.strictEqual(isSongDownloaded(favTrack3.id), false, "favTrack3 must remain undownloaded");
+
+  // Verify card rendering reflects "✓ Downloaded" on favTrack1 and "Download" on favTrack3
+  const card1HTML = createSongCardHTML(favTrack1);
+  const card3HTML = createSongCardHTML(favTrack3);
+  assert(card1HTML.includes("is-downloaded"), "Card 1 must have is-downloaded class");
+  assert(card1HTML.includes("✓ Downloaded"), "Card 1 button must display '✓ Downloaded'");
+  assert(!card3HTML.includes("is-downloaded"), "Card 3 must not have is-downloaded class");
+  assert(card3HTML.includes("Download"), "Card 3 must display Download action");
+
+  // Step 2: Add new song (favTrack3) to favourites
+  console.log("Step 2: Adding new song (favTrack3) to favourites and triggering download...");
+  AppState.favourites = [favTrack1.id, favTrack2.id, favTrack3.id];
+  AppState.activeSection = "favourites";
+  AppState.favActiveType = "all";
+  renderContent();
+
+  // Verify toolbar button reflects newly added count
+  assert(DOM.contentContainer.innerHTML.includes("Download New (1) • 2 Saved"), "Toolbar button must indicate 1 new song to download and 2 already saved");
+
+  // Trigger download with all 3 songs in favourites
+  const resStep2 = await downloadFavouritesSequentially([favTrack1, favTrack2, favTrack3], "Favourite Songs");
+  
+  // MUST download ONLY favTrack3! Old songs (favTrack1, favTrack2) must be skipped completely!
+  assert.strictEqual(resStep2.completed.length, 1, "Must download exactly 1 song (the new one)");
+  assert.strictEqual(resStep2.completed[0].id, favTrack3.id, "The only downloaded song must be favTrack3");
+  assert.strictEqual(isSongDownloaded(favTrack3.id), true, "favTrack3 must now be marked as downloaded");
+
+  // Step 3: Trigger download again when ALL favourite songs are already downloaded
+  console.log("Step 3: Triggering download again when all favourite songs are already downloaded...");
+  renderContent();
+  assert(DOM.contentContainer.innerHTML.includes("All Saved (3)"), "Toolbar button must indicate all 3 songs are saved");
+
+  const resStep3 = await downloadFavouritesSequentially([favTrack1, favTrack2, favTrack3], "Favourite Songs");
+  // Must download ZERO songs and not prompt to download again!
+  assert.strictEqual(resStep3.completed.length, 3, "Returns existing 3 already downloaded songs gracefully");
+  assert.strictEqual(resStep3.skipped.length, 3, "All 3 songs must be skipped from re-downloading");
+
+  // Cleanup
+  AppState.favourites = [];
+  AppState.favActiveType = "all";
+  AppState.activeSection = "all";
+  AppState.downloadedSongIds.clear();
+  renderContent();
+
+  console.log("[PASS] Test 57: Incremental Favourite Downloads (New Songs Only & Zero Re-prompts) fully verified!");
+
   console.log("\n==================================================");
-  console.log("ALL 56 ADVANCED SEARCH, MUSIC PLAYER, 3-STATE REPEAT, PLAYBACK SPEED, QUEUE CONTROLS, DEDICATED FAVOURITES, IN-BROWSER ZIP BUILDER, EQUALIZER, LYRICS, ANDROID MOBILE DOWNLOADS, VOICE SEARCH, FAVOURITE TYPE DROPDOWN & FAVOURITE SEQUENTIAL PLAYBACK TESTS PASSED!");
+  console.log("ALL 57 ADVANCED SEARCH, MUSIC PLAYER, 3-STATE REPEAT, PLAYBACK SPEED, QUEUE CONTROLS, DEDICATED FAVOURITES, IN-BROWSER ZIP BUILDER, EQUALIZER, LYRICS, ANDROID MOBILE DOWNLOADS, VOICE SEARCH, FAVOURITE TYPE DROPDOWN & FAVOURITE SEQUENTIAL PLAYBACK TESTS PASSED!");
   console.log("==================================================\n");
   process.exit(0);
 })();

@@ -1578,6 +1578,18 @@ body {
   box-shadow: 0 0 12px rgba(59, 130, 246, 0.4);
 }
 
+.download-btn.is-downloaded {
+  background: rgba(34, 197, 94, 0.16);
+  border: 1px solid rgba(34, 197, 94, 0.45);
+  color: #86efac;
+}
+.download-btn.is-downloaded:hover {
+  background: rgba(34, 197, 94, 0.28);
+  color: #fff;
+  border-color: #22c55e;
+  box-shadow: 0 0 12px rgba(34, 197, 94, 0.4);
+}
+
 .download-all-btn {
   background: linear-gradient(135deg, #10b981 0%, #059669 100%);
   color: #fff;

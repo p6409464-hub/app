@@ -120,6 +120,7 @@ const AppState = {
   currentPage: 1,        // Active pagination page
   pageSize: 24,          // Number of tracks per page chunk
   favourites: safeGetStorage("pranesh_hub_favs", []),
+  downloadedSongIds: new Set(safeGetStorage("pranesh_hub_downloaded_ids", [])),
   history: safeGetStorage("pranesh_hub_history", []),
   queue: [],
   isPlaylistOpen: false,
@@ -3302,6 +3303,40 @@ function getActiveFavouritesList() {
 }
 
 // ==========================================================================
+// Downloaded Songs State Tracking & Persistence
+// ==========================================================================
+function isSongDownloaded(songId) {
+  if (!songId || !AppState.downloadedSongIds) return false;
+  return AppState.downloadedSongIds.has(String(songId));
+}
+
+function markSongDownloaded(songId) {
+  if (!songId) return;
+  const idStr = String(songId);
+  if (!AppState.downloadedSongIds) {
+    AppState.downloadedSongIds = new Set();
+  }
+  AppState.downloadedSongIds.add(idStr);
+  try {
+    if (typeof localStorage !== "undefined") {
+      localStorage.setItem("pranesh_hub_downloaded_ids", JSON.stringify(Array.from(AppState.downloadedSongIds)));
+    }
+  } catch (_) {}
+
+  // Realtime DOM update: reflect downloaded state on any existing card buttons
+  if (typeof document !== "undefined" && typeof document.querySelectorAll === "function") {
+    try {
+      const cardBtns = document.querySelectorAll(`.card-download-trigger[data-id="${escapeAttr(idStr)}"]`);
+      cardBtns.forEach(btn => {
+        btn.classList.add("is-downloaded");
+        btn.innerHTML = "✓ Downloaded";
+        btn.title = "Already saved to device (Click to download again)";
+      });
+    } catch (_) {}
+  }
+}
+
+// ==========================================================================
 // Comprehensive Tamil & Global Genre Definitions & Classification Engine
 // ==========================================================================
 const GENRE_DEFINITIONS = {
@@ -4124,9 +4159,24 @@ function renderContent() {
             <button id="shuffleFavsBtn" class="btn btn-pill">
               🔀 Shuffle Favourites
             </button>
-            <button id="downloadAllFavsBtn" class="btn btn-pill" style="border-color:rgba(168,85,247,0.5); background:rgba(168,85,247,0.2);" title="Download all favourite songs one by one and store each audio file directly to your device">
-              📥 Download All (${filtered.length}) • One by One
-            </button>
+            ${(() => {
+              const newFavCount = filtered.filter(s => !isSongDownloaded(s.id)).length;
+              const savedFavCount = filtered.length - newFavCount;
+              let dlText = `📥 Download All (${filtered.length}) • One by One`;
+              let dlTitle = "Download all favourite songs one by one and store each audio file directly to your device";
+              if (savedFavCount > 0 && newFavCount > 0) {
+                dlText = `📥 Download New (${newFavCount}) • ${savedFavCount} Saved`;
+                dlTitle = `Download ${newFavCount} newly added favourite songs (${savedFavCount} already saved on device)`;
+              } else if (newFavCount === 0 && filtered.length > 0) {
+                dlText = `✅ All Saved (${filtered.length}) • One by One`;
+                dlTitle = `All ${filtered.length} favourite songs are already downloaded on your device`;
+              }
+              return `
+                <button id="downloadAllFavsBtn" class="btn btn-pill" style="border-color:rgba(168,85,247,0.5); background:rgba(168,85,247,0.2);" title="${escapeAttr(dlTitle)}">
+                  ${dlText}
+                </button>
+              `;
+            })()}
             <button id="toggleFavSelectBtn" class="btn btn-pill ${AppState.favSelectMode ? 'active' : ''}">
               ${AppState.favSelectMode ? '✕ Exit Select' : '☑️ Select Mode'}
             </button>
@@ -4528,9 +4578,24 @@ function renderContent() {
             <button id="playAllFavsBtn" class="btn btn-pill" style="padding:6px 16px; font-size:0.82rem; background:rgba(236,72,153,0.22); border:1px solid rgba(236,72,153,0.45); color:#f472b6; cursor:pointer;">
               <span>▶</span> Play All Favourites
             </button>
-            <button id="downloadAllFavsBtn" class="download-all-btn" style="padding:6px 14px; font-size:0.78rem;" title="Download all favourite songs one by one and store each audio file directly to your device">
-              <span>📥</span> Download All (${favSongs.length}) • One by One
-            </button>
+            ${(() => {
+              const homeNewFavCount = favSongs.filter(s => !isSongDownloaded(s.id)).length;
+              const homeSavedCount = favSongs.length - homeNewFavCount;
+              let homeDlText = `<span>📥</span> Download All (${favSongs.length}) • One by One`;
+              let homeDlTitle = "Download all favourite songs one by one and store each audio file directly to your device";
+              if (homeSavedCount > 0 && homeNewFavCount > 0) {
+                homeDlText = `<span>📥</span> Download New (${homeNewFavCount}) • ${homeSavedCount} Saved`;
+                homeDlTitle = `Download ${homeNewFavCount} newly added favourite songs (${homeSavedCount} already saved)`;
+              } else if (homeNewFavCount === 0 && favSongs.length > 0) {
+                homeDlText = `<span>✅</span> All Saved (${favSongs.length})`;
+                homeDlTitle = `All ${favSongs.length} favourite songs are already downloaded on your device`;
+              }
+              return `
+                <button id="downloadAllFavsBtn" class="download-all-btn" style="padding:6px 14px; font-size:0.78rem;" title="${escapeAttr(homeDlTitle)}">
+                  ${homeDlText}
+                </button>
+              `;
+            })()}
           </div>
         </div>
         <div id="favDownloadProgressContainer" class="fav-download-progress-container" style="display: none; background: rgba(30, 27, 75, 0.7); border: 1px solid rgba(168, 85, 247, 0.4); border-radius: 12px; padding: 14px 18px; margin: 15px 0;">
@@ -4747,9 +4812,16 @@ function createSongCardHTML(song) {
   else if (isThisPlaying) playIconText = "⏸";
 
   // Action Button: Download & Mobile Music App buttons enabled for all audio tracks
+  const isDownloaded = isSongDownloaded(song.id);
+  const dlBtnText = isDownloaded ? "✓ Downloaded" : "<span>⬇️</span> Download";
+  const dlBtnClass = isDownloaded ? "download-btn card-download-trigger is-downloaded" : "download-btn card-download-trigger";
+  const dlBtnTitle = isDownloaded
+    ? `Already saved to device: ${escapeAttr(song.title)} (Click to download again)`
+    : `Download ${escapeAttr(song.title)} MP3`;
+
   let actionBtnHTML = `
-    <button class="download-btn card-download-trigger" data-id="${escapeAttr(song.id)}" title="Download ${escapeAttr(song.title)} MP3">
-      <span>⬇️</span> Download
+    <button class="${dlBtnClass}" data-id="${escapeAttr(song.id)}" title="${dlBtnTitle}">
+      ${dlBtnText}
     </button>
     <button class="card-musicapp-btn card-musicapp-trigger" data-id="${escapeAttr(song.id)}" title="Open ${escapeAttr(song.title)} in Mobile Music App">
       <span>📱</span> Music App
@@ -6165,6 +6237,7 @@ const DownloadManager = {
 
       // 4. Status notifications & Direct 1-Tap Save Action (Overcomes Android Chrome silent block on subsequent downloads)
       if (downloadedSuccessfully) {
+        markSongDownloaded(song.id);
         this.downloadsCountInSession = (this.downloadsCountInSession || 0) + 1;
         if (isBatch && batchIndex === batchTotal) {
           showToast(`🎉 All ${batchTotal} songs downloaded successfully! Saved to Android Downloads folder.`, "success");
@@ -7260,10 +7333,10 @@ function importFavouritesJSON(file) {
   reader.readAsText(file);
 }
 
-async function downloadFavouritesSequentially(songsToDownload, label = "Favourite Songs") {
+async function downloadFavouritesSequentially(songsToDownload, label = "Favourite Songs", forceRedownloadAll = false) {
   if (!Array.isArray(songsToDownload) || songsToDownload.length === 0) {
     showToast("⚠️ No favourite songs to download.", "warning");
-    return { completed: [], failed: [], isCancelled: false };
+    return { completed: [], failed: [], isCancelled: false, skipped: [] };
   }
 
   // Deduplicate songs by ID to prevent duplicate downloads
@@ -7278,7 +7351,7 @@ async function downloadFavouritesSequentially(songsToDownload, label = "Favourit
 
   if (uniqueSongs.length === 0) {
     showToast("⚠️ No unique favourite songs to download.", "warning");
-    return { completed: [], failed: [], isCancelled: false };
+    return { completed: [], failed: [], isCancelled: false, skipped: [] };
   }
 
   const progressContainer = document.getElementById("favDownloadProgressContainer") || document.getElementById("zipProgressContainer");
@@ -7290,12 +7363,80 @@ async function downloadFavouritesSequentially(songsToDownload, label = "Favourit
   const trackSaveArea = document.getElementById("favCurrentTrackSaveArea");
   const cancelBtn = document.getElementById("cancelFavDownloadBtn");
 
+  // Separate songs into already downloaded vs newly added songs (incremental check for favourite downloads)
+  const isIncrementalCheck = !forceRedownloadAll && (
+    label === "Favourite Songs" ||
+    label === "Selected Favourites" ||
+    (AppState.activeSection === "favourites" && AppState.favourites.length > 0 && !label.includes("Test") && !label.includes("Retry"))
+  );
+  const alreadyDownloadedSongs = isIncrementalCheck ? uniqueSongs.filter(s => isSongDownloaded(s.id)) : [];
+  const newSongsToDownload = isIncrementalCheck ? uniqueSongs.filter(s => !isSongDownloaded(s.id)) : uniqueSongs;
+
+  // Requirement: If all favourite songs are already downloaded, DO NOT re-download old songs and DO NOT prompt "download again"
+  if (newSongsToDownload.length === 0 && uniqueSongs.length > 0) {
+    if (progressContainer) {
+      progressContainer.style.display = "block";
+      if (progressFill) progressFill.style.width = "100%";
+      if (progressPercent) progressPercent.textContent = "100%";
+      if (progressText) progressText.textContent = `✅ All ${uniqueSongs.length} favourite songs are already downloaded on your device!`;
+      if (progressSub) progressSub.textContent = `Total: ${uniqueSongs.length} | Already Saved: ${uniqueSongs.length} | New: 0 • Stored in Android Downloads folder (Skipped re-downloading old files).`;
+      if (trackSaveArea) {
+        trackSaveArea.style.display = "block";
+        trackSaveArea.innerHTML = `
+          <div style="background: rgba(15, 23, 42, 0.7); border: 1px solid rgba(34, 197, 94, 0.4); border-radius: 8px; padding: 10px 12px; margin-top: 8px;">
+            <div id="favTrackSaveHeader" style="font-size: 0.82rem; font-weight: 600; color: #86efac; margin-bottom: 6px; display: flex; align-items: center; gap: 6px;">
+              <span>✅</span> All ${uniqueSongs.length} Favourite Songs Already Stored on Device:
+            </div>
+            <div id="favTrackItemsList" style="display: flex; flex-direction: column; gap: 6px; max-height: 220px; overflow-y: auto;">
+              ${uniqueSongs.map(s => {
+                const cTitle = (s.title || "Song").replace(/[/\\?%*:|"<>]/g, "").trim().substring(0, 80);
+                const cArtist = (s.artist || "Artist").replace(/[/\\?%*:|"<>]/g, "").trim().substring(0, 60);
+                return `
+                  <div style="display: flex; justify-content: space-between; align-items: center; background: rgba(255, 255, 255, 0.05); padding: 6px 10px; border-radius: 6px; font-size: 0.78rem;">
+                    <div style="overflow: hidden; text-overflow: ellipsis; white-space: nowrap; margin-right: 8px; flex: 1;">
+                      <span style="color: #4ade80; margin-right: 4px;">✓</span>
+                      <strong style="color: #f3e8ff;">${escapeHTML(cTitle)}</strong>
+                      <span style="color: var(--text-dim); margin-left: 4px; font-size: 0.72rem;">• ${escapeHTML(cArtist)}</span>
+                    </div>
+                    <span style="font-size: 0.72rem; color: #86efac; font-weight: 600;">Saved ✓</span>
+                  </div>
+                `;
+              }).join("")}
+            </div>
+          </div>
+        `;
+      }
+      if (retryArea) {
+        retryArea.style.display = "block";
+        retryArea.innerHTML = `
+          <div style="display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 8px; margin-top: 8px;">
+            <span style="font-size: 0.78rem; color: var(--text-dim);">Want fresh copies of all files?</span>
+            <button id="forceRedownloadFavsBtn" class="btn btn-pill" style="background: rgba(168, 85, 247, 0.25); border: 1px solid rgba(168, 85, 247, 0.5); color: #e9d5ff; font-size: 0.74rem; cursor: pointer;">
+              🔄 Re-download All Anyway (${uniqueSongs.length} tracks)
+            </button>
+          </div>
+        `;
+        const forceBtn = document.getElementById("forceRedownloadFavsBtn");
+        if (forceBtn) {
+          forceBtn.onclick = () => {
+            downloadFavouritesSequentially(uniqueSongs, label, true);
+          };
+        }
+      }
+    }
+    showToast(`✅ All ${uniqueSongs.length} favourite songs are already downloaded on your device!`, "success");
+    return { completed: alreadyDownloadedSongs, failed: [], isCancelled: false, skipped: alreadyDownloadedSongs };
+  }
+
   if (progressContainer) {
     progressContainer.style.display = "block";
     if (progressFill) progressFill.style.width = "0%";
-    if (progressText) progressText.textContent = `Preparing ${uniqueSongs.length} favourite songs for individual audio file downloads...`;
+    const prepLabel = alreadyDownloadedSongs.length > 0
+      ? `Preparing ${newSongsToDownload.length} newly added favourite songs (${alreadyDownloadedSongs.length} already saved on device)...`
+      : `Preparing ${newSongsToDownload.length} favourite songs for individual audio file downloads...`;
+    if (progressText) progressText.textContent = prepLabel;
     if (progressPercent) progressPercent.textContent = "0%";
-    if (progressSub) progressSub.textContent = `Total: ${uniqueSongs.length} | Completed: 0 | Failed: 0`;
+    if (progressSub) progressSub.textContent = `Total: ${uniqueSongs.length} | New to Download: ${newSongsToDownload.length} | Already Saved: ${alreadyDownloadedSongs.length} | Failed: 0`;
     if (retryArea) {
       retryArea.style.display = "none";
       retryArea.innerHTML = "";
@@ -7323,21 +7464,27 @@ async function downloadFavouritesSequentially(songsToDownload, label = "Favourit
     };
   }
 
-  showToast(`📥 Starting download for ${uniqueSongs.length} favourite songs as individual audio files...`, "info");
+  const startToastMsg = alreadyDownloadedSongs.length > 0
+    ? `📥 Downloading ${newSongsToDownload.length} newly added favourite song${newSongsToDownload.length > 1 ? 's' : ''} (${alreadyDownloadedSongs.length} already saved)...`
+    : `📥 Starting download for ${newSongsToDownload.length} favourite songs as individual audio files...`;
+  showToast(startToastMsg, "info");
 
   const completed = [];
   const failed = [];
 
-  for (let i = 0; i < uniqueSongs.length; i++) {
+  for (let i = 0; i < newSongsToDownload.length; i++) {
     if (isCancelled) break;
 
-    const song = uniqueSongs[i];
-    const pct = Math.round((i / uniqueSongs.length) * 100);
+    const song = newSongsToDownload[i];
+    const pct = Math.round((i / newSongsToDownload.length) * 100);
 
     if (progressFill) progressFill.style.width = `${pct}%`;
-    if (progressText) progressText.textContent = `Downloading track ${i + 1} of ${uniqueSongs.length}: "${song.title || 'Song'}" (${pct}%)`;
+    const curTrackMsg = alreadyDownloadedSongs.length > 0
+      ? `Downloading new track ${i + 1} of ${newSongsToDownload.length}: "${song.title || 'Song'}" (${pct}%) • ${alreadyDownloadedSongs.length} already saved`
+      : `Downloading track ${i + 1} of ${newSongsToDownload.length}: "${song.title || 'Song'}" (${pct}%)`;
+    if (progressText) progressText.textContent = curTrackMsg;
     if (progressPercent) progressPercent.textContent = `${pct}%`;
-    if (progressSub) progressSub.textContent = `Total: ${uniqueSongs.length} | Completed: ${completed.length} | Remaining: ${uniqueSongs.length - i} | Failed: ${failed.length}`;
+    if (progressSub) progressSub.textContent = `New: ${newSongsToDownload.length} | Completed: ${completed.length} | Remaining: ${newSongsToDownload.length - i} | Already on Device: ${alreadyDownloadedSongs.length} | Failed: ${failed.length}`;
 
     try {
       const ok = await DownloadManager._executeDownload({
@@ -7345,7 +7492,7 @@ async function downloadFavouritesSequentially(songsToDownload, label = "Favourit
         triggerBtn: null,
         isBatch: true,
         batchIndex: i + 1,
-        batchTotal: uniqueSongs.length,
+        batchTotal: newSongsToDownload.length,
         batchLabel: label
       });
 
@@ -7426,10 +7573,18 @@ async function downloadFavouritesSequentially(songsToDownload, label = "Favourit
     if (trackSaveHeader) trackSaveHeader.innerHTML = `<span>🛑</span> Stopped. (${completed.length} saved to device, ${failed.length} failed)`;
     showToast(`Batch download stopped. (${completed.length} saved, ${failed.length} failed)`, "warning");
   } else if (failed.length === 0) {
-    if (progressText) progressText.textContent = `🎉 All ${completed.length} favourite songs downloaded successfully!`;
-    if (progressSub) progressSub.textContent = `Total: ${uniqueSongs.length} | Completed: ${completed.length} | Failed: 0 • All audio files saved individually to Android Downloads folder / Files app.`;
-    if (trackSaveHeader) trackSaveHeader.innerHTML = `<span>✅</span> All ${completed.length} Songs Downloaded & Saved to File (One by One) • Stored in Android Downloads:`;
-    showToast(`🎉 All ${completed.length} favourite songs downloaded as separate files!`, "success");
+    const successMsg = alreadyDownloadedSongs.length > 0
+      ? `🎉 All ${completed.length} newly added favourite song${completed.length > 1 ? 's' : ''} downloaded! (All ${uniqueSongs.length} favourite songs now saved on device)`
+      : `🎉 All ${completed.length} favourite songs downloaded successfully!`;
+    if (progressText) progressText.textContent = successMsg;
+    if (progressSub) progressSub.textContent = `Total: ${uniqueSongs.length} | Completed: ${completed.length}${alreadyDownloadedSongs.length > 0 ? " | Previously Saved: " + alreadyDownloadedSongs.length : ""} | Failed: 0 • All audio files saved individually to Android Downloads folder / Files app.`;
+    if (trackSaveHeader) trackSaveHeader.innerHTML = `<span>✅</span> ${completed.length} New Songs Downloaded & Saved to Device (All ${uniqueSongs.length} songs now on device):`;
+    showToast(successMsg, "success");
+    // Refresh toolbar button text so it immediately displays "All Saved"
+    const dlBtn = document.getElementById("downloadAllFavsBtn");
+    if (dlBtn) {
+      dlBtn.textContent = `✅ All Saved (${uniqueSongs.length}) • One by One`;
+    }
   } else {
     if (progressText) progressText.textContent = `Download Finished: ${completed.length} completed, ${failed.length} failed.`;
     if (progressSub) progressSub.textContent = `Total: ${uniqueSongs.length} | Completed: ${completed.length} | Failed: ${failed.length} • Saved to Android Downloads / Files app`;
@@ -7629,6 +7784,8 @@ if (typeof window !== "undefined") {
   window.songMatchesFavType = songMatchesFavType;
   window.GENRE_DEFINITIONS = GENRE_DEFINITIONS;
   window.analyzeSongGenre = analyzeSongGenre;
+  window.isSongDownloaded = isSongDownloaded;
+  window.markSongDownloaded = markSongDownloaded;
   window.renderFavTypeOptionsHTML = renderFavTypeOptionsHTML;
   window.getActiveFavouritesList = getActiveFavouritesList;
 }
