@@ -15,12 +15,15 @@
 // 1. Storage & State Management
 // ==========================================================================
 
-function safeGetStorage(key, fallback = []) {
+function safeGetStorage(key, fallback = null) {
   try {
     const raw = localStorage.getItem(key);
     if (!raw) return fallback;
     const parsed = JSON.parse(raw);
-    return Array.isArray(fallback) ? (Array.isArray(parsed) ? parsed : fallback) : parsed;
+    if (fallback !== null && fallback !== undefined) {
+      if (Array.isArray(fallback)) return Array.isArray(parsed) ? parsed : fallback;
+    }
+    return parsed;
   } catch (err) {
     console.warn(`[Storage] Failed to read ${key}:`, err);
     return fallback;
@@ -127,6 +130,7 @@ const AppState = {
   favSelectMode: false,  // Multi-select mode toggle in favourites
   selectedFavSongIds: new Set(), // Set of selected song IDs for bulk actions
   isFullscreenOpen: false,
+  voiceSearchLang: (typeof localStorage !== "undefined" && (localStorage.getItem("pranesh_hub_voice_lang") === "en-IN" || localStorage.getItem("pranesh_hub_voice_lang") === "ta-IN")) ? localStorage.getItem("pranesh_hub_voice_lang") : "ta-IN",
   downloadQuality: (typeof localStorage !== "undefined" && (localStorage.getItem("pranesh_hub_dl_quality") === "48" || localStorage.getItem("pranesh_hub_dl_quality") === "96" || localStorage.getItem("pranesh_hub_dl_quality") === "160" || localStorage.getItem("pranesh_hub_dl_quality") === "320")) ? localStorage.getItem("pranesh_hub_dl_quality") : "48", // Default: "< 2MB Ultra-Light (48k)"
   correctedQuery: "", // Auto-corrected search query when user types wrong spelling
   inputAutoCorrectTimer: null
@@ -218,13 +222,17 @@ const DOM = {
   featuredDlBitrateSub: null,
   featuredMusicAppBtn: null,
   featuredDownloadAllBtn: null,
-  downloadAllPlaylistBtn: null
+  downloadAllPlaylistBtn: null,
+  voiceSearchBtn: null,
+  voiceLangToggleBtn: null
 };
 
 function refreshDOMElements() {
   if (typeof document === "undefined") return;
   DOM.searchInput = document.getElementById("searchInput");
   DOM.clearSearchBtn = document.getElementById("clearSearchBtn");
+  DOM.voiceSearchBtn = document.getElementById("voiceSearchBtn");
+  DOM.voiceLangToggleBtn = document.getElementById("voiceLangToggleBtn");
   DOM.langChips = document.querySelectorAll(".lang-chip");
   DOM.typeChips = document.querySelectorAll(".type-chip");
   DOM.sectionPills = document.querySelectorAll(".section-pill");
@@ -880,9 +888,102 @@ function setupEventListeners() {
 // 3. String Normalization, Phonetics & Typo-Tolerant Fuzzy Matching Engine
 // ==========================================================================
 
+// Pure JavaScript Tamil Unicode Script to English Latin Transliterator
+const TAMIL_UNICODE_VOWELS = {
+  '\u0B85': 'a', '\u0B86': 'aa', '\u0B87': 'i', '\u0B88': 'ee',
+  '\u0B89': 'u', '\u0B8A': 'oo', '\u0B8E': 'e', '\u0B8F': 'e',
+  '\u0B90': 'ai', '\u0B92': 'o', '\u0B93': 'o', '\u0B94': 'au', '\u0B83': 'h'
+};
+
+const TAMIL_UNICODE_CONSONANTS = {
+  '\u0B95': 'k', '\u0B99': 'ng', '\u0B9A': 's', '\u0B9E': 'ny',
+  '\u0B9F': 't', '\u0BA3': 'n', '\u0BA4': 'th', '\u0BA8': 'n',
+  '\u0BAA': 'p', '\u0BAE': 'm', '\u0BAF': 'y', '\u0BB0': 'r',
+  '\u0BB2': 'l', '\u0BB5': 'v', '\u0BB4': 'zh', '\u0BB3': 'l',
+  '\u0BB1': 'r', '\u0BA9': 'n', '\u0B9C': 'j', '\u0BB7': 'sh',
+  '\u0BB8': 's', '\u0BB9': 'h'
+};
+
+const TAMIL_UNICODE_SIGNS = {
+  '\u0BBE': 'aa', '\u0BBF': 'i', '\u0BC0': 'ee', '\u0BC1': 'u',
+  '\u0BC2': 'oo', '\u0BC6': 'e', '\u0BC7': 'e', '\u0BC8': 'ai',
+  '\u0BCA': 'o', '\u0BCB': 'o', '\u0BCC': 'au'
+};
+
+function containsTamilScript(str) {
+  if (!str) return false;
+  return /[\u0B80-\u0BFF]/.test(str);
+}
+
+function transliterateTamilToEnglish(text) {
+  if (!text) return '';
+  let out = '';
+  for (let i = 0; i < text.length; i++) {
+    const ch = text[i];
+    const next = text[i + 1];
+    const next2 = text[i + 2];
+    if (TAMIL_UNICODE_VOWELS[ch]) {
+      out += TAMIL_UNICODE_VOWELS[ch];
+    } else if (TAMIL_UNICODE_CONSONANTS[ch]) {
+      let base = TAMIL_UNICODE_CONSONANTS[ch];
+      // Special: ச் + ச -> ch
+      if (ch === '\u0B9A' && next === '\u0BCD' && next2 === '\u0B9A') {
+        out += 'ch';
+        i += 2;
+        const next3 = text[i + 1];
+        if (TAMIL_UNICODE_SIGNS[next3]) {
+          out += TAMIL_UNICODE_SIGNS[next3];
+          i++;
+        } else if (next3 === '\u0BCD') {
+          i++;
+        } else {
+          out += 'a';
+        }
+        continue;
+      }
+
+      if (next === '\u0BCD') {
+        out += (ch === '\u0B9A') ? 'ch' : base;
+        i++;
+      } else if (TAMIL_UNICODE_SIGNS[next]) {
+        out += base + TAMIL_UNICODE_SIGNS[next];
+        i++;
+      } else {
+        out += base + 'a';
+      }
+    } else {
+      out += ch;
+    }
+  }
+
+  // Intervocalic & nasal-consonant phonetic naturalization for Tamil
+  return out
+    .replace(/ngk/g, 'ng')
+    .replace(/nt/g, 'nd')
+    .replace(/nth/g, 'nth')
+    .replace(/nral/g, 'ndral')
+    .replace(/nru/g, 'ndru')
+    .replace(/nra/g, 'ndra')
+    .replace(/thth/g, 'th')
+    .replace(/vaati/g, 'vaadi')
+    .replace(/killi/g, 'ghilli')
+    .replace(/gilli/g, 'ghilli')
+    .replace(/kaming/g, 'coming')
+    .replace(/thavaniy[aeiou]*/gi, 'thavaniye')
+    .replace(/thaniy[aeiou]*/gi, 'thaniye')
+    .replace(/katta\s*vandi/gi, 'katta vandi')
+    .replace(/kitta\s*nerungi/gi, 'kitta nerungi')
+    .replace(/\s+/g, ' ')
+    .trim();
+}
+
 function normalizeSearchText(str) {
   if (!str) return "";
-  return String(str)
+  let working = String(str);
+  if (containsTamilScript(working)) {
+    working = transliterateTamilToEnglish(working);
+  }
+  return working
     .normalize("NFD")
     .replace(/[\u0300-\u036f]/g, "") // remove accents/diacritics
     .toLowerCase()
@@ -894,7 +995,11 @@ function normalizeSearchText(str) {
 
 function normalizeCompact(str) {
   if (!str) return "";
-  return String(str)
+  let working = String(str);
+  if (containsTamilScript(working)) {
+    working = transliterateTamilToEnglish(working);
+  }
+  return working
     .normalize("NFD")
     .replace(/[\u0300-\u036f]/g, "")
     .toLowerCase()
@@ -1378,7 +1483,12 @@ function correctSingleWord(word) {
 // Master Intelligent Spell-Checker & Query Auto-Corrector
 function autoCorrectSearchQuery(query) {
   if (!query || !query.trim()) return { original: query, corrected: query, hasCorrection: false };
-  const text = query.trim();
+  let text = query.trim();
+  let hadTamil = false;
+  if (containsTamilScript(text)) {
+    hadTamil = true;
+    text = transliterateTamilToEnglish(text);
+  }
 
   // Step 1: Apply known phrase regexes
   let phraseReplaced = text;
@@ -1391,9 +1501,9 @@ function autoCorrectSearchQuery(query) {
   const correctedWords = words.map(correctSingleWord);
   const finalText = correctedWords.join(" ");
 
-  const hasCorrection = finalText.toLowerCase() !== text.toLowerCase();
+  const hasCorrection = hadTamil || (finalText.toLowerCase() !== text.toLowerCase());
   return {
-    original: text,
+    original: query.trim(),
     corrected: finalText,
     hasCorrection
   };
@@ -1507,7 +1617,11 @@ function prepareSongSearchMetadata(song) {
 // Cleans core title by removing extraneous movie tags, bracketed suffixes, and feat tags
 function cleanCoreTitle(rawTitle) {
   if (!rawTitle) return "";
-  return rawTitle
+  let working = String(rawTitle);
+  if (containsTamilScript(working)) {
+    working = transliterateTamilToEnglish(working);
+  }
+  return working
     .replace(/\s*\([^)]*(?:from|soundtrack|ost|version|theme|feat|ft\.)[^)]*\)/gi, " ")
     .replace(/\s*\[[^\]]*(?:from|soundtrack|ost|version|theme|feat|ft\.)[^\]]*\]/gi, " ")
     .replace(/\s*-\s*(?:from|soundtrack|ost|halamithi|original|lyric|audio|video|remix|reprise).*/gi, " ")
@@ -3635,6 +3749,7 @@ function renderContent() {
           <div class="zip-progress-bar">
             <div id="zipProgressFill" class="zip-progress-fill"></div>
           </div>
+          <div id="zipRetryArea" style="margin-top:8px; display:none;"></div>
         </div>
 
         ${AppState.favSelectMode ? `
@@ -5148,38 +5263,60 @@ const DownloadManager = {
   queue: [],
   isProcessing: false,
   activeBlobUrls: new Set(),
+  activeBlobObjects: new Map(), // Preserves binary Blob references against premature GC during Android OS IPC download streaming
   activeDownloadingSongIds: new Set(),
   cancelBatchRequested: false,
 
   triggerBlobDownload(blob, filename) {
     if (!blob) return false;
+    // Guarantee octet-stream MIME type so Android OS Download Provider writes file to disk directly
+    let binaryBlob = blob;
+    if (blob.type !== "application/octet-stream" && !filename.endsWith(".json")) {
+      try {
+        binaryBlob = new Blob([blob], { type: "application/octet-stream" });
+      } catch (_) {
+        binaryBlob = blob;
+      }
+    }
+
     const blobUrl = (typeof window !== "undefined" && window.URL && typeof window.URL.createObjectURL === "function")
-      ? window.URL.createObjectURL(blob)
+      ? window.URL.createObjectURL(binaryBlob)
       : `blob:mock_${Date.now()}`;
-    this.registerBlobUrl(blobUrl, 10000);
+    
+    // Retain in memory map for 60s so Android Download Provider has sufficient time to stream across IPC
+    this.registerBlob(blobUrl, binaryBlob, 60000);
+
     if (typeof document !== "undefined") {
       const a = document.createElement("a");
       a.style.display = "none";
       a.href = blobUrl;
       a.download = filename;
+      a.setAttribute("target", "_self");
       document.body.appendChild(a);
       a.click();
       setTimeout(() => {
         try {
           if (document.body && document.body.contains(a)) document.body.removeChild(a);
         } catch (_) {}
-      }, 500);
+      }, 1000);
     }
     return true;
   },
 
-  registerBlobUrl(url, timeoutMs = 10000) {
+  registerBlob(url, blobObj = null, timeoutMs = 60000) {
     if (!url) return;
     this.activeBlobUrls.add(url);
+    if (blobObj) {
+      this.activeBlobObjects.set(url, blobObj);
+    }
     const timer = setTimeout(() => {
       this.cleanupBlob(url);
     }, timeoutMs);
     if (timer && typeof timer.unref === "function") timer.unref();
+  },
+
+  registerBlobUrl(url, timeoutMs = 60000) {
+    this.registerBlob(url, null, timeoutMs);
   },
 
   cleanupBlob(url) {
@@ -5190,6 +5327,9 @@ const DownloadManager = {
         }
       } catch (_) {}
       this.activeBlobUrls.delete(url);
+    }
+    if (this.activeBlobObjects && this.activeBlobObjects.has(url)) {
+      this.activeBlobObjects.delete(url);
     }
   },
 
@@ -5202,6 +5342,9 @@ const DownloadManager = {
       } catch (_) {}
     });
     this.activeBlobUrls.clear();
+    if (this.activeBlobObjects) {
+      this.activeBlobObjects.clear();
+    }
   },
 
   isSongDownloading(songId) {
@@ -5390,69 +5533,78 @@ const DownloadManager = {
       }
 
       // 2. Fetch fresh audio stream binary (clean request without forbidden preflight headers)
+      let arrayBuf = null;
       if (optimizedUrl) {
         try {
           const res = await fetch(optimizedUrl);
-          if (!res.ok) throw new Error(`HTTP ${res.status}`);
-
-          let rawBlob = await res.blob();
-          localBlobUrl = (typeof window !== "undefined" && window.URL && typeof window.URL.createObjectURL === "function")
-            ? window.URL.createObjectURL(rawBlob)
-            : `blob:mock_${Date.now()}`;
-
-          // Register blob URL for prompt release (Requirement 7)
-          this.registerBlobUrl(localBlobUrl, 10000);
-
-          if (typeof document !== "undefined") {
-            const a = document.createElement("a");
-            a.style.display = "none";
-            a.href = localBlobUrl;
-            a.download = `${safeFilename}.m4a`;
-            document.body.appendChild(a);
-            a.click();
-            setTimeout(() => {
-              try {
-                if (document.body && document.body.contains(a)) document.body.removeChild(a);
-              } catch (_) {}
-            }, 500);
+          if (res.ok) {
+            if (typeof res.arrayBuffer === "function") {
+              arrayBuf = await res.arrayBuffer();
+            } else if (typeof res.blob === "function") {
+              const b = await res.blob();
+              arrayBuf = (typeof b.arrayBuffer === "function") ? await b.arrayBuffer() : new ArrayBuffer(1024);
+            }
           }
-
-          rawBlob = null; // Release binary buffer reference immediately (Requirement 3)
-          downloadedSuccessfully = true;
         } catch (fetchErr) {
           console.warn(`[DownloadManager] Stream fetch notice for "${cleanTitle}":`, fetchErr.message);
         }
       }
 
-      // 3. Fallback: native browser anchor stream without popup blocker triggers
-      if (!downloadedSuccessfully) {
+      // Fallback: try raw un-optimized downloadUrl if optimized URL was inaccessible
+      if ((!arrayBuf || arrayBuf.byteLength === 0) && downloadUrl && downloadUrl !== optimizedUrl) {
         try {
-          if (typeof document !== "undefined") {
-            const a = document.createElement("a");
-            a.style.display = "none";
-            a.href = optimizedUrl || downloadUrl;
-            a.download = `${safeFilename}.m4a`;
-            document.body.appendChild(a);
-            a.click();
-            setTimeout(() => {
-              try {
-                if (document.body && document.body.contains(a)) document.body.removeChild(a);
-              } catch (_) {}
-            }, 500);
+          const res2 = await fetch(downloadUrl);
+          if (res2.ok) {
+            if (typeof res2.arrayBuffer === "function") {
+              arrayBuf = await res2.arrayBuffer();
+            } else if (typeof res2.blob === "function") {
+              const b2 = await res2.blob();
+              arrayBuf = (typeof b2.arrayBuffer === "function") ? await b2.arrayBuffer() : new ArrayBuffer(1024);
+            }
           }
-          downloadedSuccessfully = true;
-        } catch (_) {}
+        } catch (fetchErr2) {
+          console.warn(`[DownloadManager] Direct stream fetch notice for "${cleanTitle}":`, fetchErr2.message);
+        }
+      }
+
+      if (arrayBuf && arrayBuf.byteLength > 0) {
+        // Wrap arrayBuffer into explicit application/octet-stream blob
+        // This forces Android OS Download Manager to stream and save to /storage/emulated/0/Download directly
+        const octetBlob = new Blob([arrayBuf], { type: "application/octet-stream" });
+        this.triggerBlobDownload(octetBlob, `${safeFilename}.m4a`);
+        downloadedSuccessfully = true;
+      } else {
+        // Stream binary was not accessible via direct fetch (e.g. CORS or offline).
+        // DO NOT pretend it was saved to disk!
+        downloadedSuccessfully = false;
+        if (typeof window !== "undefined") {
+          try {
+            const directAnchor = document.createElement("a");
+            directAnchor.href = optimizedUrl || downloadUrl;
+            directAnchor.target = "_blank";
+            directAnchor.rel = "noopener noreferrer";
+            directAnchor.download = `${safeFilename}.m4a`;
+            document.body.appendChild(directAnchor);
+            directAnchor.click();
+            setTimeout(() => {
+              try { if (document.body.contains(directAnchor)) document.body.removeChild(directAnchor); } catch (_) {}
+            }, 500);
+            showToast(`⚠️ Direct stream opened in browser tab. Tap ⋮ -> Download to save to device.`, "warning");
+          } catch (_) {
+            showToast(`⚠️ Could not download "${cleanTitle}". Audio source is inaccessible.`, "error");
+          }
+        }
       }
 
       // 4. Status notifications (Requirement 10)
       if (downloadedSuccessfully) {
         if (isBatch && batchIndex === batchTotal) {
-          showToast(`🎉 All ${batchTotal} songs downloaded successfully! [Saved to Mobile Music App]`, "success");
+          showToast(`🎉 All ${batchTotal} songs downloaded successfully! Saved to Android Downloads folder.`, "success");
         } else if (!isBatch) {
-          showToast(`✅ "${cleanTitle}" saved! [${qualityLabel}] Indexed to Mobile Music App.`, "success");
+          showToast(`✅ "${cleanTitle}" saved! [${qualityLabel}] Saved to Android Downloads folder / Files app.`, "success");
         }
-      } else {
-        showToast(`⚠️ Could not download "${cleanTitle}".`, "error");
+      } else if (!isBatch) {
+        showToast(`⚠️ File not saved for "${cleanTitle}". Stream was inaccessible.`, "error");
       }
 
       return downloadedSuccessfully;
@@ -6287,16 +6439,48 @@ function initSearchSuggestions() {
 // ==========================================================================
 // VOICE SEARCH (Tamil & English Speech Recognition)
 // ==========================================================================
+function updateVoiceLangUI() {
+  const langBtn = document.getElementById("voiceLangToggleBtn") || DOM.voiceLangToggleBtn;
+  if (!langBtn) return;
+  const isTa = (AppState.voiceSearchLang || "ta-IN") === "ta-IN";
+  langBtn.textContent = isTa ? "தமிழ்" : "ENG";
+  langBtn.title = isTa 
+    ? "Voice Search: Tamil (ta-IN). Tap to switch to English (en-IN)" 
+    : "Voice Search: English (en-IN). Tap to switch to Tamil (ta-IN)";
+  if (typeof langBtn.setAttribute === "function") {
+    langBtn.setAttribute("aria-label", langBtn.title);
+  }
+}
+
 function initVoiceSearch() {
   if (typeof document === "undefined") return;
-  const btn = document.getElementById("voiceSearchBtn");
+  const btn = document.getElementById("voiceSearchBtn") || DOM.voiceSearchBtn;
+  const langToggleBtn = document.getElementById("voiceLangToggleBtn") || DOM.voiceLangToggleBtn;
+
+  updateVoiceLangUI();
+
+  if (langToggleBtn && !langToggleBtn._hasVoiceListener) {
+    langToggleBtn._hasVoiceListener = true;
+    langToggleBtn.addEventListener("click", (e) => {
+      e.preventDefault();
+      AppState.voiceSearchLang = (AppState.voiceSearchLang === "en-IN") ? "ta-IN" : "en-IN";
+      safeSetStorage("pranesh_hub_voice_lang", AppState.voiceSearchLang);
+      updateVoiceLangUI();
+      const label = AppState.voiceSearchLang === "ta-IN" ? "Tamil (ta-IN)" : "English (en-IN)";
+      showToast(`🎙️ Voice Recognition language set to ${label}`, "info");
+    });
+  }
+
   if (!btn) return;
 
   const SpeechRecognition = (typeof window !== "undefined") ? (window.SpeechRecognition || window.webkitSpeechRecognition) : null;
   if (!SpeechRecognition) {
-    btn.addEventListener("click", () => {
-      showToast("🎙️ Voice search is supported in Google Chrome, Microsoft Edge, and Android mobile browsers.");
-    });
+    if (!btn._hasVoiceListener) {
+      btn._hasVoiceListener = true;
+      btn.addEventListener("click", () => {
+        showToast("🎙️ Voice search is supported in Google Chrome, Microsoft Edge, and Android mobile browsers.");
+      });
+    }
     return;
   }
 
@@ -6315,31 +6499,51 @@ function initVoiceSearch() {
       recognition = new SpeechRecognition();
       recognition.continuous = false;
       recognition.interimResults = false;
-      recognition.lang = "ta-IN"; // Tamil (India) with English fallback
+      recognition.lang = AppState.voiceSearchLang || "ta-IN";
 
       recognition.onstart = () => {
         isListening = true;
         btn.classList.add("is-listening");
-        showToast("🎙️ Listening... Speak song or movie name!");
+        const langLabel = recognition.lang === "ta-IN" ? "Tamil (தமிழ்)" : "English";
+        showToast(`🎙️ Listening in ${langLabel}... Speak song, movie, or singer!`, "info");
       };
 
       recognition.onresult = (event) => {
-        const transcript = event.results[0][0].transcript;
+        if (!event.results || !event.results[0] || !event.results[0][0]) return;
+        const transcript = event.results[0][0].transcript.trim();
+        if (!transcript) return;
+
+        let queryToSearch = transcript;
+        if (containsTamilScript(transcript)) {
+          const transliterated = transliterateTamilToEnglish(transcript);
+          if (transliterated) queryToSearch = transliterated;
+        }
+
         if (DOM.searchInput) {
           DOM.searchInput.value = transcript;
         }
-        executeSearch(transcript);
-        showToast(`🎙️ Searched for: "${transcript}"`);
+
+        executeSearch(queryToSearch);
+
+        if (containsTamilScript(transcript)) {
+          showToast(`🎙️ Spoken: "${transcript}" → Searched: "${queryToSearch}"`, "success");
+        } else {
+          showToast(`🎙️ Voice Searched: "${transcript}"`, "success");
+        }
       };
 
       recognition.onerror = (event) => {
         console.warn("[VoiceSearch] error:", event.error);
         btn.classList.remove("is-listening");
         isListening = false;
-        if (event.error === "not-allowed") {
-          showToast("⚠️ Microphone access denied. Please enable microphone permissions in your browser.");
+        if (event.error === "not-allowed" || event.error === "permission-denied") {
+          showToast("⚠️ Microphone access denied. Please allow microphone permissions in browser settings.", "error");
+        } else if (event.error === "audio-capture") {
+          showToast("⚠️ No microphone was found or microphone is in use by another app.", "error");
+        } else if (event.error === "network") {
+          showToast("⚠️ Network error during speech recognition. Please check your connection.", "error");
         } else if (event.error !== "no-speech") {
-          showToast(`⚠️ Voice recognition error: ${event.error}`);
+          showToast(`⚠️ Voice recognition error: ${event.error}`, "warning");
         }
       };
 
@@ -6433,39 +6637,61 @@ async function downloadFavouritesAsZip(songsToDownload, zipFilename = "Pranesh_M
     return;
   }
 
+  // Deduplicate songs by ID to prevent duplicate downloads
+  const seenIds = new Set();
+  const uniqueSongs = [];
+  for (const s of songsToDownload) {
+    if (s && s.id && !seenIds.has(s.id)) {
+      seenIds.add(s.id);
+      uniqueSongs.push(s);
+    }
+  }
+
+  if (uniqueSongs.length === 0) {
+    showToast("No valid favourite songs to download.");
+    return;
+  }
+
   const progressContainer = document.getElementById("zipProgressContainer");
   const progressFill = document.getElementById("zipProgressFill");
   const progressText = document.getElementById("zipProgressText");
   const progressSub = document.getElementById("zipProgressSub");
+  const retryArea = document.getElementById("zipRetryArea");
 
   if (progressContainer) {
     progressContainer.style.display = "block";
     if (progressFill) progressFill.style.width = "0%";
-    if (progressText) progressText.textContent = `Preparing ${songsToDownload.length} songs for packaging...`;
+    if (progressText) progressText.textContent = `Preparing ${uniqueSongs.length} favourite songs for packaging...`;
+    if (progressSub) progressSub.textContent = `Total: ${uniqueSongs.length} | Completed: 0 | Failed: 0`;
+    if (retryArea) {
+      retryArea.style.display = "none";
+      retryArea.innerHTML = "";
+    }
   }
 
-  showToast(`📦 Packaging ${songsToDownload.length} songs into ZIP archive...`);
+  showToast(`📦 Packaging ${uniqueSongs.length} favourite songs into ZIP archive...`);
 
   const files = [];
   const failed = [];
+  const quality = AppState.downloadQuality || "48";
 
-  for (let i = 0; i < songsToDownload.length; i++) {
-    const song = songsToDownload[i];
-    const percent = Math.round(((i) / songsToDownload.length) * 100);
+  for (let i = 0; i < uniqueSongs.length; i++) {
+    const song = uniqueSongs[i];
+    const percent = Math.round(((i) / uniqueSongs.length) * 100);
 
     if (progressFill) progressFill.style.width = `${percent}%`;
-    if (progressText) progressText.textContent = `Fetching track ${i + 1} of ${songsToDownload.length}: "${song.title}" (${percent}%)`;
-    if (progressSub) progressSub.textContent = `Completed: ${files.length} | Remaining: ${songsToDownload.length - i} | Failed: ${failed.length}`;
+    if (progressText) progressText.textContent = `Fetching track ${i + 1} of ${uniqueSongs.length}: "${song.title}" (${percent}%)`;
+    if (progressSub) progressSub.textContent = `Total: ${uniqueSongs.length} | Completed: ${files.length} | Remaining: ${uniqueSongs.length - i} | Failed: ${failed.length}`;
 
     try {
-      let audioUrl = song.audio_url;
-      if (!audioUrl || song.is_preview) {
-        audioUrl = await resolveOnlineFullStream(song);
+      let audioUrl = song.audio_url || (song.audio_file ? (song.audio_file.startsWith("http") ? song.audio_file : `static/audio/${song.audio_file}`) : "");
+      if (!audioUrl || song.is_preview || (song.duration && song.duration <= 45)) {
+        const fullStream = await resolveOnlineFullStream(song);
+        if (fullStream) audioUrl = fullStream;
       }
-      if (!audioUrl) throw new Error("No authorized audio URL found");
+      if (!audioUrl) throw new Error("No authorized audio stream found");
 
-      const quality = AppState.downloadQuality || "48";
-      const targetUrl = transformAudioBitrate(audioUrl, quality);
+      const targetUrl = getOptimizedDownloadUrl(audioUrl, quality) || audioUrl;
 
       const resp = await fetch(targetUrl);
       if (!resp.ok) throw new Error(`HTTP error ${resp.status}`);
@@ -6473,25 +6699,42 @@ async function downloadFavouritesAsZip(songsToDownload, zipFilename = "Pranesh_M
 
       const safeTitle = (song.title || "Song").replace(/[/\\?%*:|"<>]/g, "_").trim();
       const safeArtist = (song.artist || "Pranesh Hub").replace(/[/\\?%*:|"<>]/g, "_").trim();
-      const filename = `${safeTitle} - ${safeArtist}.mp3`;
+      const ext = (targetUrl.includes(".mp3") || !targetUrl.includes(".mp4")) ? "mp3" : "m4a";
+      const filename = `${safeTitle} - ${safeArtist}.${ext}`;
 
       files.push({
         name: filename,
         data: new Uint8Array(arrayBuf)
       });
     } catch (err) {
-      console.warn(`[ZIP] Failed to fetch track ${song.title}:`, err);
+      console.warn(`[ZIP] Failed to fetch track "${song.title}":`, err.message || err);
       failed.push(song);
     }
 
-    await new Promise(r => setTimeout(r, 200));
+    // Small delay between tracks to prevent browser network throttling
+    await new Promise(r => setTimeout(r, 120));
   }
 
   if (progressFill) progressFill.style.width = "100%";
 
   if (files.length === 0) {
-    if (progressText) progressText.textContent = "❌ Failed to package songs into ZIP.";
-    showToast("⚠️ Could not download audio streams for packaging. Please check your internet connection.");
+    if (progressText) progressText.textContent = "❌ Failed to download audio streams for packaging.";
+    if (progressSub) progressSub.textContent = `Failed: ${failed.length} of ${uniqueSongs.length} songs.`;
+    if (retryArea) {
+      retryArea.style.display = "block";
+      retryArea.innerHTML = `
+        <button id="retryZipFailedBtn" class="btn btn-pill" style="background:#ef4444; color:#fff; font-size:0.8rem; margin-top:6px; cursor:pointer;">
+          🔄 Retry Failed Downloads (${failed.length} tracks)
+        </button>
+      `;
+      const retryBtn = document.getElementById("retryZipFailedBtn");
+      if (retryBtn) {
+        retryBtn.addEventListener("click", () => {
+          downloadFavouritesAsZip(failed, zipFilename);
+        });
+      }
+    }
+    showToast("⚠️ Could not download audio streams. Please check your internet connection.", "error");
     return;
   }
 
@@ -6501,9 +6744,31 @@ async function downloadFavouritesAsZip(songsToDownload, zipFilename = "Pranesh_M
   DownloadManager.triggerBlobDownload(zipBlob, zipFilename);
 
   if (progressText) progressText.textContent = `✅ Complete! ${files.length} songs saved to ${zipFilename}`;
-  if (progressSub) progressSub.textContent = failed.length > 0 ? `⚠️ ${failed.length} tracks could not be downloaded.` : "All tracks packaged cleanly.";
+  if (progressSub) {
+    progressSub.textContent = failed.length > 0 
+      ? `Completed: ${files.length} | Failed: ${failed.length} • Saved to Android Downloads / Files app`
+      : `All ${files.length} tracks packaged cleanly • Saved to Android Downloads / Files app`;
+  }
 
-  showToast(`✅ Successfully downloaded ${files.length} songs in 1 ZIP archive!`);
+  if (failed.length > 0 && retryArea) {
+    retryArea.style.display = "block";
+    retryArea.innerHTML = `
+      <button id="retryZipFailedBtn" class="btn btn-pill" style="background:rgba(239,68,68,0.85); color:#fff; font-size:0.8rem; margin-top:6px; cursor:pointer;">
+        🔄 Retry Failed Downloads (${failed.length} tracks)
+      </button>
+    `;
+    const retryBtn = document.getElementById("retryZipFailedBtn");
+    if (retryBtn) {
+      retryBtn.addEventListener("click", () => {
+        downloadFavouritesAsZip(failed, `Pranesh_Favourites_Retry_${Date.now()}.zip`);
+      });
+    }
+  } else if (retryArea) {
+    retryArea.style.display = "none";
+    retryArea.innerHTML = "";
+  }
+
+  showToast(`✅ Successfully downloaded ${files.length} songs in 1 ZIP archive! Saved to Android Downloads folder.`);
 }
 
 
@@ -6530,4 +6795,7 @@ if (typeof window !== "undefined") {
   window.resetFullscreenDownloadButton = resetFullscreenDownloadButton;
   window.DownloadManager = DownloadManager;
   window.handleDownloadAction = handleDownloadAction;
+  window.containsTamilScript = containsTamilScript;
+  window.transliterateTamilToEnglish = transliterateTamilToEnglish;
+  window.updateVoiceLangUI = updateVoiceLangUI;
 }

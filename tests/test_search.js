@@ -96,8 +96,12 @@ function createMockElement(id, tag = "div") {
     contains(child) { return this.children.includes(child); },
     querySelectorAll() { return []; },
     querySelector() { return null; },
+    setAttribute(k, v) { this[k] = v; },
+    getAttribute(k) { return this[k] || null; },
     focus() {},
-    click() {}
+    click() {
+      this.dispatchEvent("click", { target: this, preventDefault() {} });
+    }
   };
 }
 
@@ -2047,7 +2051,8 @@ console.log("[PASS] Immediate state clearing verified: previous search results w
       ok: true,
       status: 200,
       json: async () => ({ status: "SUCCESS", data: { results: [] } }),
-      blob: async () => ({ size: 3500000, type: "audio/mp4" })
+      blob: async () => ({ size: 3500000, type: "audio/mp4" }),
+      arrayBuffer: async () => new ArrayBuffer(3500000)
     };
   };
 
@@ -2235,12 +2240,15 @@ console.log("[PASS] Immediate state clearing verified: previous search results w
   console.log("[PASS] Queue controls (addSongToQueue, addSongToPlayNext, removeFromQueue, clearQueue) verified!");
 
   // 4. M3U Export
+  const realTriggerBlobDownload = DownloadManager.triggerBlobDownload;
   let m3uDownloaded = false;
   DownloadManager.triggerBlobDownload = (blob, filename) => {
     if (filename.includes(".m3u")) m3uDownloaded = true;
+    return true;
   };
   exportPlaylistM3U();
   assert(m3uDownloaded, "exportPlaylistM3U must trigger download of .m3u playlist");
+  DownloadManager.triggerBlobDownload = realTriggerBlobDownload;
   console.log("[PASS] exportPlaylistM3U generates valid playlist file!");
 
   // ========================================================================
@@ -2302,9 +2310,11 @@ console.log("[PASS] Immediate state clearing verified: previous search results w
   let jsonDownloaded = false;
   DownloadManager.triggerBlobDownload = (blob, filename) => {
     if (filename.includes(".json")) jsonDownloaded = true;
+    return true;
   };
   exportFavouritesJSON();
   assert(jsonDownloaded, "exportFavouritesJSON must trigger JSON backup download");
+  DownloadManager.triggerBlobDownload = realTriggerBlobDownload;
 
   // Restore simulation
   const mockFile = {
@@ -2352,13 +2362,184 @@ console.log("[PASS] Immediate state clearing verified: previous search results w
   assert.strictEqual(coverBadge.type, "cover", "Cover track must be detected as Cover");
   console.log("[PASS] Version detection & badges (Original OST, Remix, Cover, Live, Lofi) verified!");
 
+  // ========================================================================
+  // Test 51: Android Mobile Download Optimization & File Saving
+  // ========================================================================
+  console.log("\nTest 51: Verifying Android Mobile Download Optimization & File Saving...");
+
+  // 1. Verify activeBlobObjects Map exists and tracks Blob binaries
+  assert(DownloadManager.activeBlobObjects instanceof Map, "DownloadManager must have activeBlobObjects Map for GC protection");
+  
+  // 2. Verify triggerBlobDownload wraps blobs in application/octet-stream
+  let capturedBlob = null;
+  const originalCreateObjectURL = global.window.URL.createObjectURL;
+  global.window.URL.createObjectURL = (blob) => {
+    capturedBlob = blob;
+    return originalCreateObjectURL(blob);
+  };
+
+  const testAudioBlob = { size: 1024, type: "audio/mp4" };
+  const dlResult = DownloadManager.triggerBlobDownload(testAudioBlob, "Test_Song.m4a");
+  assert.strictEqual(dlResult, true, "triggerBlobDownload must succeed");
+  assert.strictEqual(capturedBlob.type, "application/octet-stream", "Blob must be converted to application/octet-stream for Android Download Provider");
+
+  // 3. Verify Blob retention in activeBlobObjects Map
+  assert.strictEqual(DownloadManager.activeBlobObjects.size > 0, true, "Blob must be retained in memory map for 60s against IPC GC drop");
+
+  // 4. Verify cleanup releases both URL and Blob object
+  DownloadManager.cleanupAll();
+  assert.strictEqual(DownloadManager.activeBlobObjects.size, 0, "cleanupAll must clear activeBlobObjects map");
+  assert.strictEqual(DownloadManager.activeBlobUrls.size, 0, "cleanupAll must clear activeBlobUrls set");
+
+  // 5. Verify inaccessible source does not fake "Completed"
+  const prevFetch = global.fetch;
+  global.fetch = async () => ({ ok: false, status: 404 });
+  const failedSong = { id: "failed_song_1", title: "Unreachable Stream Song", artist: "Artist", audio_url: "https://invalid.example.com/audio.mp4" };
+  const failResult = await DownloadManager.downloadSong(failedSong);
+  assert.strictEqual(failResult, false, "Download must return false when audio stream is inaccessible");
+  global.fetch = prevFetch;
+  console.log("[PASS] Android Mobile Download: application/octet-stream, 60s memory retention & zero fake completed notifications verified!");
+
+  // ========================================================================
+  // Test 52: Favourite Playlist Download Manager & ZIP Packaging
+  // ========================================================================
+  console.log("\nTest 52: Verifying Favourite Playlist Download Manager & ZIP Packaging...");
+
+  // 1. Verify song deduplication before packaging
+  const songsWithDups = [
+    AppState.masterSongs[0],
+    AppState.masterSongs[0],
+    AppState.masterSongs[1],
+    AppState.masterSongs[1],
+    AppState.masterSongs[2]
+  ];
+  
+  let packagedBlobs = [];
+  const origTrigger = DownloadManager.triggerBlobDownload;
+  DownloadManager.triggerBlobDownload = (blob, filename) => {
+    packagedBlobs.push({ blob, filename });
+    return origTrigger.call(DownloadManager, blob, filename);
+  };
+
+  // Mock successful audio stream fetch for ZIP packaging
+  global.fetch = async () => ({
+    ok: true,
+    status: 200,
+    arrayBuffer: async () => new Uint8Array([73, 68, 51, 3, 0, 0, 0, 0, 0, 10]).buffer
+  });
+
+  await downloadFavouritesAsZip(songsWithDups, "Test_Favourites.zip");
+  assert.strictEqual(packagedBlobs.length, 1, "Exactly one ZIP archive must be downloaded");
+  assert.strictEqual(packagedBlobs[0].filename, "Test_Favourites.zip", "Filename must match expected ZIP filename");
+
+  // 2. Verify 20 songs packaging without error
+  const twentySongs = AppState.masterSongs.slice(0, 20);
+  packagedBlobs = [];
+  await downloadFavouritesAsZip(twentySongs, "Twenty_Favourites.zip");
+  assert.strictEqual(packagedBlobs.length, 1, "20-song ZIP archive packaging must succeed");
+  assert.strictEqual(packagedBlobs[0].filename, "Twenty_Favourites.zip", "20-song archive filename must match");
+
+  // 3. Verify Failed Track Recovery Retry Button
+  let fetchAttempts = 0;
+  global.fetch = async () => {
+    fetchAttempts++;
+    if (fetchAttempts % 2 === 0) {
+      return { ok: false, status: 500 };
+    }
+    return {
+      ok: true,
+      status: 200,
+      arrayBuffer: async () => new Uint8Array([1, 2, 3]).buffer
+    };
+  };
+
+  const retryContainer = createMockElement("zipProgressContainer");
+  const retrySub = createMockElement("zipProgressSub");
+  const retryArea = createMockElement("zipRetryArea");
+  global.document._elements["zipProgressContainer"] = retryContainer;
+  global.document._elements["zipProgressSub"] = retrySub;
+  global.document._elements["zipRetryArea"] = retryArea;
+
+  await downloadFavouritesAsZip(AppState.masterSongs.slice(0, 4), "Partial_Fail.zip");
+  assert(retryArea.innerHTML.includes("retryZipFailedBtn"), "Failed track retry button must be rendered in zipRetryArea");
+  assert(retrySub.textContent.includes("Failed"), "Progress subtext must display accurate failed tracks count");
+
+  // Restore fetch
+  global.fetch = prevFetch;
+  DownloadManager.triggerBlobDownload = origTrigger;
+  console.log("[PASS] Favourite Playlist Download Manager: Deduplication, 20-track ZIP packaging & retry recovery verified!");
+
+  // ========================================================================
+  // Test 53: Tamil & English Microphone Voice Search & Transliteration
+  // ========================================================================
+  console.log("\nTest 53: Verifying Tamil & English Microphone Voice Search & Transliteration...");
+
+  // 1. Script Detection
+  assert.strictEqual(containsTamilScript("தவணியே என்னை மயக்கறியே"), true, "Tamil Unicode must be recognized");
+  assert.strictEqual(containsTamilScript("கில்லி"), true, "Tamil Unicode 'Ghilli' must be recognized");
+  assert.strictEqual(containsTamilScript("Thavaniye"), false, "Latin text must not be detected as Tamil Unicode");
+  assert.strictEqual(containsTamilScript("Ghilli songs"), false, "Latin text must not be detected as Tamil Unicode");
+
+  // 2. Transliteration Mapping
+  const translitTests = [
+    { input: "தவணியே என்னை மயக்கறியே", expected: "thavaniye ennai mayakkariye" },
+    { input: "தனியே", expected: "thaniye" },
+    { input: "கில்லி", expected: "ghilli" },
+    { input: "கிட்ட நெருங்கி வாடி", expected: "kitta nerungi vaadi" },
+    { input: "கட்ட வண்டி", expected: "katta vandi" },
+    { input: "ஆசை மச்சான்", expected: "aasai machaan" },
+    { input: "வாத்தி கமிங்", expected: "vaathi coming" },
+    { input: "தென்றல் வந்து", expected: "thendral vandhu" }
+  ];
+
+  for (const { input, expected } of translitTests) {
+    const res = transliterateTamilToEnglish(input);
+    assert.strictEqual(res, expected, `Transliteration for '${input}' must be '${expected}', got '${res}'`);
+  }
+
+  // 3. Similar-Sounding Voice Query Distinction ('தவணியே' vs 'தனியே')
+  const spokenThavaniyeMatches = searchMasterSongs("தவணியே");
+  assert(spokenThavaniyeMatches.length > 0, "Spoken 'தவணியே' must return matches");
+  assert(spokenThavaniyeMatches.some(s => /thavani|dhavani/i.test(`${s.title} ${s.album}`)), "Spoken 'தவணியே' must match Thavani songs");
+  assert(!spokenThavaniyeMatches.some(s => s.title.toLowerCase() === "thaniye" || (s.title.toLowerCase().startsWith("thaniye ") && !s.title.toLowerCase().includes("thavani"))), "Spoken 'தவணியே' must NEVER match 'Thaniye'");
+
+  const spokenThaniyeMatches = searchMasterSongs("தனியே");
+  assert(spokenThaniyeMatches.length > 0, "Spoken 'தனியே' must return matches");
+  assert.strictEqual(spokenThaniyeMatches[0].title.toLowerCase().includes("thaniye"), true, "Top result for 'தனியே' must be 'Thaniye'");
+  assert(!spokenThaniyeMatches.some(s => /thavani|dhavani/i.test(`${s.title} ${s.album}`)), "Spoken 'தனியே' must NEVER match 'Thavani'");
+
+  // 4. Strict Movie Search via Tamil Voice ('கில்லி')
+  const spokenGhilliMatches = searchMasterSongs("கில்லி");
+  assert(spokenGhilliMatches.length > 0, "Spoken 'கில்லி' must return Ghilli songs");
+  assert(spokenGhilliMatches.every(s => /ghilli|gilli/i.test(s.album || s.title)), "All results for 'கில்லி' must be Ghilli songs");
+
+  // 5. Language Preference Toggle & Persistence
+  AppState.voiceSearchLang = "ta-IN";
+  updateVoiceLangUI();
+  const voiceLangBtn = global.document.getElementById("voiceLangToggleBtn");
+  assert.strictEqual(voiceLangBtn.textContent, "தமிழ்", "ta-IN voice toggle label must be 'தமிழ்'");
+
+  // Toggle to en-IN
+  voiceLangBtn.click();
+  assert.strictEqual(AppState.voiceSearchLang, "en-IN", "Clicking voiceLangBtn must toggle language to en-IN");
+  assert.strictEqual(safeGetStorage("pranesh_hub_voice_lang"), "en-IN", "Language preference must be persisted to localStorage");
+  assert.strictEqual(voiceLangBtn.textContent, "ENG", "en-IN voice toggle label must be 'ENG'");
+
+  // Toggle back to ta-IN
+  voiceLangBtn.click();
+  assert.strictEqual(AppState.voiceSearchLang, "ta-IN", "Clicking voiceLangBtn again must toggle language back to ta-IN");
+  assert.strictEqual(safeGetStorage("pranesh_hub_voice_lang"), "ta-IN", "ta-IN preference must be persisted");
+  assert.strictEqual(voiceLangBtn.textContent, "தமிழ்", "voice toggle label must revert to 'தமிழ்'");
+
+  console.log("[PASS] Tamil & English Voice Search: Script detection, transliteration, similar-query separation & language toggle verified!");
+
   // Reset Favourites and section state
   AppState.activeSection = "all";
   AppState.favSelectMode = false;
   AppState.selectedFavSongIds.clear();
   renderContent();
   console.log("\n==================================================");
-  console.log("ALL 50 ADVANCED SEARCH, MUSIC PLAYER, 3-STATE REPEAT, PLAYBACK SPEED, QUEUE CONTROLS, DEDICATED FAVOURITES, IN-BROWSER ZIP BUILDER, EQUALIZER, LYRICS & THEME TESTS PASSED!");
+  console.log("ALL 53 ADVANCED SEARCH, MUSIC PLAYER, 3-STATE REPEAT, PLAYBACK SPEED, QUEUE CONTROLS, DEDICATED FAVOURITES, IN-BROWSER ZIP BUILDER, EQUALIZER, LYRICS, ANDROID MOBILE DOWNLOADS & VOICE SEARCH TESTS PASSED!");
   console.log("==================================================\n");
   process.exit(0);
 })();
