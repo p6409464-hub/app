@@ -2893,7 +2893,14 @@ console.log("[PASS] Immediate state clearing verified: previous search results w
   assert(typeof markSongDownloaded === "function", "markSongDownloaded must be defined");
 
   // Clear any existing downloaded IDs for clean test
-  AppState.downloadedSongIds.clear();
+  
+  const prevFetchTest57 = global.fetch;
+  global.fetch = async () => ({
+    ok: true,
+    status: 200,
+    arrayBuffer: async () => new Uint8Array([73, 68, 51, 3, 0, 0, 0, 0, 0, 10]).buffer
+  });
+AppState.downloadedSongIds.clear();
 
   const favTrack1 = AppState.masterSongs[0];
   const favTrack2 = AppState.masterSongs[1];
@@ -2955,6 +2962,8 @@ console.log("[PASS] Immediate state clearing verified: previous search results w
   renderContent();
 
   console.log("[PASS] Test 57: Incremental Favourite Downloads (New Songs Only & Zero Re-prompts) fully verified!");
+
+  global.fetch = prevFetchTest57;
 
   // ========================================================================
   // Test 58: Verifying Accurate Song Matching for Every Particular Genre Type in Favourites
@@ -3032,8 +3041,66 @@ console.log("[PASS] Immediate state clearing verified: previous search results w
 
   console.log("[PASS] Test 58: Accurate Song Matching for Every Particular Genre Type in Favourites fully verified!");
 
+  // ========================================================================
+  // Test 59: Verifying Zero Browser Duplicate Prompts ('Download file again?') and Skipping of Already Downloaded Songs
+  // Enforces:
+  // 1. If a song has been downloaded once, individual download action skips re-downloading and leaves it alone.
+  // 2. In batch downloads (Queue, Playlist, Albums), already downloaded songs are skipped so Chrome never asks "Download file again?".
+  // 3. If all songs in a batch are already downloaded, zero files are re-downloaded.
+  // 4. Download buttons update to '✓ Saved' / '✓ Downloaded'.
+  // ========================================================================
+  console.log("\nTest 59: Verifying Zero Duplicate Download Prompts and Skipping of Already Downloaded Songs...");
+
+  AppState.downloadedSongIds.clear();
+
+  const testSongA = { id: "track_aasai_machaan", title: "Aasai Machaan", artist: "Swarnalatha, Arunmozhi, Ilaiyaraaja", audio_url: "https://example.com/aasai.mp4" };
+  const testSongB = { id: "track_oru_maalai", title: "Oru Maalai", artist: "Karthik", audio_url: "https://example.com/oru_maalai.mp4" };
+
+  // Step 1: Initial state - neither is downloaded
+  assert(!isSongDownloaded(testSongA), "testSongA initially not downloaded");
+  assert(!isSongDownloaded(testSongB), "testSongB initially not downloaded");
+
+  // Step 2: Download testSongA for the first time
+  let executeCallCount = 0;
+  const origExecute = DownloadManager._executeDownload;
+  DownloadManager._executeDownload = async function(task) {
+    executeCallCount++;
+    markSongDownloaded(task.song);
+    return true;
+  };
+
+  const firstDlResult = await DownloadManager.downloadSong(testSongA);
+  assert.strictEqual(firstDlResult, true, "First download of testSongA must execute");
+  assert.strictEqual(executeCallCount, 1, "Must execute download exactly once");
+  assert(isSongDownloaded(testSongA), "testSongA must now be marked as downloaded");
+  assert(isSongDownloaded(testSongA.id), "testSongA ID must be recognized as downloaded");
+
+  // Step 3: Attempt to download testSongA AGAIN
+  // Requirement: "if one time the song is download dont show like this just leave it"
+  // Must NOT execute download, must NOT trigger anchor click, must just leave it!
+  const secondDlResult = await DownloadManager.downloadSong(testSongA);
+  assert.strictEqual(secondDlResult, true, "Second attempt gracefully returns true without re-downloading");
+  assert.strictEqual(executeCallCount, 1, "executeCallCount must STILL be 1 (never executed second time!)");
+
+  // Step 4: Batch queue download with [testSongA, testSongB]
+  // testSongA is already downloaded; testSongB is new.
+  // DownloadManager.downloadAll must queue ONLY testSongB!
+  await DownloadManager.downloadAll([testSongA, testSongB], "Current Queue");
+  // Only testSongB should be processed
+  assert.strictEqual(executeCallCount, 2, "Only testSongB must be downloaded in batch (testSongA skipped)");
+  assert(isSongDownloaded(testSongB), "testSongB must now be marked as downloaded");
+
+  // Step 5: Batch queue download when ALL songs are already downloaded
+  await DownloadManager.downloadAll([testSongA, testSongB], "Current Queue");
+  assert.strictEqual(executeCallCount, 2, "executeCallCount must remain 2 (zero songs downloaded when all are already saved)");
+
+  // Restore DownloadManager._executeDownload
+  DownloadManager._executeDownload = origExecute;
+
+  console.log("[PASS] Test 59: Zero Duplicate Download Prompts and Skipping of Already Downloaded Songs fully verified!");
+
   console.log("\n==================================================");
-  console.log("ALL 58 ADVANCED SEARCH, MUSIC PLAYER, 3-STATE REPEAT, PLAYBACK SPEED, QUEUE CONTROLS, DEDICATED FAVOURITES, IN-BROWSER ZIP BUILDER, EQUALIZER, LYRICS, ANDROID MOBILE DOWNLOADS, VOICE SEARCH, FAVOURITE TYPE DROPDOWN, FAVOURITE SEQUENTIAL PLAYBACK & ACCURATE GENRE TYPE MATCHING TESTS PASSED!");
+  console.log("ALL 59 ADVANCED SEARCH, MUSIC PLAYER, 3-STATE REPEAT, PLAYBACK SPEED, QUEUE CONTROLS, DEDICATED FAVOURITES, IN-BROWSER ZIP BUILDER, EQUALIZER, LYRICS, ANDROID MOBILE DOWNLOADS, VOICE SEARCH, FAVOURITE TYPE DROPDOWN, FAVOURITE SEQUENTIAL PLAYBACK, ACCURATE GENRE TYPE MATCHING & ZERO DUPLICATE PROMPT TESTS PASSED!");
   console.log("==================================================\n");
   process.exit(0);
 })();

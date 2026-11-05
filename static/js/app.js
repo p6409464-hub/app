@@ -3305,33 +3305,63 @@ function getActiveFavouritesList() {
 // ==========================================================================
 // Downloaded Songs State Tracking & Persistence
 // ==========================================================================
-function isSongDownloaded(songId) {
-  if (!songId || !AppState.downloadedSongIds) return false;
-  return AppState.downloadedSongIds.has(String(songId));
+function getSongDownloadKey(song) {
+  if (!song) return "";
+  const cleanTitle = (song.title || song.name || "Song").replace(/[/\\?%*:|"<>]/g, "").trim().toLowerCase();
+  const cleanArtist = (song.artist || song.singer || "Artist").replace(/[/\\?%*:|"<>]/g, "").trim().toLowerCase();
+  return `${cleanTitle} - ${cleanArtist}`;
 }
 
-function markSongDownloaded(songId) {
-  if (!songId) return;
-  const idStr = String(songId);
+function isSongDownloaded(songOrId) {
+  if (!songOrId || !AppState.downloadedSongIds) return false;
+  if (typeof songOrId === "object") {
+    if (songOrId.id && AppState.downloadedSongIds.has(String(songOrId.id))) return true;
+    const key = getSongDownloadKey(songOrId);
+    if (key && AppState.downloadedSongIds.has(key)) return true;
+    return false;
+  }
+  const strId = String(songOrId);
+  return AppState.downloadedSongIds.has(strId);
+}
+
+function markSongDownloaded(songOrId) {
+  if (!songOrId) return;
   if (!AppState.downloadedSongIds) {
     AppState.downloadedSongIds = new Set();
   }
-  AppState.downloadedSongIds.add(idStr);
+  let idStr = "";
+  if (typeof songOrId === "object") {
+    idStr = songOrId.id ? String(songOrId.id) : "";
+    if (idStr) AppState.downloadedSongIds.add(idStr);
+    const key = getSongDownloadKey(songOrId);
+    if (key) AppState.downloadedSongIds.add(key);
+  } else {
+    idStr = String(songOrId);
+    AppState.downloadedSongIds.add(idStr);
+  }
+
   try {
     if (typeof localStorage !== "undefined") {
       localStorage.setItem("pranesh_hub_downloaded_ids", JSON.stringify(Array.from(AppState.downloadedSongIds)));
     }
   } catch (_) {}
 
-  // Realtime DOM update: reflect downloaded state on any existing card buttons
-  if (typeof document !== "undefined" && typeof document.querySelectorAll === "function") {
+  // Realtime DOM update: reflect downloaded state on any existing card buttons and player buttons
+  if (typeof document !== "undefined") {
     try {
-      const cardBtns = document.querySelectorAll(`.card-download-trigger[data-id="${escapeAttr(idStr)}"]`);
-      cardBtns.forEach(btn => {
-        btn.classList.add("is-downloaded");
-        btn.innerHTML = "✓ Downloaded";
-        btn.title = "Already saved to device (Click to download again)";
-      });
+      if (idStr && typeof document.querySelectorAll === "function") {
+        const cardBtns = document.querySelectorAll(`.card-download-trigger[data-id="${escapeAttr(idStr)}"]`);
+        cardBtns.forEach(btn => {
+          btn.classList.add("is-downloaded");
+          btn.innerHTML = "✓ Downloaded";
+          btn.title = "Already saved on your device (Skipped re-download)";
+        });
+      }
+      if (AppState.currentSong && (AppState.currentSong.id === idStr || (typeof songOrId === "object" && AppState.currentSong.id === songOrId.id))) {
+        resetFeaturedDownloadButton(AppState.currentSong);
+        resetPlayerDownloadButton(AppState.currentSong);
+        resetFullscreenDownloadButton(AppState.currentSong);
+      }
     } catch (_) {}
   }
 }
@@ -5838,6 +5868,23 @@ function resetFeaturedDownloadButton(song = AppState.currentSong) {
   if (!DOM.featuredDownloadBtn) return;
   DOM.featuredDownloadBtn.disabled = false;
   DOM.featuredDownloadBtn.classList.remove("is-downloading");
+
+  const isDownloaded = song && isSongDownloaded(song);
+  if (isDownloaded) {
+    DOM.featuredDownloadBtn.classList.add("is-downloaded");
+    DOM.featuredDownloadBtn.title = `Already saved on your device: ${song.title || 'Song'}`;
+    DOM.featuredDownloadBtn.innerHTML = `
+      <span class="btn-dl-icon" style="color: #4ade80;">✓</span>
+      <div class="btn-dl-text-wrap">
+        <span class="btn-dl-title">Saved on Device</span>
+        <span id="featuredDlBitrateSub" class="btn-dl-sub">Stored in Downloads folder</span>
+      </div>
+    `;
+    DOM.featuredDlBitrateSub = document.getElementById("featuredDlBitrateSub");
+    return;
+  }
+
+  DOM.featuredDownloadBtn.classList.remove("is-downloaded");
   const q = AppState.downloadQuality || "48";
   let subText = "< 2MB (48kbps) • Saves 85% RAM";
   if (q === "96") subText = "96kbps • Saves 70% RAM";
@@ -5861,8 +5908,16 @@ function resetPlayerDownloadButton(song = AppState.currentSong) {
   DOM.playerDownloadBtn.style.display = "inline-flex";
   DOM.playerDownloadBtn.disabled = false;
   DOM.playerDownloadBtn.classList.remove("is-downloading");
-  DOM.playerDownloadBtn.innerHTML = `<span>⬇️</span> Download`;
-  DOM.playerDownloadBtn.title = (song && song.title) ? `Download ${song.title} MP3` : "Download Authorized Audio";
+  const isDownloaded = song && isSongDownloaded(song);
+  if (isDownloaded) {
+    DOM.playerDownloadBtn.classList.add("is-downloaded");
+    DOM.playerDownloadBtn.innerHTML = `<span>✓</span> Saved`;
+    DOM.playerDownloadBtn.title = (song && song.title) ? `Already saved: ${song.title}` : "Already saved on your device";
+  } else {
+    DOM.playerDownloadBtn.classList.remove("is-downloaded");
+    DOM.playerDownloadBtn.innerHTML = `<span>⬇️</span> Download`;
+    DOM.playerDownloadBtn.title = (song && song.title) ? `Download ${song.title} MP3` : "Download Authorized Audio";
+  }
 }
 
 function resetFullscreenDownloadButton(song = AppState.currentSong) {
@@ -5870,8 +5925,16 @@ function resetFullscreenDownloadButton(song = AppState.currentSong) {
   if (!fsDlBtn) return;
   fsDlBtn.disabled = false;
   fsDlBtn.classList.remove("is-downloading");
-  fsDlBtn.innerHTML = `⬇️`;
-  fsDlBtn.title = (song && song.title) ? `Download "${song.title}" MP3` : "Download Current Track";
+  const isDownloaded = song && isSongDownloaded(song);
+  if (isDownloaded) {
+    fsDlBtn.classList.add("is-downloaded");
+    fsDlBtn.innerHTML = `✓`;
+    fsDlBtn.title = (song && song.title) ? `Already saved: ${song.title}` : "Already saved on your device";
+  } else {
+    fsDlBtn.classList.remove("is-downloaded");
+    fsDlBtn.innerHTML = `⬇️`;
+    fsDlBtn.title = (song && song.title) ? `Download "${song.title}" MP3` : "Download Current Track";
+  }
 }
 
 function updatePlayerBarUI(song) {
@@ -6134,7 +6197,7 @@ const DownloadManager = {
     return this.activeDownloadingSongIds.has(String(songId));
   },
 
-  downloadSong(song, triggerBtn = null) {
+  downloadSong(song, triggerBtn = null, force = false) {
     if (!song) return Promise.resolve(false);
     const songId = song.id ? String(song.id) : `${song.title || "unknown"}_${song.artist || "unknown"}`;
     
@@ -6142,6 +6205,26 @@ const DownloadManager = {
     if (triggerBtn && this.activeDownloadingSongIds.has(songId)) {
       showToast(`⚠️ "${song.title || 'Song'}" is already downloading...`, "info");
       return Promise.resolve(false);
+    }
+
+    // Requirement: "if one time the song is download dont show like this just leave it"
+    // If the song is already downloaded, NEVER trigger browser re-download or show "Download file again?" prompt!
+    if (!force && isSongDownloaded(song)) {
+      if (triggerBtn) {
+        triggerBtn.classList.add("is-downloaded");
+        if (triggerBtn === DOM.featuredDownloadBtn || triggerBtn.id === "featuredDownloadBtn") {
+          resetFeaturedDownloadButton(song);
+        } else if (triggerBtn === DOM.playerDownloadBtn || triggerBtn.id === "playerDownloadBtn") {
+          resetPlayerDownloadButton(song);
+        } else if (typeof resetFullscreenDownloadButton === "function" && (triggerBtn === DOM.fullscreenDownloadBtn || triggerBtn.id === "fullscreenDownloadBtn")) {
+          resetFullscreenDownloadButton(song);
+        } else {
+          triggerBtn.innerHTML = "✓ Downloaded";
+          triggerBtn.title = `Already saved on your device: ${song.title || 'Song'}`;
+        }
+      }
+      showToast(`✓ "${song.title || 'Song'}" is already saved on your device (Skipped re-download).`, "info");
+      return Promise.resolve(true);
     }
 
     // Requirement 8: Ensure the download button works for every song independently
@@ -6154,7 +6237,7 @@ const DownloadManager = {
     return this._executeDownload({ song, triggerBtn, isBatch: false });
   },
 
-  async downloadAll(songsList, label = "Collection") {
+  async downloadAll(songsList, label = "Collection", force = false) {
     if (!Array.isArray(songsList) || songsList.length === 0) {
       showToast("⚠️ No songs available to download.", "warning");
       return;
@@ -6175,15 +6258,28 @@ const DownloadManager = {
     }
 
     if (label && label.toLowerCase().includes("favourite") && typeof downloadFavouritesSequentially === "function") {
-      return downloadFavouritesSequentially(uniqueSongs, label);
+      return downloadFavouritesSequentially(uniqueSongs, label, force);
     }
 
-    const batchList = uniqueSongs.slice(0, 50);
+    // Incremental batch filtering: Never re-download songs already on device to avoid Chrome duplicate prompt!
+    const newSongsToDownload = force ? uniqueSongs : uniqueSongs.filter(s => !isSongDownloaded(s));
+    const alreadySavedCount = uniqueSongs.length - newSongsToDownload.length;
+
+    if (newSongsToDownload.length === 0 && uniqueSongs.length > 0) {
+      showToast(`✅ All ${uniqueSongs.length} songs in ${label} are already saved on your device!`, "success");
+      return;
+    }
+
+    const batchList = newSongsToDownload.slice(0, 50);
     const total = batchList.length;
 
     this.cancelBatchRequested = false;
+    const msg = alreadySavedCount > 0
+      ? `📥 Queued ${total} new songs from ${label} (${alreadySavedCount} already saved on device skipped).`
+      : `📥 Queued ${total} songs from ${label} for download.`;
+
     showToastWithAction(
-      `📥 Queued ${total} songs from ${label} for download.`,
+      msg,
       "info",
       "Cancel",
       () => this.cancelBatch()
@@ -6388,7 +6484,7 @@ const DownloadManager = {
 
       // 4. Status notifications & Direct 1-Tap Save Action (Overcomes Android Chrome silent block on subsequent downloads)
       if (downloadedSuccessfully) {
-        markSongDownloaded(song.id);
+        markSongDownloaded(song);
         this.downloadsCountInSession = (this.downloadsCountInSession || 0) + 1;
         if (isBatch && batchIndex === batchTotal) {
           showToast(`🎉 All ${batchTotal} songs downloaded successfully! Saved to Android Downloads folder.`, "success");
