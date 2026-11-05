@@ -2461,12 +2461,14 @@ console.log("[PASS] Immediate state clearing verified: previous search results w
   const progressPercent = createMockElement("favDownloadProgressPercent");
   const progressSub = createMockElement("favDownloadProgressSub");
   const retryArea = createMockElement("favDownloadRetryArea");
+  const trackSaveArea = createMockElement("favCurrentTrackSaveArea");
   global.document._elements["favDownloadProgressContainer"] = progressContainer;
   global.document._elements["favDownloadProgressFill"] = progressFill;
   global.document._elements["favDownloadProgressText"] = progressText;
   global.document._elements["favDownloadProgressPercent"] = progressPercent;
   global.document._elements["favDownloadProgressSub"] = progressSub;
   global.document._elements["favDownloadRetryArea"] = retryArea;
+  global.document._elements["favCurrentTrackSaveArea"] = trackSaveArea;
 
   const twentyRes = await downloadFavouritesSequentially(twentySongs, "Twenty Favourites Test");
   assert.strictEqual(twentyRes.completed.length, 20, "All 20 songs must complete successfully");
@@ -2475,6 +2477,8 @@ console.log("[PASS] Immediate state clearing verified: previous search results w
   assert.strictEqual(progressFill.style.width, "100%", "Progress bar must reach 100%");
   assert(progressSub.textContent.includes("Completed: 20"), "Progress subtext must display Completed: 20");
   assert(progressSub.textContent.includes("Total: 20"), "Progress subtext must display Total: 20");
+  assert.strictEqual(trackSaveArea.style.display, "block", "favCurrentTrackSaveArea must be visible during downloads");
+  assert(trackSaveArea.innerHTML.includes("favTrackSaveHeader"), "favCurrentTrackSaveArea must contain header for one-by-one file storage");
   assert.strictEqual(twentyRes.failed.length, 0, "No songs should have failed in full-success mock");
 
   // 3. Verify Failed Track Recovery Retry Button (Requirement 10 & 11)
@@ -2523,6 +2527,7 @@ console.log("[PASS] Immediate state clearing verified: previous search results w
   assert(playAllBtn !== null, "Play All Favourites button must exist in DOM");
   assert(dlAllBtn !== null, "Download All Favourites button must exist in DOM");
   assert.notStrictEqual(playAllBtn.id, dlAllBtn.id, "Play All and Download All must be completely separate DOM elements");
+  assert(DOM.contentContainer.innerHTML.includes("One by One"), "Favourites section HTML must indicate One by One format");
 
   // Restore fetch & trigger & delay
   global.fetch = prevFetch;

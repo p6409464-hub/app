@@ -3726,8 +3726,8 @@ function renderContent() {
             <button id="shuffleFavsBtn" class="btn btn-pill">
               🔀 Shuffle Favourites
             </button>
-            <button id="downloadAllFavsBtn" class="btn btn-pill" style="border-color:rgba(168,85,247,0.5); background:rgba(168,85,247,0.2);">
-              📥 Download All (${filtered.length})
+            <button id="downloadAllFavsBtn" class="btn btn-pill" style="border-color:rgba(168,85,247,0.5); background:rgba(168,85,247,0.2);" title="Download all favourite songs one by one and store each audio file directly to your device">
+              📥 Download All (${filtered.length}) • One by One
             </button>
             <button id="toggleFavSelectBtn" class="btn btn-pill ${AppState.favSelectMode ? 'active' : ''}">
               ${AppState.favSelectMode ? '✕ Exit Select' : '☑️ Select Mode'}
@@ -3753,6 +3753,7 @@ function renderContent() {
             <span id="favDownloadProgressSub">Total: 0 | Completed: 0 | Failed: 0</span>
             <button id="cancelFavDownloadBtn" class="btn btn-pill" style="background: transparent; border: 1px solid rgba(239, 68, 68, 0.5); color: #fca5a5; border-radius: 6px; padding: 2px 10px; font-size: 0.75rem; cursor: pointer;">🛑 Stop Downloads</button>
           </div>
+          <div id="favCurrentTrackSaveArea" style="margin-top: 10px; display: none;"></div>
           <div id="favDownloadRetryArea" style="margin-top: 10px; display: none;"></div>
         </div>
         <div id="zipProgressContainer" style="display:none;"><div id="zipProgressFill"></div><span id="zipProgressText"></span><span id="zipProgressSub"></span><div id="zipRetryArea"></div></div>
@@ -3772,8 +3773,8 @@ function renderContent() {
               <button id="removeSelectedFavsBtn" class="btn btn-pill" style="background:rgba(239,68,68,0.2); border-color:rgba(239,68,68,0.4); color:#fca5a5; font-size:0.8rem;">
                 🗑️ Remove Selected (${AppState.selectedFavSongIds.size})
               </button>
-              <button id="downloadSelectedFavsBtn" class="btn btn-pill" style="background:var(--gradient-main); font-size:0.8rem;">
-                📥 Download Selected (${AppState.selectedFavSongIds.size})
+              <button id="downloadSelectedFavsBtn" class="btn btn-pill" style="background:var(--gradient-main); font-size:0.8rem;" title="Download selected favourite songs one by one and store each audio file directly to your device">
+                📥 Download Selected (${AppState.selectedFavSongIds.size}) • One by One
               </button>
             </div>
           </div>
@@ -4109,10 +4110,25 @@ function renderContent() {
             <button id="playAllFavsBtn" class="btn btn-pill" style="padding:6px 16px; font-size:0.82rem; background:rgba(236,72,153,0.22); border:1px solid rgba(236,72,153,0.45); color:#f472b6; cursor:pointer;">
               <span>▶</span> Play All Favourites
             </button>
-            <button id="downloadAllFavsBtn" class="download-all-btn" style="padding:6px 14px; font-size:0.78rem;" title="Download all favourite songs">
-              <span>📥</span> Download All (${favSongs.length})
+            <button id="downloadAllFavsBtn" class="download-all-btn" style="padding:6px 14px; font-size:0.78rem;" title="Download all favourite songs one by one and store each audio file directly to your device">
+              <span>📥</span> Download All (${favSongs.length}) • One by One
             </button>
           </div>
+        </div>
+        <div id="favDownloadProgressContainer" class="fav-download-progress-container" style="display: none; background: rgba(30, 27, 75, 0.7); border: 1px solid rgba(168, 85, 247, 0.4); border-radius: 12px; padding: 14px 18px; margin: 15px 0;">
+          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+            <span id="favDownloadProgressText" style="font-weight: 600; color: #f3e8ff;">Preparing individual downloads...</span>
+            <span id="favDownloadProgressPercent" style="font-weight: 700; color: #c084fc;">0%</span>
+          </div>
+          <div style="height: 8px; width: 100%; background: rgba(255, 255, 255, 0.1); border-radius: 4px; overflow: hidden; margin-bottom: 6px;">
+            <div id="favDownloadProgressFill" style="height: 100%; width: 0%; background: linear-gradient(90deg, #a855f7, #ec4899); transition: width 0.3s ease;"></div>
+          </div>
+          <div style="display: flex; justify-content: space-between; align-items: center; font-size: 0.82rem; color: var(--text-dim); flex-wrap: wrap; gap: 8px;">
+            <span id="favDownloadProgressSub">Total: 0 | Completed: 0 | Failed: 0</span>
+            <button id="cancelFavDownloadBtn" class="btn btn-pill" style="background: transparent; border: 1px solid rgba(239, 68, 68, 0.5); color: #fca5a5; border-radius: 6px; padding: 2px 10px; font-size: 0.75rem; cursor: pointer;">🛑 Stop Downloads</button>
+          </div>
+          <div id="favCurrentTrackSaveArea" style="margin-top: 10px; display: none;"></div>
+          <div id="favDownloadRetryArea" style="margin-top: 10px; display: none;"></div>
         </div>
         <div class="songs-grid">
           ${favSongs.map(s => createSongCardHTML(s)).join("")}
@@ -6728,6 +6744,7 @@ async function downloadFavouritesSequentially(songsToDownload, label = "Favourit
   const progressPercent = document.getElementById("favDownloadProgressPercent");
   const progressSub = document.getElementById("favDownloadProgressSub") || document.getElementById("zipProgressSub");
   const retryArea = document.getElementById("favDownloadRetryArea") || document.getElementById("zipRetryArea");
+  const trackSaveArea = document.getElementById("favCurrentTrackSaveArea");
   const cancelBtn = document.getElementById("cancelFavDownloadBtn");
 
   if (progressContainer) {
@@ -6739,6 +6756,19 @@ async function downloadFavouritesSequentially(songsToDownload, label = "Favourit
     if (retryArea) {
       retryArea.style.display = "none";
       retryArea.innerHTML = "";
+    }
+    if (trackSaveArea) {
+      trackSaveArea.style.display = "block";
+      trackSaveArea.innerHTML = `
+        <div style="background: rgba(15, 23, 42, 0.7); border: 1px solid rgba(168, 85, 247, 0.3); border-radius: 8px; padding: 10px 12px; margin-top: 8px;">
+          <div id="favTrackSaveHeader" style="font-size: 0.82rem; font-weight: 600; color: #e9d5ff; margin-bottom: 6px; display: flex; align-items: center; gap: 6px;">
+            <span>📁</span> Audio Files Stored to Device (One by One):
+          </div>
+          <div id="favTrackItemsList" style="display: flex; flex-direction: column; gap: 6px; max-height: 220px; overflow-y: auto;">
+            <div style="font-size: 0.76rem; color: var(--text-dim); font-style: italic;">Downloading favourite songs one by one and storing to your device...</div>
+          </div>
+        </div>
+      `;
     }
   }
 
@@ -6778,6 +6808,50 @@ async function downloadFavouritesSequentially(songsToDownload, label = "Favourit
 
       if (ok) {
         completed.push(song);
+        const prep = DownloadManager.lastPreparedDownload;
+        const savedBlob = prep ? prep.blob : null;
+        const cleanTitle = (song.title || "Song").replace(/[/\\?%*:|"<>]/g, "").trim().substring(0, 80);
+        const cleanArtist = (song.artist || "Artist").replace(/[/\\?%*:|"<>]/g, "").trim().substring(0, 60);
+        const safeFilename = (prep && prep.filename) ? prep.filename : `${cleanTitle} - ${cleanArtist}.m4a`;
+
+        const trackList = document.getElementById("favTrackItemsList");
+        if (trackList) {
+          if (completed.length === 1) trackList.innerHTML = "";
+          if (typeof document !== "undefined" && typeof document.createElement === "function") {
+            const itemEl = document.createElement("div");
+            itemEl.style.cssText = "display: flex; justify-content: space-between; align-items: center; background: rgba(255, 255, 255, 0.05); padding: 6px 10px; border-radius: 6px; font-size: 0.78rem;";
+            itemEl.innerHTML = `
+              <div style="overflow: hidden; text-overflow: ellipsis; white-space: nowrap; margin-right: 8px; flex: 1;">
+                <span style="color: #4ade80; margin-right: 4px;">✓</span>
+                <strong style="color: #f3e8ff;">${typeof escapeHTML === "function" ? escapeHTML(cleanTitle) : cleanTitle}</strong>
+                <span style="color: var(--text-dim); margin-left: 4px; font-size: 0.72rem;">• ${typeof escapeHTML === "function" ? escapeHTML(safeFilename) : safeFilename}</span>
+              </div>
+              <button class="btn btn-pill fav-manual-save-btn" style="background: rgba(34, 197, 94, 0.2); border: 1px solid rgba(34, 197, 94, 0.5); color: #86efac; font-size: 0.72rem; padding: 3px 8px; cursor: pointer; white-space: nowrap;">
+                💾 Save File
+              </button>
+            `;
+            if (typeof itemEl.querySelector === "function") {
+              const saveBtn = itemEl.querySelector(".fav-manual-save-btn");
+              if (saveBtn) {
+                saveBtn.onclick = (e) => {
+                  if (e && e.stopPropagation) e.stopPropagation();
+                  if (savedBlob) {
+                    DownloadManager.triggerBlobDownload(savedBlob, safeFilename);
+                    showToast(`✅ Saving "${cleanTitle}" to Android Downloads folder!`, "success");
+                  } else {
+                    DownloadManager.downloadSong(song);
+                  }
+                };
+              }
+            }
+            if (typeof trackList.appendChild === "function") {
+              trackList.appendChild(itemEl);
+            }
+            if (trackList.scrollTop !== undefined && trackList.scrollHeight !== undefined) {
+              trackList.scrollTop = trackList.scrollHeight;
+            }
+          }
+        }
       } else {
         console.warn(`[FavDownload] Download failed for "${song.title}"`);
         failed.push(song);
@@ -6801,17 +6875,22 @@ async function downloadFavouritesSequentially(songsToDownload, label = "Favourit
   if (progressFill) progressFill.style.width = "100%";
   if (progressPercent) progressPercent.textContent = "100%";
 
+  const trackSaveHeader = document.getElementById("favTrackSaveHeader");
+
   if (isCancelled) {
     if (progressText) progressText.textContent = `🛑 Stopped. Completed: ${completed.length}, Skipped: ${uniqueSongs.length - completed.length - failed.length}`;
     if (progressSub) progressSub.textContent = `Total: ${uniqueSongs.length} | Completed: ${completed.length} | Failed: ${failed.length}`;
+    if (trackSaveHeader) trackSaveHeader.innerHTML = `<span>🛑</span> Stopped. (${completed.length} saved to device, ${failed.length} failed)`;
     showToast(`Batch download stopped. (${completed.length} saved, ${failed.length} failed)`, "warning");
   } else if (failed.length === 0) {
     if (progressText) progressText.textContent = `🎉 All ${completed.length} favourite songs downloaded successfully!`;
     if (progressSub) progressSub.textContent = `Total: ${uniqueSongs.length} | Completed: ${completed.length} | Failed: 0 • All audio files saved individually to Android Downloads folder / Files app.`;
+    if (trackSaveHeader) trackSaveHeader.innerHTML = `<span>✅</span> All ${completed.length} Songs Downloaded & Saved to File (One by One) • Stored in Android Downloads:`;
     showToast(`🎉 All ${completed.length} favourite songs downloaded as separate files!`, "success");
   } else {
     if (progressText) progressText.textContent = `Download Finished: ${completed.length} completed, ${failed.length} failed.`;
     if (progressSub) progressSub.textContent = `Total: ${uniqueSongs.length} | Completed: ${completed.length} | Failed: ${failed.length} • Saved to Android Downloads / Files app`;
+    if (trackSaveHeader) trackSaveHeader.innerHTML = `<span>⚠️</span> ${completed.length} Songs Downloaded & Saved to File (${failed.length} failed) • Stored in Android Downloads:`;
     showToast(`⚠️ ${completed.length} songs saved, ${failed.length} failed. Tap Retry below.`, "warning");
   }
 
