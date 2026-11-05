@@ -2286,7 +2286,7 @@ console.log("[PASS] Immediate state clearing verified: previous search results w
 
   assert(DOM.contentContainer.innerHTML.includes('id="favSearchInput"'), "Favourites view must render search input");
   assert(DOM.contentContainer.innerHTML.includes('id="favSortSelect"'), "Favourites view must render sort select");
-  assert(DOM.contentContainer.innerHTML.includes('id="downloadAllFavsZipBtn"'), "Favourites view must render 'Download All as ZIP' button");
+  assert(DOM.contentContainer.innerHTML.includes('id="downloadAllFavsBtn"') || DOM.contentContainer.innerHTML.includes('id="downloadAllFavsZipBtn"'), "Favourites view must render 'Download All' button");
   assert(DOM.contentContainer.innerHTML.includes('id="toggleFavSelectBtn"'), "Favourites view must render 'Select Mode' button");
 
   // 3. Search within Favourites
@@ -2303,7 +2303,7 @@ console.log("[PASS] Immediate state clearing verified: previous search results w
 
   assert(DOM.contentContainer.innerHTML.includes('id="bulkActionBar"'), "Select mode must render Bulk Action Bar");
   assert(DOM.contentContainer.innerHTML.includes('id="removeSelectedFavsBtn"'), "Bulk Action Bar must render Remove Selected button");
-  assert(DOM.contentContainer.innerHTML.includes('id="zipSelectedFavsBtn"'), "Bulk Action Bar must render ZIP Selected button");
+  assert(DOM.contentContainer.innerHTML.includes('id="downloadSelectedFavsBtn"') || DOM.contentContainer.innerHTML.includes('id="zipSelectedFavsBtn"'), "Bulk Action Bar must render Download Selected button");
   console.log("[PASS] Dedicated Favourites View, Search within favourites, Sort, Multi-select mode and ZIP buttons verified!");
 
   // 5. Favourites JSON Backup & Restore
@@ -2370,7 +2370,7 @@ console.log("[PASS] Immediate state clearing verified: previous search results w
   // 1. Verify activeBlobObjects Map exists and tracks Blob binaries
   assert(DownloadManager.activeBlobObjects instanceof Map, "DownloadManager must have activeBlobObjects Map for GC protection");
   
-  // 2. Verify triggerBlobDownload wraps blobs in application/octet-stream
+  // 2. Verify triggerBlobDownload wraps blobs in application/octet-stream and NEVER sets target="_self"
   let capturedBlob = null;
   const originalCreateObjectURL = global.window.URL.createObjectURL;
   global.window.URL.createObjectURL = (blob) => {
@@ -2378,10 +2378,21 @@ console.log("[PASS] Immediate state clearing verified: previous search results w
     return originalCreateObjectURL(blob);
   };
 
+  let lastCreatedAnchor = null;
+  const origCreateEl = global.document.createElement;
+  global.document.createElement = (tag) => {
+    const el = origCreateEl(tag);
+    if (tag.toLowerCase() === "a") lastCreatedAnchor = el;
+    return el;
+  };
+
   const testAudioBlob = { size: 1024, type: "audio/mp4" };
   const dlResult = DownloadManager.triggerBlobDownload(testAudioBlob, "Test_Song.m4a");
   assert.strictEqual(dlResult, true, "triggerBlobDownload must succeed");
   assert.strictEqual(capturedBlob.type, "application/octet-stream", "Blob must be converted to application/octet-stream for Android Download Provider");
+  assert(lastCreatedAnchor !== null, "Anchor must be created for download");
+  assert.notStrictEqual(lastCreatedAnchor.getAttribute("target"), "_self", "Download anchor must NEVER set target='_self' to avoid Android navigation lock bug");
+  global.document.createElement = origCreateEl;
 
   // 3. Verify Blob retention in activeBlobObjects Map
   assert.strictEqual(DownloadManager.activeBlobObjects.size > 0, true, "Blob must be retained in memory map for 60s against IPC GC drop");
@@ -2398,14 +2409,17 @@ console.log("[PASS] Immediate state clearing verified: previous search results w
   const failResult = await DownloadManager.downloadSong(failedSong);
   assert.strictEqual(failResult, false, "Download must return false when audio stream is inaccessible");
   global.fetch = prevFetch;
-  console.log("[PASS] Android Mobile Download: application/octet-stream, 60s memory retention & zero fake completed notifications verified!");
+  console.log("[PASS] Android Mobile Download: application/octet-stream, 60s memory retention, zero target='_self' lock & zero fake completed notifications verified!");
 
   // ========================================================================
-  // Test 52: Favourite Playlist Download Manager & ZIP Packaging
+  // Test 52: Favourite Playlist Download Manager (Individual Audio Files, Deduplication, Retry & 20-Song Downloads)
   // ========================================================================
-  console.log("\nTest 52: Verifying Favourite Playlist Download Manager & ZIP Packaging...");
+  console.log("\nTest 52: Verifying Favourite Playlist Download Manager (Separate Audio Files, Deduplication, Retry & 20-Song Downloads)...");
 
-  // 1. Verify song deduplication before packaging
+  // Speed up delay between downloads in testing environment
+  global.window.__DOWNLOAD_DELAY_MS__ = 5;
+
+  // 1. Verify song deduplication before individual downloads
   const songsWithDups = [
     AppState.masterSongs[0],
     AppState.masterSongs[0],
@@ -2414,36 +2428,56 @@ console.log("[PASS] Immediate state clearing verified: previous search results w
     AppState.masterSongs[2]
   ];
   
-  let packagedBlobs = [];
+  let downloadedFiles = [];
   const origTrigger = DownloadManager.triggerBlobDownload;
   DownloadManager.triggerBlobDownload = (blob, filename) => {
-    packagedBlobs.push({ blob, filename });
+    downloadedFiles.push({ blob, filename });
     return origTrigger.call(DownloadManager, blob, filename);
   };
 
-  // Mock successful audio stream fetch for ZIP packaging
+  // Mock successful audio stream fetch for individual audio downloads
   global.fetch = async () => ({
     ok: true,
     status: 200,
     arrayBuffer: async () => new Uint8Array([73, 68, 51, 3, 0, 0, 0, 0, 0, 10]).buffer
   });
 
-  await downloadFavouritesAsZip(songsWithDups, "Test_Favourites.zip");
-  assert.strictEqual(packagedBlobs.length, 1, "Exactly one ZIP archive must be downloaded");
-  assert.strictEqual(packagedBlobs[0].filename, "Test_Favourites.zip", "Filename must match expected ZIP filename");
+  const dedupRes = await downloadFavouritesSequentially(songsWithDups, "Deduplicated Test");
+  assert.strictEqual(dedupRes.completed.length, 3, "Exactly 3 unique songs must be downloaded (duplicates removed)");
+  assert.strictEqual(downloadedFiles.length, 3, "Exactly 3 individual audio files must be downloaded");
+  assert(downloadedFiles.every(f => !f.filename.endsWith(".zip")), "Individual song downloads must NOT be a ZIP file");
+  assert(downloadedFiles.every(f => f.filename.endsWith(".m4a") || f.filename.endsWith(".mp3")), "All files must be individual audio files (.m4a/.mp3)");
 
-  // 2. Verify 20 songs packaging without error
+  // 2. Verify 20 songs download as separate individual audio files (Requirement 2 & Testing 3,4,5)
   const twentySongs = AppState.masterSongs.slice(0, 20);
-  packagedBlobs = [];
-  await downloadFavouritesAsZip(twentySongs, "Twenty_Favourites.zip");
-  assert.strictEqual(packagedBlobs.length, 1, "20-song ZIP archive packaging must succeed");
-  assert.strictEqual(packagedBlobs[0].filename, "Twenty_Favourites.zip", "20-song archive filename must match");
+  assert.strictEqual(twentySongs.length, 20, "Must have 20 songs for 20-song download verification");
+  downloadedFiles = [];
 
-  // 3. Verify Failed Track Recovery Retry Button
-  let fetchAttempts = 0;
-  global.fetch = async () => {
-    fetchAttempts++;
-    if (fetchAttempts % 2 === 0) {
+  const progressContainer = createMockElement("favDownloadProgressContainer");
+  const progressFill = createMockElement("favDownloadProgressFill");
+  const progressText = createMockElement("favDownloadProgressText");
+  const progressPercent = createMockElement("favDownloadProgressPercent");
+  const progressSub = createMockElement("favDownloadProgressSub");
+  const retryArea = createMockElement("favDownloadRetryArea");
+  global.document._elements["favDownloadProgressContainer"] = progressContainer;
+  global.document._elements["favDownloadProgressFill"] = progressFill;
+  global.document._elements["favDownloadProgressText"] = progressText;
+  global.document._elements["favDownloadProgressPercent"] = progressPercent;
+  global.document._elements["favDownloadProgressSub"] = progressSub;
+  global.document._elements["favDownloadRetryArea"] = retryArea;
+
+  const twentyRes = await downloadFavouritesSequentially(twentySongs, "Twenty Favourites Test");
+  assert.strictEqual(twentyRes.completed.length, 20, "All 20 songs must complete successfully");
+  assert.strictEqual(downloadedFiles.length, 20, "Exactly 20 separate individual audio files must be downloaded");
+  assert(downloadedFiles.every(f => !f.filename.endsWith(".zip")), "CRITICAL: None of the 20 songs may be packaged in a ZIP file");
+  assert.strictEqual(progressFill.style.width, "100%", "Progress bar must reach 100%");
+  assert(progressSub.textContent.includes("Completed: 20"), "Progress subtext must display Completed: 20");
+  assert(progressSub.textContent.includes("Total: 20"), "Progress subtext must display Total: 20");
+  assert.strictEqual(twentyRes.failed.length, 0, "No songs should have failed in full-success mock");
+
+  // 3. Verify Failed Track Recovery Retry Button (Requirement 10 & 11)
+  global.fetch = async (url) => {
+    if (typeof url === "string" && (url.includes("fail_track_1") || url.includes("fail_track_2"))) {
       return { ok: false, status: 500 };
     }
     return {
@@ -2453,21 +2487,46 @@ console.log("[PASS] Immediate state clearing verified: previous search results w
     };
   };
 
-  const retryContainer = createMockElement("zipProgressContainer");
-  const retrySub = createMockElement("zipProgressSub");
-  const retryArea = createMockElement("zipRetryArea");
-  global.document._elements["zipProgressContainer"] = retryContainer;
-  global.document._elements["zipProgressSub"] = retrySub;
-  global.document._elements["zipRetryArea"] = retryArea;
+  const partialSongs = [
+    AppState.masterSongs[0],
+    { id: "fav_fail_1", title: "Fail Track 1", artist: "Artist 1", audio_url: "https://example.com/fail_track_1.mp4" },
+    AppState.masterSongs[1],
+    { id: "fav_fail_2", title: "Fail Track 2", artist: "Artist 2", audio_url: "https://example.com/fail_track_2.mp4" }
+  ];
+  downloadedFiles = [];
+  const partialRes = await downloadFavouritesSequentially(partialSongs, "Partial Fail Test");
+  assert.strictEqual(partialRes.completed.length, 2, "Exactly 2 songs must succeed");
+  assert.strictEqual(partialRes.failed.length, 2, "Exactly 2 songs must fail");
+  assert(retryArea.innerHTML.includes("retryFavFailedBtn"), "Failed track retry button must be rendered in favDownloadRetryArea");
+  assert(progressSub.textContent.includes("Failed: 2"), "Progress subtext must display accurate failed tracks count");
 
-  await downloadFavouritesAsZip(AppState.masterSongs.slice(0, 4), "Partial_Fail.zip");
-  assert(retryArea.innerHTML.includes("retryZipFailedBtn"), "Failed track retry button must be rendered in zipRetryArea");
-  assert(retrySub.textContent.includes("Failed"), "Progress subtext must display accurate failed tracks count");
+  // Verify retrying only the failed tracks succeeds
+  global.fetch = async () => ({
+    ok: true,
+    status: 200,
+    arrayBuffer: async () => new Uint8Array([1, 2, 3]).buffer
+  });
+  downloadedFiles = [];
+  const retryRes = await downloadFavouritesSequentially(partialRes.failed, "Retry Test");
+  assert.strictEqual(retryRes.completed.length, 2, "Both previously failed songs must succeed on retry");
+  assert.strictEqual(retryRes.failed.length, 0, "No songs should fail on retry");
 
-  // Restore fetch
+  // 4. Verify 'Play All' vs 'Download All' Distinction (Requirement: Do not confuse Play All with Download All)
+  AppState.favourites = [sample1.id, sample2.id];
+  AppState.activeSection = "favourites";
+  renderContent();
+
+  const playAllBtn = document.getElementById("playAllFavsBtn");
+  const dlAllBtn = document.getElementById("downloadAllFavsBtn");
+  assert(playAllBtn !== null, "Play All Favourites button must exist in DOM");
+  assert(dlAllBtn !== null, "Download All Favourites button must exist in DOM");
+  assert.notStrictEqual(playAllBtn.id, dlAllBtn.id, "Play All and Download All must be completely separate DOM elements");
+
+  // Restore fetch & trigger & delay
   global.fetch = prevFetch;
   DownloadManager.triggerBlobDownload = origTrigger;
-  console.log("[PASS] Favourite Playlist Download Manager: Deduplication, 20-track ZIP packaging & retry recovery verified!");
+  delete global.window.__DOWNLOAD_DELAY_MS__;
+  console.log("[PASS] Favourite Playlist Download Manager: Deduplication, 20 separate individual audio files, zero ZIP, accurate progress & retry recovery verified!");
 
   // ========================================================================
   // Test 53: Tamil & English Microphone Voice Search & Transliteration

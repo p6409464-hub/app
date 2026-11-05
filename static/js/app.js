@@ -3726,8 +3726,8 @@ function renderContent() {
             <button id="shuffleFavsBtn" class="btn btn-pill">
               🔀 Shuffle Favourites
             </button>
-            <button id="downloadAllFavsZipBtn" class="btn btn-pill" style="border-color:rgba(168,85,247,0.5); background:rgba(168,85,247,0.2);">
-              📦 Download All as ZIP
+            <button id="downloadAllFavsBtn" class="btn btn-pill" style="border-color:rgba(168,85,247,0.5); background:rgba(168,85,247,0.2);">
+              📥 Download All (${filtered.length})
             </button>
             <button id="toggleFavSelectBtn" class="btn btn-pill ${AppState.favSelectMode ? 'active' : ''}">
               ${AppState.favSelectMode ? '✕ Exit Select' : '☑️ Select Mode'}
@@ -3741,16 +3741,21 @@ function renderContent() {
           </div>
         </div>
 
-        <div id="zipProgressContainer" class="zip-progress-container" style="display: none;">
-          <div class="zip-progress-info">
-            <span id="zipProgressText">Preparing ZIP archive...</span>
-            <span id="zipProgressSub">0%</span>
+        <div id="favDownloadProgressContainer" class="fav-download-progress-container" style="display: none; background: rgba(30, 27, 75, 0.7); border: 1px solid rgba(168, 85, 247, 0.4); border-radius: 12px; padding: 14px 18px; margin: 15px 0;">
+          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+            <span id="favDownloadProgressText" style="font-weight: 600; color: #f3e8ff;">Preparing individual downloads...</span>
+            <span id="favDownloadProgressPercent" style="font-weight: 700; color: #c084fc;">0%</span>
           </div>
-          <div class="zip-progress-bar">
-            <div id="zipProgressFill" class="zip-progress-fill"></div>
+          <div style="height: 8px; width: 100%; background: rgba(255, 255, 255, 0.1); border-radius: 4px; overflow: hidden; margin-bottom: 6px;">
+            <div id="favDownloadProgressFill" style="height: 100%; width: 0%; background: linear-gradient(90deg, #a855f7, #ec4899); transition: width 0.3s ease;"></div>
           </div>
-          <div id="zipRetryArea" style="margin-top:8px; display:none;"></div>
+          <div style="display: flex; justify-content: space-between; align-items: center; font-size: 0.82rem; color: var(--text-dim); flex-wrap: wrap; gap: 8px;">
+            <span id="favDownloadProgressSub">Total: 0 | Completed: 0 | Failed: 0</span>
+            <button id="cancelFavDownloadBtn" class="btn btn-pill" style="background: transparent; border: 1px solid rgba(239, 68, 68, 0.5); color: #fca5a5; border-radius: 6px; padding: 2px 10px; font-size: 0.75rem; cursor: pointer;">🛑 Stop Downloads</button>
+          </div>
+          <div id="favDownloadRetryArea" style="margin-top: 10px; display: none;"></div>
         </div>
+        <div id="zipProgressContainer" style="display:none;"><div id="zipProgressFill"></div><span id="zipProgressText"></span><span id="zipProgressSub"></span><div id="zipRetryArea"></div></div>
 
         ${AppState.favSelectMode ? `
           <div id="bulkActionBar" class="bulk-action-bar">
@@ -3767,11 +3772,8 @@ function renderContent() {
               <button id="removeSelectedFavsBtn" class="btn btn-pill" style="background:rgba(239,68,68,0.2); border-color:rgba(239,68,68,0.4); color:#fca5a5; font-size:0.8rem;">
                 🗑️ Remove Selected (${AppState.selectedFavSongIds.size})
               </button>
-              <button id="downloadSelectedFavsBtn" class="btn btn-pill" style="font-size:0.8rem;">
+              <button id="downloadSelectedFavsBtn" class="btn btn-pill" style="background:var(--gradient-main); font-size:0.8rem;">
                 📥 Download Selected (${AppState.selectedFavSongIds.size})
-              </button>
-              <button id="zipSelectedFavsBtn" class="btn btn-pill" style="background:var(--gradient-main); font-size:0.8rem;">
-                📦 Download as ZIP (${AppState.selectedFavSongIds.size})
               </button>
             </div>
           </div>
@@ -3991,10 +3993,10 @@ function renderContent() {
         });
       }
 
-      const zipAllBtn = document.getElementById("downloadAllFavsZipBtn");
-      if (zipAllBtn) {
-        zipAllBtn.addEventListener("click", () => {
-          downloadFavouritesAsZip(filtered, "Pranesh_Music_Hub_All_Favourites.zip");
+      const dlAllFavsBtn = document.getElementById("downloadAllFavsBtn") || document.getElementById("downloadAllFavsZipBtn");
+      if (dlAllFavsBtn) {
+        dlAllFavsBtn.addEventListener("click", () => {
+          downloadFavouritesSequentially(filtered, "Favourite Songs");
         });
       }
 
@@ -4048,7 +4050,7 @@ function renderContent() {
         });
       }
 
-      const dlSelBtn = document.getElementById("downloadSelectedFavsBtn");
+      const dlSelBtn = document.getElementById("downloadSelectedFavsBtn") || document.getElementById("zipSelectedFavsBtn");
       if (dlSelBtn) {
         dlSelBtn.addEventListener("click", () => {
           const selected = filtered.filter(s => AppState.selectedFavSongIds.has(s.id));
@@ -4056,19 +4058,7 @@ function renderContent() {
             showToast("No favourite songs selected.");
             return;
           }
-          DownloadManager.downloadAll(selected, "Selected Favourites");
-        });
-      }
-
-      const zipSelBtn = document.getElementById("zipSelectedFavsBtn");
-      if (zipSelBtn) {
-        zipSelBtn.addEventListener("click", () => {
-          const selected = filtered.filter(s => AppState.selectedFavSongIds.has(s.id));
-          if (selected.length === 0) {
-            showToast("No favourite songs selected.");
-            return;
-          }
-          downloadFavouritesAsZip(selected, "Pranesh_Music_Hub_Selected_Favourites.zip");
+          downloadFavouritesSequentially(selected, "Selected Favourites");
         });
       }
     }
@@ -4216,6 +4206,14 @@ function renderContent() {
       AppState.currentSongIndex = 0;
       playSong(favSongs[0], true);
       showToast(`▶ Playing ${favSongs.length} Favourite Songs!`);
+    });
+  }
+
+  // Download All Favourites Button (Home Page)
+  const homeDlAllFavsBtn = document.getElementById("downloadAllFavsBtn");
+  if (homeDlAllFavsBtn && favSongs.length > 0) {
+    homeDlAllFavsBtn.addEventListener("click", () => {
+      downloadFavouritesSequentially(favSongs, "Favourite Songs");
     });
   }
 
@@ -5291,14 +5289,30 @@ const DownloadManager = {
       a.style.display = "none";
       a.href = blobUrl;
       a.download = filename;
-      a.setAttribute("target", "_self");
+      // CRITICAL FIX: Do NOT set target="_self"! Setting target="_self" on an anchor with a Blob URL
+      // marks the browsing window as undergoing navigation in Android Chromium, which suppresses or
+      // drops subsequent consecutive download dispatches on the same window context until page refresh.
       document.body.appendChild(a);
-      a.click();
-      setTimeout(() => {
+
+      // Asynchronous tick allows DOM mutation & layout registration before click dispatch
+      const triggerClick = () => {
         try {
-          if (document.body && document.body.contains(a)) document.body.removeChild(a);
-        } catch (_) {}
-      }, 1000);
+          a.click();
+        } catch (err) {
+          console.warn("[DownloadManager] a.click() error:", err);
+        }
+        setTimeout(() => {
+          try {
+            if (document.body && document.body.contains(a)) document.body.removeChild(a);
+          } catch (_) {}
+        }, 1000);
+      };
+
+      if (typeof setTimeout === "function") {
+        setTimeout(triggerClick, 30);
+      } else {
+        triggerClick();
+      }
     }
     return true;
   },
@@ -5390,6 +5404,10 @@ const DownloadManager = {
     if (uniqueSongs.length === 0) {
       showToast("⚠️ No unique songs to download.", "warning");
       return;
+    }
+
+    if (label && label.toLowerCase().includes("favourite") && typeof downloadFavouritesSequentially === "function") {
+      return downloadFavouritesSequentially(uniqueSongs, label);
     }
 
     const batchList = uniqueSongs.slice(0, 50);
@@ -6631,6 +6649,141 @@ function importFavouritesJSON(file) {
   reader.readAsText(file);
 }
 
+async function downloadFavouritesSequentially(songsToDownload, label = "Favourite Songs") {
+  if (!Array.isArray(songsToDownload) || songsToDownload.length === 0) {
+    showToast("⚠️ No favourite songs to download.", "warning");
+    return { completed: [], failed: [], isCancelled: false };
+  }
+
+  // Deduplicate songs by ID to prevent duplicate downloads
+  const seenIds = new Set();
+  const uniqueSongs = [];
+  for (const s of songsToDownload) {
+    if (s && s.id && !seenIds.has(s.id)) {
+      seenIds.add(s.id);
+      uniqueSongs.push(s);
+    }
+  }
+
+  if (uniqueSongs.length === 0) {
+    showToast("⚠️ No unique favourite songs to download.", "warning");
+    return { completed: [], failed: [], isCancelled: false };
+  }
+
+  const progressContainer = document.getElementById("favDownloadProgressContainer") || document.getElementById("zipProgressContainer");
+  const progressFill = document.getElementById("favDownloadProgressFill") || document.getElementById("zipProgressFill");
+  const progressText = document.getElementById("favDownloadProgressText") || document.getElementById("zipProgressText");
+  const progressPercent = document.getElementById("favDownloadProgressPercent");
+  const progressSub = document.getElementById("favDownloadProgressSub") || document.getElementById("zipProgressSub");
+  const retryArea = document.getElementById("favDownloadRetryArea") || document.getElementById("zipRetryArea");
+  const cancelBtn = document.getElementById("cancelFavDownloadBtn");
+
+  if (progressContainer) {
+    progressContainer.style.display = "block";
+    if (progressFill) progressFill.style.width = "0%";
+    if (progressText) progressText.textContent = `Preparing ${uniqueSongs.length} favourite songs for individual audio file downloads...`;
+    if (progressPercent) progressPercent.textContent = "0%";
+    if (progressSub) progressSub.textContent = `Total: ${uniqueSongs.length} | Completed: 0 | Failed: 0`;
+    if (retryArea) {
+      retryArea.style.display = "none";
+      retryArea.innerHTML = "";
+    }
+  }
+
+  let isCancelled = false;
+  if (cancelBtn) {
+    cancelBtn.onclick = () => {
+      isCancelled = true;
+      showToast("🛑 Download stopped.", "warning");
+    };
+  }
+
+  showToast(`📥 Starting download for ${uniqueSongs.length} favourite songs as individual audio files...`, "info");
+
+  const completed = [];
+  const failed = [];
+
+  for (let i = 0; i < uniqueSongs.length; i++) {
+    if (isCancelled) break;
+
+    const song = uniqueSongs[i];
+    const pct = Math.round((i / uniqueSongs.length) * 100);
+
+    if (progressFill) progressFill.style.width = `${pct}%`;
+    if (progressText) progressText.textContent = `Downloading track ${i + 1} of ${uniqueSongs.length}: "${song.title || 'Song'}" (${pct}%)`;
+    if (progressPercent) progressPercent.textContent = `${pct}%`;
+    if (progressSub) progressSub.textContent = `Total: ${uniqueSongs.length} | Completed: ${completed.length} | Remaining: ${uniqueSongs.length - i} | Failed: ${failed.length}`;
+
+    try {
+      const ok = await DownloadManager._executeDownload({
+        song,
+        triggerBtn: null,
+        isBatch: true,
+        batchIndex: i + 1,
+        batchTotal: uniqueSongs.length,
+        batchLabel: label
+      });
+
+      if (ok) {
+        completed.push(song);
+      } else {
+        console.warn(`[FavDownload] Download failed for "${song.title}"`);
+        failed.push(song);
+      }
+    } catch (err) {
+      console.warn(`[FavDownload] Error downloading "${song.title}":`, err.message || err);
+      failed.push(song);
+    }
+
+    if (progressSub) progressSub.textContent = `Total: ${uniqueSongs.length} | Completed: ${completed.length} | Remaining: ${uniqueSongs.length - i - 1} | Failed: ${failed.length}`;
+
+    // Spacing between tracks to prevent Android Chromium from throttling download events
+    const delayMs = (typeof window !== "undefined" && window.__DOWNLOAD_DELAY_MS__ !== undefined)
+      ? window.__DOWNLOAD_DELAY_MS__
+      : 900;
+    if (i < uniqueSongs.length - 1 && !isCancelled && delayMs > 0) {
+      await new Promise(r => setTimeout(r, delayMs));
+    }
+  }
+
+  if (progressFill) progressFill.style.width = "100%";
+  if (progressPercent) progressPercent.textContent = "100%";
+
+  if (isCancelled) {
+    if (progressText) progressText.textContent = `🛑 Stopped. Completed: ${completed.length}, Skipped: ${uniqueSongs.length - completed.length - failed.length}`;
+    if (progressSub) progressSub.textContent = `Total: ${uniqueSongs.length} | Completed: ${completed.length} | Failed: ${failed.length}`;
+    showToast(`Batch download stopped. (${completed.length} saved, ${failed.length} failed)`, "warning");
+  } else if (failed.length === 0) {
+    if (progressText) progressText.textContent = `🎉 All ${completed.length} favourite songs downloaded successfully!`;
+    if (progressSub) progressSub.textContent = `Total: ${uniqueSongs.length} | Completed: ${completed.length} | Failed: 0 • All audio files saved individually to Android Downloads folder / Files app.`;
+    showToast(`🎉 All ${completed.length} favourite songs downloaded as separate files!`, "success");
+  } else {
+    if (progressText) progressText.textContent = `Download Finished: ${completed.length} completed, ${failed.length} failed.`;
+    if (progressSub) progressSub.textContent = `Total: ${uniqueSongs.length} | Completed: ${completed.length} | Failed: ${failed.length} • Saved to Android Downloads / Files app`;
+    showToast(`⚠️ ${completed.length} songs saved, ${failed.length} failed. Tap Retry below.`, "warning");
+  }
+
+  if (failed.length > 0 && retryArea) {
+    retryArea.style.display = "block";
+    retryArea.innerHTML = `
+      <button id="retryFavFailedBtn" class="btn btn-pill" style="background:rgba(239,68,68,0.85); color:#fff; font-size:0.8rem; margin-top:6px; cursor:pointer;">
+        🔄 Retry Failed Downloads (${failed.length} tracks)
+      </button>
+    `;
+    const retryBtn = document.getElementById("retryFavFailedBtn");
+    if (retryBtn) {
+      retryBtn.addEventListener("click", () => {
+        downloadFavouritesSequentially(failed, "Retry Failed Favourites");
+      });
+    }
+  } else if (retryArea && !isCancelled) {
+    retryArea.style.display = "none";
+    retryArea.innerHTML = "";
+  }
+
+  return { completed, failed, isCancelled };
+}
+
 async function downloadFavouritesAsZip(songsToDownload, zipFilename = "Pranesh_Music_Hub_Favourites.zip") {
   if (!songsToDownload || songsToDownload.length === 0) {
     showToast("No favourite songs to download.");
@@ -6784,6 +6937,7 @@ if (typeof window !== "undefined") {
   window.exportPlaylistM3U = exportPlaylistM3U;
   window.cycleRepeatMode = cycleRepeatMode;
   window.cyclePlaybackSpeed = cyclePlaybackSpeed;
+  window.downloadFavouritesSequentially = downloadFavouritesSequentially;
   window.downloadFavouritesAsZip = downloadFavouritesAsZip;
   window.exportFavouritesJSON = exportFavouritesJSON;
   window.importFavouritesJSON = importFavouritesJSON;
