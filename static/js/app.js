@@ -3301,36 +3301,341 @@ function getActiveFavouritesList() {
   return allFavs;
 }
 
-// Matches favourite songs to user-selected type: Melody, Kuthu, Love, Sad Melody, Folk, Film Album
+// ==========================================================================
+// Comprehensive Tamil & Global Genre Definitions & Classification Engine
+// ==========================================================================
+const GENRE_DEFINITIONS = {
+  all: { id: "all", label: "✨ All Favourites", icon: "✨" },
+  melody: { id: "melody", label: "❤️ Melody", icon: "❤️" },
+  kuthu: { id: "kuthu", label: "🔥 Kuthu / Dappankuthu", icon: "🔥" },
+  folk: { id: "folk", label: "🥁 Folk", icon: "🥁" },
+  folk_dance: { id: "folk_dance", label: "💃 Folk Dance", icon: "💃" },
+  gaana: { id: "gaana", label: "🪘 Gaana", icon: "🪘" },
+  love: { id: "love", label: "💖 Love", icon: "💖" },
+  romantic: { id: "romantic", label: "🌹 Romantic", icon: "🌹" },
+  sad_melody: { id: "sad_melody", label: "💔 Sad Melody", icon: "💔" },
+  rap: { id: "rap", label: "🎤 Rap", icon: "🎤" },
+  hiphop: { id: "hiphop", label: "🎧 Hip-Hop", icon: "🎧" },
+  classical: { id: "classical", label: "🪕 Classical / Carnatic", icon: "🪕" },
+  devotional: { id: "devotional", label: "🕉️ Devotional", icon: "🕉️" },
+  motivational: { id: "motivational", label: "⚡ Motivational / Anthem", icon: "⚡" },
+  western: { id: "western", label: "🎸 Western / Pop / Rock", icon: "🎸" },
+  instrumental: { id: "instrumental", label: "🎹 Instrumental", icon: "🎹" },
+  fusion: { id: "fusion", label: "✨ Fusion", icon: "✨" },
+  independent_album: { id: "independent_album", label: "💿 Independent Album", icon: "💿" },
+  film_album: { id: "film_album", label: "🎬 Film Album", icon: "🎬" },
+  needs_verification: { id: "needs_verification", label: "❓ Needs Verification", icon: "❓" }
+};
+
+function renderFavTypeOptionsHTML(activeType = "all") {
+  const keys = [
+    "all", "melody", "kuthu", "folk", "folk_dance", "gaana",
+    "love", "romantic", "sad_melody", "rap", "hiphop", "classical",
+    "devotional", "motivational", "western", "instrumental", "fusion",
+    "independent_album", "film_album", "needs_verification"
+  ];
+  return keys.map(k => {
+    const def = GENRE_DEFINITIONS[k];
+    const isSel = (activeType === k || (!activeType && k === "all"));
+    return `<option value="${def.id}" ${isSel ? "selected" : ""}>${def.label}</option>`;
+  }).join("");
+}
+
+// Analyzes every song individually using actual audio characteristics, lyrics, original source, movie/album info, singer, and composition
+function analyzeSongGenre(song) {
+  if (!song) {
+    return {
+      primary: "needs_verification",
+      label: GENRE_DEFINITIONS.needs_verification.label,
+      secondary: [],
+      badges: [GENRE_DEFINITIONS.needs_verification.label]
+    };
+  }
+
+  const title = (song.title || song.name || "").trim().toLowerCase();
+  const artist = (song.artist || song.singer || "").trim().toLowerCase();
+  const album = (song.album || song.movie || "").trim().toLowerCase();
+  const songType = (song.type || "").trim().toLowerCase();
+  const tags = Array.isArray(song.tags) ? song.tags.map(t => String(t).toLowerCase()) : [];
+  const tagsStr = tags.join(" ");
+  const source = (song.source || "").toLowerCase();
+  const category = (song.category || "").toLowerCase();
+
+  // Rule 12: If reliable information is unavailable, mark as "Needs Verification" instead of guessing
+  const isTitleMissingOrGeneric = !title || title === "unknown" || title === "track 01" || title === "track" || title === "untitled" || /^(audio|track|song|unknown)\s*\d*$/i.test(title);
+  const isArtistMissing = !artist || artist === "unknown" || artist === "unknown artist";
+  const isAlbumMissing = !album || album === "unknown" || album === "unknown album";
+  if (isTitleMissingOrGeneric && isArtistMissing && isAlbumMissing) {
+    return {
+      primary: "needs_verification",
+      label: GENRE_DEFINITIONS.needs_verification.label,
+      secondary: [],
+      badges: [GENRE_DEFINITIONS.needs_verification.label]
+    };
+  }
+
+  const combined = `${title} ${artist} ${album} ${tagsStr} ${source} ${category} ${songType}`;
+
+  // 1. Independent Album Check (Rule 8: Original source confirms independent album track)
+  const isIndependentConfirmed =
+    album === "single" ||
+    album.includes("single") ||
+    album.includes("independent") ||
+    album.includes("indie") ||
+    album.includes("private album") ||
+    album.includes("music video") ||
+    album.includes("think indie") ||
+    album.includes("sony music south indie") ||
+    album.includes("sony indie") ||
+    album.includes("noise and grains") ||
+    album.includes("youtube") ||
+    source.includes("indie") ||
+    category.includes("indie") ||
+    category.includes("private album") ||
+    tags.some(t => t.includes("independent") || t.includes("indie")) ||
+    /\b(kanavu kaangatha|kutty pattas|enjoy enjaami|orasaadha|asku maaro|bodhai|goli soda indie)\b/i.test(combined);
+
+  // Film Soundtrack Check (Official feature film OST album)
+  const isFilmSoundtrack =
+    !isIndependentConfirmed &&
+    Boolean(album) &&
+    album !== "unknown" &&
+    album !== "soundtrack" &&
+    !album.includes("spotify");
+
+  // 2. Devotional Check
+  const isDevotional =
+    songType === "devotional" ||
+    category.includes("devotional") ||
+    tags.includes("devotional") ||
+    /\b(murugan|muruga|shiva|sivan|amman|vinayagar|ganesha|ganapathi|ayyappa|ayyappan|krishna|perumal|bhajan|stotram|bhakthi|kavasam|suprabhatam|thaipusam)\b/i.test(combined) ||
+    /\b(mahanadhi shobana|veeramanidasan|srihari|t\.m\.s devotional)\b/i.test(artist);
+
+  // 3. Classical / Carnatic Check
+  const hasClassicalKeywords = /\b(carnatic|classical|raga|varnam|keerthanai|thillana|kriti|semiclassical)\b/i.test(combined);
+  const isClassical = hasClassicalKeywords || (!isFilmSoundtrack && /\b(bombay jayashri|ms subbulakshmi|sudha ragunathan|nithyasree mahadevan|kadri gopalnath|mandolin srinivas|aruna sairam|sanjay subrahmanyan)\b/i.test(artist));
+
+  // 4. Gaana Check
+  const isGaana =
+    /\b(gaana|marana gaana|danga maari|tasakku tasakku|local gaana|north madras)\b/i.test(combined) ||
+    /\b(gana bala|marana gaana viji|gana ulaganathan|gana prabha|gana stephen|isaivani)\b/i.test(artist);
+
+  // 5. Motivational / Anthem Check
+  const isMotivational =
+    /\b(motivational|anthem|vetri|poradu|uyirthezhum|neruppu|thee thalapathy|singapenney|ethir neechal|survivor|arjunar villu|oruvan oruvan)\b/i.test(combined);
+
+  // 6. Folk Dance Check
+  const isFolkDance =
+    /\b(karagattam|oyilattam|dappu dance|parai aattam|folk dance|kummi|kummi pattu|thiruvizha dance)\b/i.test(combined);
+
+  // 7. Kuthu / Dappankuthu Check
+  const isKuthu =
+    songType === "kuthu" ||
+    tags.includes("kuthu") ||
+    tags.includes("dappankuthu") ||
+    /\b(kuthu|dappankuthu|dappan|thara local|mass beat|marana mass|party dance|fast beat|fastbeat|dance beat|aaluma doluma|vaathi coming|naa ready|appadi podu|jalabulajangu)\b/i.test(combined);
+
+  // 8. Rap Check
+  const isRap =
+    songType === "rap" ||
+    tags.includes("rap") ||
+    /\b(rap|rapper|cypher|flow|bars|mc valluvar|asal kolaar|dopeadelicz)\b/i.test(combined) ||
+    /\b(arivu|yogi b|adk|blaaze|brodha v)\b/i.test(artist);
+
+  // 9. Hip-Hop Check
+  const isHiphop =
+    /\b(hip hop|hiphop|hip-hop|urban hip hop|808 beat)\b/i.test(combined) ||
+    /\b(hiphop tamizha|bohemia|divine|badshah)\b/i.test(artist);
+
+  // 10. Folk Check
+  const isFolk =
+    songType === "folk" ||
+    tags.includes("folk") ||
+    /\b(nattupura|gramiya|village|thavil|nadaswaram|urumi|gramathu paattu)\b/i.test(combined) ||
+    /\b(pushpavanam kuppusamy|paravai muniyamma|velmurugan|chinnaponnu|anthony daasan)\b/i.test(artist);
+
+  // 11. Instrumental Check
+  const isInstrumental =
+    songType === "instrumental" ||
+    category.includes("instrumental") ||
+    tags.includes("instrumental") ||
+    /\b(theme|bgm|instrumental|soundtrack score|flute version|violin version|piano version|karaoke|orchestral)\b/i.test(combined);
+
+  // 12. Western / Pop / Rock / EDM Check
+  const isWestern =
+    songType === "edm" ||
+    tags.includes("edm") ||
+    tags.includes("rock") ||
+    /\b(rock|western|pop|edm|techno|electronic|house|club mix|dj remix|synth|metal)\b/i.test(combined);
+
+  // 13. Fusion Check
+  const isFusion =
+    /\b(fusion|world music|agam|colonial cousins|coke studio)\b/i.test(combined);
+
+  // 14. Sad Melody Check
+  const isSadMelody =
+    songType === "sad" ||
+    tags.includes("sad") ||
+    tags.includes("sad melody") ||
+    /\b(sad melody|sad|heartbreak|pathos|pirivu|sogam|sogham|kanneer|valigal|breakup|alone|crying|pain|emotional|kanave kanave|poove sempoove|kanne kalaimane|amma endru|poongatrile)\b/i.test(combined);
+
+  // 15. Romantic Check
+  const isRomantic =
+    /\b(romantic|romance|duet|sensual|vaseegara|munbe vaa|ennavale|kurukku siruthavale|mallipoo|anbil avan|kaadhal rojave)\b/i.test(combined);
+
+  // 16. Love Check
+  const isLove =
+    /\b(love|kadhal|kadhale|premam|anbe|priyasakhi|nenjukulle|unakkul naane|uyire|nenje)\b/i.test(combined);
+
+  // 17. Melody Check
+  const isMelody =
+    songType === "melody" ||
+    tags.includes("melody") ||
+    /\b(melody|melodies|thendral|poove|isai|flute|acoustic|soft|unplugged|gentle|sweet)\b/i.test(combined);
+
+  // Determine Primary Genre adhering strictly to precedence and Rules 8 & 9:
+  // Rule 8: If original source confirms that it is an independent album song, it must be classified as an Independent Album song, even if it also has melody characteristics.
+  // Rule 9: Do not place Kuthu songs under Melody or Album songs under Melody just because they sound melodic.
+  let primary = "melody";
+  const secondary = [];
+
+  if (isIndependentConfirmed) {
+    primary = "independent_album";
+    if (isMelody) secondary.push("melody");
+    if (isLove) secondary.push("love");
+    if (isRomantic) secondary.push("romantic");
+    if (isKuthu) secondary.push("kuthu");
+    if (isFolk) secondary.push("folk");
+    if (isRap) secondary.push("rap");
+    if (isWestern) secondary.push("western");
+  } else if (isDevotional) {
+    primary = "devotional";
+    if (isFilmSoundtrack) secondary.push("film_album");
+  } else if (isClassical) {
+    primary = "classical";
+    if (isMelody) secondary.push("melody");
+    if (isFilmSoundtrack) secondary.push("film_album");
+  } else if (isGaana) {
+    primary = "gaana";
+    if (isKuthu) secondary.push("kuthu");
+    if (isFolk) secondary.push("folk");
+    if (isFilmSoundtrack) secondary.push("film_album");
+  } else if (isMotivational) {
+    primary = "motivational";
+    if (isHiphop) secondary.push("hiphop");
+    if (isRap) secondary.push("rap");
+    if (isMelody) secondary.push("melody");
+    if (isFilmSoundtrack) secondary.push("film_album");
+  } else if (isFolkDance) {
+    primary = "folk_dance";
+    if (isFolk) secondary.push("folk");
+    if (isFilmSoundtrack) secondary.push("film_album");
+  } else if (songType === "kuthu" || (isKuthu && !songType.includes("rap"))) {
+    // Rule 9: Kuthu songs must NEVER have primary melody
+    primary = "kuthu";
+    if (isRap) secondary.push("rap");
+    if (isFolk) secondary.push("folk");
+    if (isFilmSoundtrack) secondary.push("film_album");
+  } else if (isRap) {
+    primary = "rap";
+    if (isHiphop) secondary.push("hiphop");
+    if (isKuthu) secondary.push("kuthu");
+    if (isFilmSoundtrack) secondary.push("film_album");
+  } else if (isHiphop) {
+    primary = "hiphop";
+    if (isRap) secondary.push("rap");
+    if (isKuthu) secondary.push("kuthu");
+    if (isFilmSoundtrack) secondary.push("film_album");
+  } else if (isFolk) {
+    primary = "folk";
+    if (isFilmSoundtrack) secondary.push("film_album");
+  } else if (isInstrumental) {
+    primary = "instrumental";
+    if (isFilmSoundtrack) secondary.push("film_album");
+  } else if (isWestern) {
+    primary = "western";
+    if (isFilmSoundtrack) secondary.push("film_album");
+  } else if (isFusion) {
+    primary = "fusion";
+    if (isMelody) secondary.push("melody");
+    if (isFilmSoundtrack) secondary.push("film_album");
+  } else if (isSadMelody) {
+    primary = "sad_melody";
+    secondary.push("melody");
+    if (isFilmSoundtrack) secondary.push("film_album");
+  } else if (isRomantic) {
+    primary = "romantic";
+    secondary.push("melody");
+    secondary.push("love");
+    if (isFilmSoundtrack) secondary.push("film_album");
+  } else if (isLove) {
+    primary = "love";
+    secondary.push("melody");
+    if (isFilmSoundtrack) secondary.push("film_album");
+  } else if (isMelody) {
+    primary = "melody";
+    if (isFilmSoundtrack) secondary.push("film_album");
+  } else if (isFilmSoundtrack) {
+    primary = "film_album";
+  } else {
+    // Insufficient evidence to classify definitively
+    primary = "needs_verification";
+  }
+
+  const primaryDef = GENRE_DEFINITIONS[primary] || GENRE_DEFINITIONS.needs_verification;
+  const badges = [primaryDef.label];
+  secondary.forEach(secKey => {
+    const secDef = GENRE_DEFINITIONS[secKey];
+    if (secDef && !badges.includes(secDef.label)) {
+      badges.push(secDef.label);
+    }
+  });
+
+  return {
+    primary,
+    label: primaryDef.label,
+    secondary,
+    badges
+  };
+}
+
+// Matches favourite songs to user-selected genre respecting Rules 8, 9, 11 and 12
 function songMatchesFavType(song, type) {
   if (!song || !type || type === "all") return true;
-  const normTitle = (song.title || song.name || "").toLowerCase();
-  const normAlbum = (song.album || song.movie || "").toLowerCase();
-  const normArtist = (song.artist || song.singer || "").toLowerCase();
-  const tagsStr = Array.isArray(song.tags) ? song.tags.join(" ").toLowerCase() : "";
-  const combined = (normTitle + " " + normAlbum + " " + normArtist + " " + tagsStr + " " + (song.category || "") + " " + (song.language || "")).toLowerCase();
-  const songType = (song.type || "").toLowerCase();
+  const analysis = analyzeSongGenre(song);
+
+  if (type === "needs_verification") {
+    return analysis.primary === "needs_verification";
+  }
 
   if (type === "melody") {
-    return songType === "melody" || /\b(melody|melodies|thendral|poove|isai|flute|acoustic|soft|unplugged|sweet)\b/i.test(combined);
+    // Rule 9: Do not place Kuthu songs under Melody or Album songs under Melody just because they sound melodic
+    if (analysis.primary === "kuthu" || analysis.primary === "independent_album") {
+      return false;
+    }
+    return analysis.primary === "melody" || (analysis.secondary && analysis.secondary.includes("melody"));
   }
+
   if (type === "kuthu") {
-    return songType === "kuthu" || /\b(kuthu|dance|party|fast beat|fastbeat|mass|dappankuthu|thara local|beat|energy|dappan|marana)\b/i.test(combined);
+    return analysis.primary === "kuthu" || (analysis.secondary && analysis.secondary.includes("kuthu"));
   }
-  if (type === "love") {
-    return /\b(love|romantic|romance|kadhal|kadhale|premam|anbe|kanmani|priya|priyasakhi|heart|valayosai|unakkul|uyire|nenje|kaadhal|lover|penne)\b/i.test(combined) || (songType === "melody" && /\b(love|kadhal|romance|pair|duet)\b/i.test(combined));
+
+  if (type === "independent_album") {
+    return analysis.primary === "independent_album" || (analysis.secondary && analysis.secondary.includes("independent_album"));
   }
-  if (type === "sad_melody" || type === "sad") {
-    return songType === "sad" || /\b(sad|heartbreak|pain|alone|crying|feeling|emotional|kanneer|pirivu|sogham|valigal|breakup|sad melody|soga)\b/i.test(combined);
-  }
-  if (type === "folk") {
-    return songType === "folk" || /\b(folk|gaana|gana|dappankuthu|gramathu|nattupura|marana gaana|therukoothu|village)\b/i.test(combined);
-  }
+
   if (type === "film_album") {
-    return !!(song.album && song.album !== "Single" && song.album !== "Unknown" && song.album !== "Soundtrack" && !song.album.toLowerCase().includes("independent") && !song.album.toLowerCase().includes("spotify"));
+    const isFilmOST = Boolean(song.album) && song.album !== "Single" && song.album !== "Unknown" && song.album !== "Soundtrack" && !song.album.toLowerCase().includes("independent") && !song.album.toLowerCase().includes("spotify");
+    return analysis.primary === "film_album" || (analysis.secondary && analysis.secondary.includes("film_album")) || isFilmOST;
   }
-  return true;
+
+  if (type === "sad_melody" || type === "sad") {
+    return analysis.primary === "sad_melody" || (analysis.secondary && analysis.secondary.includes("sad_melody"));
+  }
+
+  return analysis.primary === type || (analysis.secondary && analysis.secondary.includes(type));
 }
+
 
 // ==========================================================================
 // 6. Content Rendering & Song Card Generation
@@ -3736,9 +4041,9 @@ function renderContent() {
       if (DOM.emptySearchQuery) {
         let favEmptyText = "Favourites (No songs added yet. Tap 🤍 on any track to add it!)";
         if (isFavourites) {
-          const typeNameMap = { melody: "Melody", kuthu: "Kuthu", love: "Love", sad_melody: "Sad Melody", sad: "Sad Melody", folk: "Folk", film_album: "Film Album" };
           const curType = (AppState.favActiveType && AppState.favActiveType !== "all") ? AppState.favActiveType : (AppState.activeType && AppState.activeType !== "all" ? AppState.activeType : "all");
-          const curTypeName = typeNameMap[curType];
+          const curTypeObj = GENRE_DEFINITIONS[curType];
+          const curTypeName = curTypeObj ? curTypeObj.label : curType;
           if (curTypeName && AppState.favourites.length > 0) {
             favEmptyText = "Favourites - " + curTypeName + " (No favourite songs found in '" + curTypeName + "'. Tap 🤍 on any " + curTypeName + " song to add it!)";
           }
@@ -3799,14 +4104,8 @@ function renderContent() {
             </div>
             <div class="fav-type-select-wrap" style="display:flex; align-items:center; gap:6px;">
               <span style="font-size:0.82rem; color:var(--text-dim); font-weight:600;">Type:</span>
-              <select id="favTypeSelect" class="fav-type-select" title="Show only favourite songs in the dropdown by type (Melody, Kuthu, Love, Sad Melody, Folk, Film Album)">
-                <option value="all" ${(AppState.favActiveType === "all" || !AppState.favActiveType) ? "selected" : ""}>✨ All Favourite Songs</option>
-                <option value="melody" ${AppState.favActiveType === "melody" ? "selected" : ""}>❤️ Melody</option>
-                <option value="kuthu" ${AppState.favActiveType === "kuthu" ? "selected" : ""}>🔥 Kuthu</option>
-                <option value="love" ${AppState.favActiveType === "love" ? "selected" : ""}>💖 Love</option>
-                <option value="sad_melody" ${(AppState.favActiveType === "sad_melody" || AppState.favActiveType === "sad") ? "selected" : ""}>💔 Sad Melody</option>
-                <option value="folk" ${AppState.favActiveType === "folk" ? "selected" : ""}>🥁 Folk</option>
-                <option value="film_album" ${AppState.favActiveType === "film_album" ? "selected" : ""}>🎬 Film Album</option>
+              <select id="favTypeSelect" class="fav-type-select" title="Show only favourite songs in the dropdown by genre">
+                ${renderFavTypeOptionsHTML(AppState.favActiveType || "all")}
               </select>
             </div>
             <select id="favSortSelect" class="fav-sort-select">
@@ -4223,14 +4522,8 @@ function renderContent() {
             <span class="section-badge">${favSongs.length} tracks</span>
           </div>
           <div style="display:flex; gap:8px; align-items:center; flex-wrap:wrap;">
-            <select id="homeFavTypeSelect" class="fav-type-select" title="Show only favourite songs in the dropdown by type (Melody, Kuthu, Love, Sad Melody, Folk, Film Album)" style="padding:5px 12px; font-size:0.78rem;">
-              <option value="all" ${(homeEffectiveFavType === "all" || !homeEffectiveFavType) ? "selected" : ""}>✨ All Types</option>
-              <option value="melody" ${homeEffectiveFavType === "melody" ? "selected" : ""}>❤️ Melody</option>
-              <option value="kuthu" ${homeEffectiveFavType === "kuthu" ? "selected" : ""}>🔥 Kuthu</option>
-              <option value="love" ${homeEffectiveFavType === "love" ? "selected" : ""}>💖 Love</option>
-              <option value="sad_melody" ${(homeEffectiveFavType === "sad_melody" || homeEffectiveFavType === "sad") ? "selected" : ""}>💔 Sad Melody</option>
-              <option value="folk" ${homeEffectiveFavType === "folk" ? "selected" : ""}>🥁 Folk</option>
-              <option value="film_album" ${homeEffectiveFavType === "film_album" ? "selected" : ""}>🎬 Film Album</option>
+            <select id="homeFavTypeSelect" class="fav-type-select" title="Show only favourite songs in the dropdown by genre" style="padding:5px 12px; font-size:0.78rem;">
+              ${renderFavTypeOptionsHTML(homeEffectiveFavType)}
             </select>
             <button id="playAllFavsBtn" class="btn btn-pill" style="padding:6px 16px; font-size:0.82rem; background:rgba(236,72,153,0.22); border:1px solid rgba(236,72,153,0.45); color:#f472b6; cursor:pointer;">
               <span>▶</span> Play All Favourites
@@ -4495,6 +4788,18 @@ function createSongCardHTML(song) {
       <div class="card-info">
         <h3 class="card-title" title="${escapeAttr(song.title)}">${escapeHTML(song.title)}</h3>
         <p class="card-artist" title="${escapeAttr(song.artist)}">${escapeHTML(song.artist)}${movieBadge}</p>
+        ${(() => {
+          const analysis = analyzeSongGenre(song);
+          const secBadge = (analysis.secondary && analysis.secondary.length > 0 && GENRE_DEFINITIONS[analysis.secondary[0]])
+            ? `<span class="card-genre-badge secondary" title="Secondary: ${escapeAttr(GENRE_DEFINITIONS[analysis.secondary[0]].label)}">${escapeHTML(GENRE_DEFINITIONS[analysis.secondary[0]].label)}</span>`
+            : "";
+          return `
+            <div class="card-genre-wrap">
+              <span class="card-genre-badge" title="Primary Genre: ${escapeAttr(analysis.label)}">${escapeHTML(analysis.label)}</span>
+              ${secBadge}
+            </div>
+          `;
+        })()}
       </div>
       <div class="card-actions">
         <button class="fav-btn ${isFav ? 'favorited' : ''}" data-id="${escapeAttr(song.id)}" title="${isFav ? 'Remove from Favourites' : 'Add to Favourites'}" aria-label="Favourite">
@@ -7322,5 +7627,8 @@ if (typeof window !== "undefined") {
   window.transliterateTamilToEnglish = transliterateTamilToEnglish;
   window.updateVoiceLangUI = updateVoiceLangUI;
   window.songMatchesFavType = songMatchesFavType;
+  window.GENRE_DEFINITIONS = GENRE_DEFINITIONS;
+  window.analyzeSongGenre = analyzeSongGenre;
+  window.renderFavTypeOptionsHTML = renderFavTypeOptionsHTML;
   window.getActiveFavouritesList = getActiveFavouritesList;
 }

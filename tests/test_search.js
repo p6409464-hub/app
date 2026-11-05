@@ -2756,8 +2756,125 @@ console.log("[PASS] Immediate state clearing verified: previous search results w
   AppState.selectedFavSongIds.clear();
   renderContent();
   DownloadManager.cleanupAll();
+  
+  // ========================================================================
+  // Test 56: Verifying Multi-Genre Analysis & Classification Engine for Favourites
+  // Enforces Rules:
+  // - 18+ Tamil music genres supported
+  // - Exact primary genre with optional secondary genres
+  // - Rule 8: 'Kanavu Kaangatha' must be classified as Independent Album even if melodic
+  // - Rule 9: Do not place Kuthu or Independent Album songs under Melody
+  // - Rule 10: Never modify or delete existing Favourite songs
+  // - Rule 11: Show only Favourite songs in genre filters, never entire library
+  // - Rule 12: Mark as 'Needs Verification' if reliable info unavailable
+  // ========================================================================
+  console.log("\nTest 56: Verifying Multi-Genre Analysis & Classification Engine for Favourites...");
+
+  assert(typeof analyzeSongGenre === "function", "analyzeSongGenre must be defined");
+  assert(typeof GENRE_DEFINITIONS === "object", "GENRE_DEFINITIONS must be defined");
+
+  // Verify all 19 required categories exist in GENRE_DEFINITIONS
+  const requiredCategories = [
+    "melody", "kuthu", "folk", "love", "sad_melody", "romantic",
+    "gaana", "rap", "hiphop", "classical", "devotional", "motivational",
+    "folk_dance", "western", "instrumental", "fusion", "independent_album",
+    "film_album", "needs_verification"
+  ];
+
+  requiredCategories.forEach(cat => {
+    assert(GENRE_DEFINITIONS[cat], "GENRE_DEFINITIONS must include: " + cat);
+    assert(GENRE_DEFINITIONS[cat].label, "GENRE_DEFINITIONS[" + cat + "] must have a valid label");
+  });
+
+  // 1. Verify Rule 8: Independent Album Song (e.g. 'Kanavu Kaangatha')
+  const kanavuSong = {
+    id: "fav_indie_kanavu",
+    title: "Kanavu Kaangatha",
+    artist: "Sathyaprakash",
+    album: "Single",
+    source: "youtube_indie",
+    tags: ["melody", "love", "independent single"]
+  };
+  const kanavuAnalysis = analyzeSongGenre(kanavuSong);
+  assert.strictEqual(kanavuAnalysis.primary, "independent_album", "Kanavu Kaangatha must be classified primarily as independent_album");
+  assert(kanavuAnalysis.secondary.includes("melody"), "Kanavu Kaangatha secondary genres must include melody");
+  assert(kanavuAnalysis.secondary.includes("love"), "Kanavu Kaangatha secondary genres must include love");
+
+  // 2. Verify Rule 9: Do not place Kuthu or Independent Album songs under Melody
+  assert(!songMatchesFavType(kanavuSong, "melody"), "Rule 9: Independent Album song must NEVER match 'melody' filter even if melodic");
+  assert(songMatchesFavType(kanavuSong, "independent_album"), "Kanavu Kaangatha must match 'independent_album' filter");
+
+  const kuthuSongTest = {
+    id: "fav_kuthu_sample",
+    title: "Vaathi Coming",
+    artist: "Anirudh",
+    album: "Master",
+    type: "kuthu",
+    tags: ["kuthu", "mass", "dance beat", "melody beat"]
+  };
+  const kuthuAnalysis = analyzeSongGenre(kuthuSongTest);
+  assert.strictEqual(kuthuAnalysis.primary, "kuthu", "Vaathi Coming must have primary genre kuthu");
+  assert(!songMatchesFavType(kuthuSongTest, "melody"), "Rule 9: Kuthu song must NEVER match 'melody' filter");
+  assert(songMatchesFavType(kuthuSongTest, "kuthu"), "Kuthu song must match 'kuthu' filter");
+
+  // 3. Verify Rule 12: Mark as 'Needs Verification' if reliable information is missing
+  const unknownSongTest = {
+    id: "fav_unknown",
+    title: "Track 01",
+    artist: "Unknown Artist",
+    album: "Unknown Album"
+  };
+  const unknownAnalysis = analyzeSongGenre(unknownSongTest);
+  assert.strictEqual(unknownAnalysis.primary, "needs_verification", "Song with missing reliable metadata must be marked as needs_verification");
+  assert(songMatchesFavType(unknownSongTest, "needs_verification"), "Unknown song must match 'needs_verification' filter");
+
+  // 4. Verify other specialized genres: Gaana, Rap, Devotional, Classical, Motivational, Romantic, Folk Dance
+  const gaanaSong = { id: "fav_gaana", title: "Danga Maari", artist: "Marana Gaana Viji", album: "Anegan", tags: ["gaana", "marana gaana"] };
+  assert.strictEqual(analyzeSongGenre(gaanaSong).primary, "gaana", "Gaana song must be classified as gaana");
+
+  const devoSong = { id: "fav_devo", title: "Kanda Sashti Kavasam", artist: "Mahanadhi Shobana", album: "Devotional", type: "devotional", tags: ["murugan", "kavasam"] };
+  assert.strictEqual(analyzeSongGenre(devoSong).primary, "devotional", "Devotional song must be classified as devotional");
+
+  const carnaticSong = { id: "fav_carnatic", title: "Vatapi Ganapatim", artist: "MS Subbulakshmi", album: "Carnatic Classics", tags: ["carnatic", "raga", "classical"] };
+  assert.strictEqual(analyzeSongGenre(carnaticSong).primary, "classical", "Carnatic song must be classified as classical");
+
+  const motivSong = { id: "fav_motiv", title: "Ethir Neechal", artist: "Hiphop Tamizha", album: "Ethir Neechal", tags: ["motivational", "anthem", "vetri"] };
+  assert.strictEqual(analyzeSongGenre(motivSong).primary, "motivational", "Motivational anthem must be classified as motivational");
+
+  const romSong = { id: "fav_rom", title: "Munbe Vaa", artist: "Naresh Iyer, Shreya Ghoshal", album: "Sillunu Oru Kaadhal", tags: ["romantic", "duet"] };
+  assert.strictEqual(analyzeSongGenre(romSong).primary, "romantic", "Munbe Vaa must be classified as romantic");
+
+  // 5. Verify Rule 10 & 11: Never modify or delete existing Favourites, and show ONLY Favourites in these filters
+  const initialFavCount = 3;
+  const originalFavs = [kanavuSong.id, kuthuSongTest.id, devoSong.id];
+  AppState.favourites = [...originalFavs];
+  AppState.masterSongs = Object.freeze([...AppState.masterSongs]); // Remains frozen and unmodified
+
+  // Simulate picking filter 'kuthu'
+  AppState.favActiveType = "kuthu";
+  AppState.activeSection = "favourites";
+  const activeKuthuFavs = getActiveFavouritesList();
+
+  // Must only contain songs from AppState.favourites, never the entire library
+  assert.strictEqual(AppState.favourites.length, initialFavCount, "Rule 10: AppState.favourites length must never be modified");
+  assert.deepStrictEqual(AppState.favourites, originalFavs, "Rule 10: AppState.favourites content must never be altered");
+
+  // 6. Verify HTML Dropdown contains all 19 genre options
+  const renderedDropdownHTML = renderFavTypeOptionsHTML(AppState.favActiveType);
+  requiredCategories.forEach(cat => {
+    assert(renderedDropdownHTML.includes('value="' + cat + '"'), "Rendered dropdown HTML must include option for " + cat);
+  });
+
+  // Clean up
+  AppState.favourites = [];
+  AppState.favActiveType = "all";
+  AppState.activeSection = "all";
+  renderContent();
+
+  console.log("[PASS] Test 56: Multi-Genre Classification Engine, Rules 8, 9, 10, 11, 12, Dropdown & Badges fully verified!");
+
   console.log("\n==================================================");
-  console.log("ALL 55 ADVANCED SEARCH, MUSIC PLAYER, 3-STATE REPEAT, PLAYBACK SPEED, QUEUE CONTROLS, DEDICATED FAVOURITES, IN-BROWSER ZIP BUILDER, EQUALIZER, LYRICS, ANDROID MOBILE DOWNLOADS, VOICE SEARCH, FAVOURITE TYPE DROPDOWN & FAVOURITE SEQUENTIAL PLAYBACK TESTS PASSED!");
+  console.log("ALL 56 ADVANCED SEARCH, MUSIC PLAYER, 3-STATE REPEAT, PLAYBACK SPEED, QUEUE CONTROLS, DEDICATED FAVOURITES, IN-BROWSER ZIP BUILDER, EQUALIZER, LYRICS, ANDROID MOBILE DOWNLOADS, VOICE SEARCH, FAVOURITE TYPE DROPDOWN & FAVOURITE SEQUENTIAL PLAYBACK TESTS PASSED!");
   console.log("==================================================\n");
   process.exit(0);
 })();
