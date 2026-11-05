@@ -127,11 +127,12 @@ const AppState = {
   playbackSpeed: 1.0,    // 0.5 | 0.75 | 1.0 | 1.25 | 1.5 | 2.0
   favSearchQuery: "",    // Search query within favourites
   favSortOrder: "date_desc", // "date_desc" | "date_asc" | "title_asc" | "title_desc" | "artist_asc" | "duration"
+  favActiveType: "all",  // "all" | "melody" | "kuthu" | "love" | "sad_melody" | "folk" | "film_album"
   favSelectMode: false,  // Multi-select mode toggle in favourites
   selectedFavSongIds: new Set(), // Set of selected song IDs for bulk actions
   isFullscreenOpen: false,
   voiceSearchLang: (typeof localStorage !== "undefined" && (localStorage.getItem("pranesh_hub_voice_lang") === "en-IN" || localStorage.getItem("pranesh_hub_voice_lang") === "ta-IN")) ? localStorage.getItem("pranesh_hub_voice_lang") : "ta-IN",
-  downloadQuality: (typeof localStorage !== "undefined" && (localStorage.getItem("pranesh_hub_dl_quality") === "48" || localStorage.getItem("pranesh_hub_dl_quality") === "96" || localStorage.getItem("pranesh_hub_dl_quality") === "160" || localStorage.getItem("pranesh_hub_dl_quality") === "320")) ? localStorage.getItem("pranesh_hub_dl_quality") : "48", // Default: "< 2MB Ultra-Light (48k)"
+  downloadQuality: (typeof localStorage !== "undefined" && (localStorage.getItem("pranesh_hub_dl_quality") === "48" || localStorage.getItem("pranesh_hub_dl_quality") === "96" || localStorage.getItem("pranesh_hub_dl_quality") === "160" || localStorage.getItem("pranesh_hub_dl_quality") === "320")) ? localStorage.getItem("pranesh_hub_dl_quality") : "320", // Default: "320k Studio" — most CDN-reliable
   correctedQuery: "", // Auto-corrected search query when user types wrong spelling
   inputAutoCorrectTimer: null
 };
@@ -577,6 +578,22 @@ function setupEventListeners() {
           renderContent();
         }
       });
+    });
+  }
+
+  // Filter Row Favourite Type Dropdown
+  const filterFavTypeSelect = document.getElementById("filterFavTypeSelect");
+  if (filterFavTypeSelect) {
+    filterFavTypeSelect.addEventListener("change", (e) => {
+      AppState.favActiveType = e.target.value;
+      AppState.activeSection = "favourites";
+      AppState.currentPage = 1;
+      if (AppState.searchQuery) {
+        if (DOM.searchInput) DOM.searchInput.value = "";
+        AppState.searchQuery = "";
+      }
+      updateActivePills();
+      renderContent();
     });
   }
 
@@ -3260,6 +3277,41 @@ function updateActivePills() {
       c.classList.toggle("active", (c.dataset.type || "all") === AppState.activeType);
     });
   }
+  const filterFavSelect = document.getElementById("filterFavTypeSelect");
+  if (filterFavSelect) {
+    filterFavSelect.value = AppState.favActiveType || "all";
+  }
+}
+
+// Matches favourite songs to user-selected type: Melody, Kuthu, Love, Sad Melody, Folk, Film Album
+function songMatchesFavType(song, type) {
+  if (!song || !type || type === "all") return true;
+  const normTitle = (song.title || song.name || "").toLowerCase();
+  const normAlbum = (song.album || song.movie || "").toLowerCase();
+  const normArtist = (song.artist || song.singer || "").toLowerCase();
+  const tagsStr = Array.isArray(song.tags) ? song.tags.join(" ").toLowerCase() : "";
+  const combined = (normTitle + " " + normAlbum + " " + normArtist + " " + tagsStr + " " + (song.category || "") + " " + (song.language || "")).toLowerCase();
+  const songType = (song.type || "").toLowerCase();
+
+  if (type === "melody") {
+    return songType === "melody" || /\b(melody|melodies|thendral|poove|isai|flute|acoustic|soft|unplugged|sweet)\b/i.test(combined);
+  }
+  if (type === "kuthu") {
+    return songType === "kuthu" || /\b(kuthu|dance|party|fast beat|fastbeat|mass|dappankuthu|thara local|beat|energy|dappan|marana)\b/i.test(combined);
+  }
+  if (type === "love") {
+    return /\b(love|romantic|romance|kadhal|kadhale|premam|anbe|kanmani|priya|priyasakhi|heart|valayosai|unakkul|uyire|nenje|kaadhal|lover|penne)\b/i.test(combined) || (songType === "melody" && /\b(love|kadhal|romance|pair|duet)\b/i.test(combined));
+  }
+  if (type === "sad_melody" || type === "sad") {
+    return songType === "sad" || /\b(sad|heartbreak|pain|alone|crying|feeling|emotional|kanneer|pirivu|sogham|valigal|breakup|sad melody|soga)\b/i.test(combined);
+  }
+  if (type === "folk") {
+    return songType === "folk" || /\b(folk|gaana|gana|dappankuthu|gramathu|nattupura|marana gaana|therukoothu|village)\b/i.test(combined);
+  }
+  if (type === "film_album") {
+    return !!(song.album && song.album !== "Single" && song.album !== "Unknown" && song.album !== "Soundtrack" && !song.album.toLowerCase().includes("independent") && !song.album.toLowerCase().includes("spotify"));
+  }
+  return true;
 }
 
 // ==========================================================================
@@ -3623,6 +3675,15 @@ function renderContent() {
       .map(id => AppState.masterSongs.find(s => s.id === id))
       .filter(Boolean);
 
+    // Apply Favourite Type Filter (Melody, Kuthu, Love, Sad Melody, Folk, Film Album)
+    const effectiveFavType = (AppState.favActiveType && AppState.favActiveType !== "all")
+      ? AppState.favActiveType
+      : (AppState.activeType && AppState.activeType !== "all" ? AppState.activeType : "all");
+
+    if (effectiveFavType && effectiveFavType !== "all") {
+      filtered = filtered.filter(s => songMatchesFavType(s, effectiveFavType));
+    }
+
     if (AppState.favSearchQuery) {
       const q = AppState.favSearchQuery.toLowerCase().trim();
       filtered = filtered.filter(s =>
@@ -3655,8 +3716,16 @@ function renderContent() {
     if (DOM.emptyState) {
       DOM.emptyState.style.display = "block";
       if (DOM.emptySearchQuery) {
-        DOM.emptySearchQuery.textContent = isFavourites
-          ? "Favourites (No songs added yet. Tap 🤍 on any track to add it!)"
+        let favEmptyText = "Favourites (No songs added yet. Tap 🤍 on any track to add it!)";
+        if (isFavourites) {
+          const typeNameMap = { melody: "Melody", kuthu: "Kuthu", love: "Love", sad_melody: "Sad Melody", sad: "Sad Melody", folk: "Folk", film_album: "Film Album" };
+          const curType = (AppState.favActiveType && AppState.favActiveType !== "all") ? AppState.favActiveType : (AppState.activeType && AppState.activeType !== "all" ? AppState.activeType : "all");
+          const curTypeName = typeNameMap[curType];
+          if (curTypeName && AppState.favourites.length > 0) {
+            favEmptyText = "Favourites - " + curTypeName + " (No favourite songs found in '" + curTypeName + "'. Tap 🤍 on any " + curTypeName + " song to add it!)";
+          }
+        }
+        DOM.emptySearchQuery.textContent = isFavourites ? favEmptyText
           : isHistory
           ? "History (No songs played yet)"
           : "Selected filter (No tracks found)";
@@ -3709,6 +3778,18 @@ function renderContent() {
             <div class="fav-search-wrap">
               <span class="fav-search-icon">🔍</span>
               <input type="text" id="favSearchInput" class="fav-search-input" placeholder="Search within favourites..." value="${escapeAttr(AppState.favSearchQuery || "")}" />
+            </div>
+            <div class="fav-type-select-wrap" style="display:flex; align-items:center; gap:6px;">
+              <span style="font-size:0.82rem; color:var(--text-dim); font-weight:600;">Type:</span>
+              <select id="favTypeSelect" class="fav-type-select" title="Show only favourite songs in the dropdown by type (Melody, Kuthu, Love, Sad Melody, Folk, Film Album)">
+                <option value="all" ${(AppState.favActiveType === "all" || !AppState.favActiveType) ? "selected" : ""}>✨ All Favourite Songs</option>
+                <option value="melody" ${AppState.favActiveType === "melody" ? "selected" : ""}>❤️ Melody</option>
+                <option value="kuthu" ${AppState.favActiveType === "kuthu" ? "selected" : ""}>🔥 Kuthu</option>
+                <option value="love" ${AppState.favActiveType === "love" ? "selected" : ""}>💖 Love</option>
+                <option value="sad_melody" ${(AppState.favActiveType === "sad_melody" || AppState.favActiveType === "sad") ? "selected" : ""}>💔 Sad Melody</option>
+                <option value="folk" ${AppState.favActiveType === "folk" ? "selected" : ""}>🥁 Folk</option>
+                <option value="film_album" ${AppState.favActiveType === "film_album" ? "selected" : ""}>🎬 Film Album</option>
+              </select>
             </div>
             <select id="favSortSelect" class="fav-sort-select">
               <option value="date_desc" ${AppState.favSortOrder === "date_desc" ? "selected" : ""}>🕒 Date Added (Newest)</option>
@@ -3963,6 +4044,15 @@ function renderContent() {
         });
       }
 
+      const favType = document.getElementById("favTypeSelect");
+      if (favType) {
+        favType.addEventListener("change", (e) => {
+          AppState.favActiveType = e.target.value;
+          AppState.currentPage = 1;
+          renderContent();
+        });
+      }
+
       const favSort = document.getElementById("favSortSelect");
       if (favSort) {
         favSort.addEventListener("change", (e) => {
@@ -4089,9 +4179,17 @@ function renderContent() {
   }
 
   // Default Home Page View: Prominently show Favourite Songs and Quick Search Suggestions
-  const favSongs = AppState.favourites
+  const allFavSongs = AppState.favourites
     .map(id => AppState.masterSongs.find(s => s.id === id))
     .filter(Boolean);
+
+  const homeEffectiveFavType = (AppState.favActiveType && AppState.favActiveType !== "all")
+    ? AppState.favActiveType
+    : (AppState.activeType && AppState.activeType !== "all" ? AppState.activeType : "all");
+
+  const favSongs = (homeEffectiveFavType && homeEffectiveFavType !== "all")
+    ? allFavSongs.filter(s => songMatchesFavType(s, homeEffectiveFavType))
+    : allFavSongs;
 
   let homeHTML = "";
   const renderedPool = [];
@@ -4107,6 +4205,15 @@ function renderContent() {
             <span class="section-badge">${favSongs.length} tracks</span>
           </div>
           <div style="display:flex; gap:8px; align-items:center; flex-wrap:wrap;">
+            <select id="homeFavTypeSelect" class="fav-type-select" title="Show only favourite songs in the dropdown by type (Melody, Kuthu, Love, Sad Melody, Folk, Film Album)" style="padding:5px 12px; font-size:0.78rem;">
+              <option value="all" ${(homeEffectiveFavType === "all" || !homeEffectiveFavType) ? "selected" : ""}>✨ All Types</option>
+              <option value="melody" ${homeEffectiveFavType === "melody" ? "selected" : ""}>❤️ Melody</option>
+              <option value="kuthu" ${homeEffectiveFavType === "kuthu" ? "selected" : ""}>🔥 Kuthu</option>
+              <option value="love" ${homeEffectiveFavType === "love" ? "selected" : ""}>💖 Love</option>
+              <option value="sad_melody" ${(homeEffectiveFavType === "sad_melody" || homeEffectiveFavType === "sad") ? "selected" : ""}>💔 Sad Melody</option>
+              <option value="folk" ${homeEffectiveFavType === "folk" ? "selected" : ""}>🥁 Folk</option>
+              <option value="film_album" ${homeEffectiveFavType === "film_album" ? "selected" : ""}>🎬 Film Album</option>
+            </select>
             <button id="playAllFavsBtn" class="btn btn-pill" style="padding:6px 16px; font-size:0.82rem; background:rgba(236,72,153,0.22); border:1px solid rgba(236,72,153,0.45); color:#f472b6; cursor:pointer;">
               <span>▶</span> Play All Favourites
             </button>
@@ -4230,6 +4337,15 @@ function renderContent() {
   if (homeDlAllFavsBtn && favSongs.length > 0) {
     homeDlAllFavsBtn.addEventListener("click", () => {
       downloadFavouritesSequentially(favSongs, "Favourite Songs");
+    });
+  }
+
+  // Home Page Favourite Type Filter Dropdown
+  const homeFavTypeSelect = document.getElementById("homeFavTypeSelect");
+  if (homeFavTypeSelect) {
+    homeFavTypeSelect.addEventListener("change", (e) => {
+      AppState.favActiveType = e.target.value;
+      renderContent();
     });
   }
 
@@ -7115,4 +7231,5 @@ if (typeof window !== "undefined") {
   window.containsTamilScript = containsTamilScript;
   window.transliterateTamilToEnglish = transliterateTamilToEnglish;
   window.updateVoiceLangUI = updateVoiceLangUI;
+  window.songMatchesFavType = songMatchesFavType;
 }

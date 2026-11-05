@@ -2606,7 +2606,97 @@ console.log("[PASS] Immediate state clearing verified: previous search results w
   renderContent();
   DownloadManager.cleanupAll();
   console.log("\n==================================================");
-  console.log("ALL 53 ADVANCED SEARCH, MUSIC PLAYER, 3-STATE REPEAT, PLAYBACK SPEED, QUEUE CONTROLS, DEDICATED FAVOURITES, IN-BROWSER ZIP BUILDER, EQUALIZER, LYRICS, ANDROID MOBILE DOWNLOADS & VOICE SEARCH TESTS PASSED!");
+  
+  // ========================================================================
+
+  // Test 54: Verifying Favourite Songs Dropdown by Type (Melody, Kuthu, Love, Sad Melody, Folk, Film Album) & Separate Download Buttons
+  // ========================================================================
+  console.log("\nTest 54: Verifying Favourite Songs Dropdown by Type & Separate Download Buttons...");
+
+  // 1. songMatchesFavType logic validation
+  assert(typeof songMatchesFavType === "function", "songMatchesFavType must be defined");
+
+  const testMelodyMock = { id: "fav_m1", title: "Poove Sempoove", artist: "K.J. Yesudas", album: "Solla Thudikuthu Manasu", type: "melody", tags: ["melody", "soft", "ilaiyaraaja"] };
+  const testKuthuMock = { id: "fav_m2", title: "Aaluma Doluma", artist: "Anirudh", album: "Vedalam", type: "kuthu", tags: ["kuthu", "dance", "mass"] };
+  const testLoveMock = { id: "fav_m3", title: "En Kadhal Solla", artist: "Yuvan", album: "Paiyaa", type: "melody", tags: ["love", "romantic", "kadhal"] };
+  const testSadMock = { id: "fav_m4", title: "Poongatrile", artist: "Unni Menon", album: "Uyire", type: "sad", tags: ["sad", "heartbreak", "emotional"] };
+  const testFolkMock = { id: "fav_m5", title: "Otha Roova", artist: "Gana Bala", album: "Attakathi", type: "folk", tags: ["folk", "gaana", "gana"] };
+  const testFilmMock = { id: "fav_m6", title: "Vaseegara", artist: "Bombay Jayashri", album: "Minnale", type: "melody", tags: ["minnale", "gvm"] };
+
+  assert(songMatchesFavType(testMelodyMock, "melody"), "Melody song must match 'melody'");
+  assert(songMatchesFavType(testKuthuMock, "kuthu"), "Kuthu song must match 'kuthu'");
+  assert(songMatchesFavType(testLoveMock, "love"), "Love song must match 'love'");
+  assert(songMatchesFavType(testSadMock, "sad_melody"), "Sad song must match 'sad_melody'");
+  assert(songMatchesFavType(testSadMock, "sad"), "Sad song must match 'sad'");
+  assert(songMatchesFavType(testFolkMock, "folk"), "Folk song must match 'folk'");
+  assert(songMatchesFavType(testFilmMock, "film_album"), "Film album song must match 'film_album'");
+
+  // 2. Select actual songs from masterSongs for Favourites view rendering
+  const melodySong = AppState.masterSongs.find(s => songMatchesFavType(s, "melody")) || AppState.masterSongs[0];
+  const kuthuSong = AppState.masterSongs.find(s => songMatchesFavType(s, "kuthu")) || AppState.masterSongs[1];
+  const loveSong = AppState.masterSongs.find(s => songMatchesFavType(s, "love")) || AppState.masterSongs[2];
+  const sadSong = AppState.masterSongs.find(s => songMatchesFavType(s, "sad_melody")) || AppState.masterSongs[3];
+  const folkSong = AppState.masterSongs.find(s => songMatchesFavType(s, "folk")) || AppState.masterSongs[4];
+  const filmSong = AppState.masterSongs.find(s => songMatchesFavType(s, "film_album")) || AppState.masterSongs[5];
+
+  AppState.favourites = [melodySong.id, kuthuSong.id, loveSong.id, sadSong.id, folkSong.id, filmSong.id];
+  AppState.activeSection = "favourites";
+  AppState.isSearching = false;
+  AppState.searchQuery = "";
+  AppState.favSearchQuery = "";
+  AppState.favSortOrder = "date_desc";
+
+  // Test 'all' favourites
+  AppState.favActiveType = "all";
+  renderContent();
+  assert(DOM.contentContainer.innerHTML.includes('id="favTypeSelect"'), "Favourites view must render #favTypeSelect dropdown");
+  assert(DOM.contentContainer.innerHTML.includes('value="melody"'), "#favTypeSelect must include Melody option");
+  assert(DOM.contentContainer.innerHTML.includes('value="kuthu"'), "#favTypeSelect must include Kuthu option");
+  assert(DOM.contentContainer.innerHTML.includes('value="love"'), "#favTypeSelect must include Love option");
+  assert(DOM.contentContainer.innerHTML.includes('value="sad_melody"'), "#favTypeSelect must include Sad Melody option");
+  assert(DOM.contentContainer.innerHTML.includes('value="folk"'), "#favTypeSelect must include Folk option");
+  assert(DOM.contentContainer.innerHTML.includes('value="film_album"'), "#favTypeSelect must include Film Album option");
+
+  // Verify each rendered card has its OWN separate download button
+  assert(DOM.contentContainer.innerHTML.includes('class="download-btn card-download-trigger"'), "Cards must render separate download button");
+  assert(DOM.contentContainer.innerHTML.includes(`data-id="${escapeAttr(kuthuSong.id)}"`), "Must render kuthu song");
+  assert(DOM.contentContainer.innerHTML.includes(`data-id="${escapeAttr(loveSong.id)}"`), "Must render love song");
+  assert(DOM.contentContainer.innerHTML.includes(`data-id="${escapeAttr(folkSong.id)}"`), "Must render folk song");
+
+  // Test 'kuthu' dropdown selection
+  AppState.favActiveType = "kuthu";
+  renderContent();
+  assert(DOM.contentContainer.innerHTML.includes(`data-id="${escapeAttr(kuthuSong.id)}"`), "Kuthu filter must show kuthuSong");
+  assert(DOM.contentContainer.innerHTML.includes(`class="download-btn card-download-trigger" data-id="${escapeAttr(kuthuSong.id)}"`), "Kuthu favourite song must have its own separate download button");
+
+  // Test 'love' dropdown selection
+  AppState.favActiveType = "love";
+  renderContent();
+  assert(DOM.contentContainer.innerHTML.includes(`data-id="${escapeAttr(loveSong.id)}"`), "Love filter must show loveSong");
+  assert(DOM.contentContainer.innerHTML.includes(`class="download-btn card-download-trigger" data-id="${escapeAttr(loveSong.id)}"`), "Love favourite song must have its own separate download button");
+
+  // Test 'folk' dropdown selection
+  AppState.favActiveType = "folk";
+  renderContent();
+  assert(DOM.contentContainer.innerHTML.includes(`data-id="${escapeAttr(folkSong.id)}"`), "Folk filter must show folkSong");
+  assert(DOM.contentContainer.innerHTML.includes(`class="download-btn card-download-trigger" data-id="${escapeAttr(folkSong.id)}"`), "Folk favourite song must have its own separate download button");
+
+  // Clean up
+  AppState.favourites = [];
+  AppState.favActiveType = "all";
+  AppState.activeSection = "all";
+  renderContent();
+
+  console.log("[PASS] Dropdown by Type (Melody, Kuthu, Love, Sad Melody, Folk, Film Album) & Separate Download Buttons verified!");
+
+  // Reset Favourites and section state
+  AppState.activeSection = "all";
+  AppState.favSelectMode = false;
+  AppState.selectedFavSongIds.clear();
+  renderContent();
+  DownloadManager.cleanupAll();
+  console.log("\n==================================================");
+  console.log("ALL 54 ADVANCED SEARCH, MUSIC PLAYER, 3-STATE REPEAT, PLAYBACK SPEED, QUEUE CONTROLS, DEDICATED FAVOURITES, IN-BROWSER ZIP BUILDER, EQUALIZER, LYRICS, ANDROID MOBILE DOWNLOADS, VOICE SEARCH & FAVOURITE TYPE DROPDOWN TESTS PASSED!");
   console.log("==================================================\n");
   process.exit(0);
 })();

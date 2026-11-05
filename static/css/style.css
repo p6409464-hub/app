@@ -3272,15 +3272,32 @@ body {
   color: var(--text-muted);
 }
 
+.fav-type-select,
 .fav-sort-select {
   padding: 8px 14px;
-  background: rgba(15, 10, 30, 0.8);
-  border: 1px solid rgba(168, 85, 247, 0.3);
+  background: rgba(15, 10, 30, 0.85);
+  border: 1px solid rgba(168, 85, 247, 0.4);
   border-radius: var(--radius-full);
   color: var(--text-main);
   font-size: 0.85rem;
+  font-weight: 600;
   cursor: pointer;
   outline: none;
+  transition: all 0.2s ease;
+}
+
+.fav-type-select:hover,
+.fav-sort-select:hover {
+  border-color: rgba(168, 85, 247, 0.7);
+  background: rgba(28, 18, 52, 0.95);
+  box-shadow: 0 0 10px rgba(168, 85, 247, 0.25);
+}
+
+.fav-type-dropdown-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 8px;
 }
 
 .fav-actions-row {
