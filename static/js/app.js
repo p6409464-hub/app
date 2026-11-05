@@ -5263,6 +5263,8 @@ const DownloadManager = {
   activeBlobUrls: new Set(),
   activeBlobObjects: new Map(), // Preserves binary Blob references against premature GC during Android OS IPC download streaming
   activeDownloadingSongIds: new Set(),
+  downloadsCountInSession: 0,
+  lastPreparedDownload: null,
   cancelBatchRequested: false,
 
   triggerBlobDownload(blob, filename) {
@@ -5492,6 +5494,10 @@ const DownloadManager = {
     const songId = song.id ? String(song.id) : `${song.title || "unknown"}_${song.artist || "unknown"}`;
     this.activeDownloadingSongIds.add(songId);
 
+    const cleanTitle = (song.title || "Song").replace(/[/\\?%*:|"<>]/g, "").trim().substring(0, 80);
+    const cleanArtist = (song.artist || "Artist").replace(/[/\\?%*:|"<>]/g, "").trim().substring(0, 60);
+    const safeFilename = `${cleanTitle} - ${cleanArtist}`;
+
     const isFeatured = triggerBtn && triggerBtn.id === "featuredDownloadBtn";
     const isPlayerBar = triggerBtn && triggerBtn.id === "playerDownloadBtn";
     const isFullscreen = triggerBtn && triggerBtn.id === "fullscreenDownloadBtn";
@@ -5548,10 +5554,6 @@ const DownloadManager = {
       const optimizedUrl = getOptimizedDownloadUrl(downloadUrl, quality);
       const qualityLabel = quality === "48" ? "< 2MB Ultra-Light • 85% RAM Saved" : (quality === "96" ? "96k • 70% RAM Saved" : (quality === "320" ? "320k • Studio" : "160k • 50% RAM Saved"));
 
-      const cleanTitle = (song.title || "Song").replace(/[/\\?%*:|"<>]/g, "").trim().substring(0, 80);
-      const cleanArtist = (song.artist || "Artist").replace(/[/\\?%*:|"<>]/g, "").trim().substring(0, 60);
-      const safeFilename = `${cleanTitle} - ${cleanArtist}`;
-
       if (isBatch) {
         const pct = Math.round((batchIndex / batchTotal) * 100);
         showToastWithAction(
@@ -5604,6 +5606,7 @@ const DownloadManager = {
         // This forces Android OS Download Manager to stream and save to /storage/emulated/0/Download directly
         const octetBlob = new Blob([arrayBuf], { type: "application/octet-stream" });
         this.triggerBlobDownload(octetBlob, `${safeFilename}.m4a`);
+        this.lastPreparedDownload = { blob: octetBlob, filename: `${safeFilename}.m4a`, title: cleanTitle };
         downloadedSuccessfully = true;
       } else {
         // Stream binary was not accessible via direct fetch (e.g. CORS or offline).
@@ -5628,12 +5631,27 @@ const DownloadManager = {
         }
       }
 
-      // 4. Status notifications (Requirement 10)
+      // 4. Status notifications & Direct 1-Tap Save Action (Overcomes Android Chrome silent block on subsequent downloads)
       if (downloadedSuccessfully) {
+        this.downloadsCountInSession = (this.downloadsCountInSession || 0) + 1;
         if (isBatch && batchIndex === batchTotal) {
           showToast(`🎉 All ${batchTotal} songs downloaded successfully! Saved to Android Downloads folder.`, "success");
         } else if (!isBatch) {
-          showToast(`✅ "${cleanTitle}" saved! [${qualityLabel}] Saved to Android Downloads folder / Files app.`, "success");
+          const isSecondOrLater = this.downloadsCountInSession > 1;
+          const promptMsg = isSecondOrLater
+            ? `📥 "${cleanTitle}" ready! Tap "Save File" to save to device:`
+            : `✅ "${cleanTitle}" saved! (Tap to save again if needed):`;
+          showToastWithAction(
+            promptMsg,
+            "success",
+            "💾 Save File",
+            () => {
+              if (this.lastPreparedDownload && this.lastPreparedDownload.blob) {
+                this.triggerBlobDownload(this.lastPreparedDownload.blob, this.lastPreparedDownload.filename);
+                showToast(`✅ "${cleanTitle}" saving to Android Downloads folder!`, "success");
+              }
+            }
+          );
         }
       } else if (!isBatch) {
         showToast(`⚠️ File not saved for "${cleanTitle}". Stream was inaccessible.`, "error");
@@ -5661,17 +5679,37 @@ const DownloadManager = {
         } else {
           // Regular card or playlist row button
           if (downloadedSuccessfully) {
-            triggerBtn.innerHTML = `<span>✓</span> Done`;
+            triggerBtn.innerHTML = `<span>💾</span> Save`;
+            triggerBtn.title = `Tap to save "${cleanTitle}" directly to device`;
+            const prepared = this.lastPreparedDownload;
+            const saveHandler = (e) => {
+              if (e) e.stopPropagation();
+              if (prepared && prepared.blob) {
+                this.triggerBlobDownload(prepared.blob, prepared.filename);
+                showToast(`✅ "${cleanTitle}" saving to Android Downloads folder!`, "success");
+              }
+              triggerBtn.innerHTML = `<span>✓</span> Done`;
+              setTimeout(() => {
+                try {
+                  if (triggerBtn) {
+                    triggerBtn.innerHTML = originalButtonHTML || `<span>⬇️</span> Download`;
+                    if (originalButtonTitle) triggerBtn.title = originalButtonTitle;
+                    triggerBtn.removeEventListener("click", saveHandler);
+                  }
+                } catch (_) {}
+              }, 2000);
+            };
+            triggerBtn.addEventListener("click", saveHandler, { once: true });
+
             setTimeout(() => {
               try {
-                if (triggerBtn) {
+                if (triggerBtn && triggerBtn.innerHTML.includes("Save")) {
                   triggerBtn.innerHTML = originalButtonHTML || `<span>⬇️</span> Download`;
                   if (originalButtonTitle) triggerBtn.title = originalButtonTitle;
-                  triggerBtn.disabled = false;
-                  triggerBtn.classList.remove("is-downloading");
+                  triggerBtn.removeEventListener("click", saveHandler);
                 }
               } catch (_) {}
-            }, 1000);
+            }, 6000);
           } else {
             triggerBtn.innerHTML = originalButtonHTML || `<span>⬇️</span> Download`;
             if (originalButtonTitle) triggerBtn.title = originalButtonTitle;
