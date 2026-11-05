@@ -727,7 +727,10 @@ function setupEventListeners() {
 
   if (DOM.playerDownloadBtn) {
     DOM.playerDownloadBtn.addEventListener("click", () => {
-      if (AppState.currentSong) handleDownloadAction(AppState.currentSong, DOM.playerDownloadBtn);
+      const targetSong = AppState.currentSong ||
+                         (AppState.searchResults && AppState.searchResults.length > 0 ? AppState.searchResults[0] : null) ||
+                         (AppState.masterSongs && AppState.masterSongs.length > 0 ? AppState.masterSongs[0] : null);
+      if (targetSong) handleDownloadAction(targetSong, DOM.playerDownloadBtn);
     });
   }
 
@@ -778,10 +781,11 @@ function setupEventListeners() {
   // Download Options (Below Playing Song) Listeners
   if (DOM.featuredDownloadBtn) {
     DOM.featuredDownloadBtn.addEventListener("click", () => {
-      if (AppState.currentSong) {
-        handleDownloadAction(AppState.currentSong, DOM.featuredDownloadBtn);
-      } else if (AppState.masterSongs.length > 0) {
-        handleDownloadAction(AppState.masterSongs[0], DOM.featuredDownloadBtn);
+      const targetSong = AppState.currentSong ||
+                         (AppState.searchResults && AppState.searchResults.length > 0 ? AppState.searchResults[0] : null) ||
+                         (AppState.masterSongs && AppState.masterSongs.length > 0 ? AppState.masterSongs[0] : null);
+      if (targetSong) {
+        handleDownloadAction(targetSong, DOM.featuredDownloadBtn);
       }
     });
   }
@@ -4958,15 +4962,53 @@ function updateFeaturedPlayerUI(song) {
     DOM.featuredSoundwave.classList.toggle("playing", Boolean(AppState.isPlaying));
   }
 
-  if (DOM.featuredDownloadBtn) {
-    DOM.featuredDownloadBtn.title = `Download "${song.title}" MP3`;
-  }
+  resetFeaturedDownloadButton(song);
   const featuredQueueCount = document.getElementById("featuredQueueCount");
   if (featuredQueueCount) {
     featuredQueueCount.textContent = AppState.queue ? AppState.queue.length : 0;
   }
 
   updateDownloadQualityUI();
+}
+
+function resetFeaturedDownloadButton(song = AppState.currentSong) {
+  if (!DOM.featuredDownloadBtn) return;
+  DOM.featuredDownloadBtn.disabled = false;
+  DOM.featuredDownloadBtn.classList.remove("is-downloading");
+  const q = AppState.downloadQuality || "48";
+  let subText = "< 2MB (48kbps) • Saves 85% RAM";
+  if (q === "96") subText = "96kbps • Saves 70% RAM";
+  else if (q === "160") subText = "160kbps • Saves 50% RAM";
+  else if (q === "320") subText = "320kbps • Studio Master Quality";
+
+  const songTitle = (song && song.title) ? `Download "${song.title}" MP3` : "Download Song (MP3)";
+  DOM.featuredDownloadBtn.title = songTitle;
+  DOM.featuredDownloadBtn.innerHTML = `
+    <span class="btn-dl-icon">⬇️</span>
+    <div class="btn-dl-text-wrap">
+      <span class="btn-dl-title">Download Song (MP3)</span>
+      <span id="featuredDlBitrateSub" class="btn-dl-sub">${subText}</span>
+    </div>
+  `;
+  DOM.featuredDlBitrateSub = document.getElementById("featuredDlBitrateSub");
+}
+
+function resetPlayerDownloadButton(song = AppState.currentSong) {
+  if (!DOM.playerDownloadBtn) return;
+  DOM.playerDownloadBtn.style.display = "inline-flex";
+  DOM.playerDownloadBtn.disabled = false;
+  DOM.playerDownloadBtn.classList.remove("is-downloading");
+  DOM.playerDownloadBtn.innerHTML = `<span>⬇️</span> Download`;
+  DOM.playerDownloadBtn.title = (song && song.title) ? `Download ${song.title} MP3` : "Download Authorized Audio";
+}
+
+function resetFullscreenDownloadButton(song = AppState.currentSong) {
+  const fsDlBtn = DOM.fullscreenDownloadBtn || (typeof document !== "undefined" ? document.getElementById("fullscreenDownloadBtn") : null);
+  if (!fsDlBtn) return;
+  fsDlBtn.disabled = false;
+  fsDlBtn.classList.remove("is-downloading");
+  fsDlBtn.innerHTML = `⬇️`;
+  fsDlBtn.title = (song && song.title) ? `Download "${song.title}" MP3` : "Download Current Track";
 }
 
 function updatePlayerBarUI(song) {
@@ -4981,13 +5023,7 @@ function updatePlayerBarUI(song) {
   const isFav = AppState.favourites.includes(song.id);
   if (DOM.playerFavBtn) DOM.playerFavBtn.textContent = isFav ? "❤️" : "🤍";
 
-  if (DOM.playerDownloadBtn) {
-    DOM.playerDownloadBtn.style.display = "inline-flex";
-    DOM.playerDownloadBtn.disabled = false;
-    DOM.playerDownloadBtn.classList.remove("is-downloading");
-    DOM.playerDownloadBtn.innerHTML = `<span>⬇️</span> Download`;
-    DOM.playerDownloadBtn.title = `Download ${song.title} MP3`;
-  }
+  resetPlayerDownloadButton(song);
 }
 
 // ==========================================================================
@@ -5105,8 +5141,7 @@ function cycleDownloadQuality() {
 // ==========================================================================
 // Robust Asynchronous Download Manager (Consecutive & Batch Downloads)
 // Resolves issue where downloading next song required page refresh.
-// Retains blob URLs safely for 60s without premature revocation that breaks browser streams.
-// Queues rapid/batch downloads with 800ms spacing to satisfy browser download policies.
+// Ensures independent song requests, zero memory leak, and full button state reset.
 // ==========================================================================
 
 const DownloadManager = {
@@ -5117,10 +5152,11 @@ const DownloadManager = {
   cancelBatchRequested: false,
 
   triggerBlobDownload(blob, filename) {
+    if (!blob) return false;
     const blobUrl = (typeof window !== "undefined" && window.URL && typeof window.URL.createObjectURL === "function")
       ? window.URL.createObjectURL(blob)
-      : "blob:mock";
-    this.registerBlobUrl(blobUrl, 3000);
+      : `blob:mock_${Date.now()}`;
+    this.registerBlobUrl(blobUrl, 10000);
     if (typeof document !== "undefined") {
       const a = document.createElement("a");
       a.style.display = "none";
@@ -5130,13 +5166,14 @@ const DownloadManager = {
       a.click();
       setTimeout(() => {
         try {
-          if (document.body.contains(a)) document.body.removeChild(a);
+          if (document.body && document.body.contains(a)) document.body.removeChild(a);
         } catch (_) {}
       }, 500);
     }
+    return true;
   },
 
-  registerBlobUrl(url, timeoutMs = 1500) {
+  registerBlobUrl(url, timeoutMs = 10000) {
     if (!url) return;
     this.activeBlobUrls.add(url);
     const timer = setTimeout(() => {
@@ -5176,11 +5213,19 @@ const DownloadManager = {
     if (!song) return Promise.resolve(false);
     const songId = song.id ? String(song.id) : `${song.title || "unknown"}_${song.artist || "unknown"}`;
     
-    // Prevent duplicate clicks on the same song while download is actively in progress without blocking other songs
-    if (triggerBtn && (this.activeDownloadingSongIds.has(songId) || triggerBtn.disabled || triggerBtn.classList.contains("is-downloading"))) {
+    // Requirement 9: Prevent duplicate clicks on the SAME song while actively downloading, without blocking other songs
+    if (triggerBtn && this.activeDownloadingSongIds.has(songId)) {
       showToast(`⚠️ "${song.title || 'Song'}" is already downloading...`, "info");
       return Promise.resolve(false);
     }
+
+    // Requirement 8: Ensure the download button works for every song independently
+    // Unstick any residual disabled or downloading state on the trigger button
+    if (triggerBtn) {
+      triggerBtn.disabled = false;
+      triggerBtn.classList.remove("is-downloading");
+    }
+
     return this._executeDownload({ song, triggerBtn, isBatch: false });
   },
 
@@ -5272,20 +5317,35 @@ const DownloadManager = {
     const songId = song.id ? String(song.id) : `${song.title || "unknown"}_${song.artist || "unknown"}`;
     this.activeDownloadingSongIds.add(songId);
 
-    // Save original button state and markup to preserve subtext/icons (e.g. featuredDownloadBtn bitrate subtext)
+    const isFeatured = triggerBtn && triggerBtn.id === "featuredDownloadBtn";
+    const isPlayerBar = triggerBtn && triggerBtn.id === "playerDownloadBtn";
+    const isFullscreen = triggerBtn && triggerBtn.id === "fullscreenDownloadBtn";
+
+    // Save original button markup to preserve subtext/icons
     const originalButtonHTML = triggerBtn ? triggerBtn.innerHTML : null;
     const originalButtonTitle = triggerBtn ? triggerBtn.title : null;
 
     if (triggerBtn) {
       triggerBtn.disabled = true;
       triggerBtn.classList.add("is-downloading");
-      triggerBtn.innerHTML = `<span class="spinner" style="width:13px;height:13px;border-width:2px;display:inline-block;vertical-align:middle;margin-right:4px;"></span> Saving...`;
+      if (isFeatured) {
+        triggerBtn.innerHTML = `
+          <span class="spinner" style="width:16px;height:16px;border-width:2px;display:inline-block;vertical-align:middle;margin-right:6px;"></span>
+          <div class="btn-dl-text-wrap">
+            <span class="btn-dl-title">Saving Audio...</span>
+            <span class="btn-dl-sub">Downloading to your device</span>
+          </div>
+        `;
+      } else {
+        triggerBtn.innerHTML = `<span class="spinner" style="width:13px;height:13px;border-width:2px;display:inline-block;vertical-align:middle;margin-right:4px;"></span> Saving...`;
+      }
     }
 
     let downloadedSuccessfully = false;
+    let localBlobUrl = null;
 
     try {
-      // 1. Resolve fresh independent audio URL for this song
+      // 1. Resolve fresh independent audio URL for this song (Requirement 3 & 4)
       let downloadUrl = "";
       if (song.audio_file && !song.audio_file.startsWith("http")) {
         downloadUrl = `static/audio/${song.audio_file}`;
@@ -5329,65 +5389,62 @@ const DownloadManager = {
         showToast(`⚡ < 2MB Ultra-Light Download starting: "${cleanTitle}" [${qualityLabel}]...`, "info");
       }
 
-      // 2. Fetch fresh audio stream binary with no-store to avoid memory/cache retention
+      // 2. Fetch fresh audio stream binary (clean request without forbidden preflight headers)
       if (optimizedUrl) {
         try {
-          const res = await fetch(optimizedUrl, { cache: "no-store" });
+          const res = await fetch(optimizedUrl);
           if (!res.ok) throw new Error(`HTTP ${res.status}`);
 
           let rawBlob = await res.blob();
-          const blobUrl = (typeof window !== "undefined" && window.URL && typeof window.URL.createObjectURL === "function")
+          localBlobUrl = (typeof window !== "undefined" && window.URL && typeof window.URL.createObjectURL === "function")
             ? window.URL.createObjectURL(rawBlob)
-            : "blob:mock";
+            : `blob:mock_${Date.now()}`;
 
-          // Register blob URL for prompt release (1500ms allows OS file stream initiation while freeing memory)
-          this.registerBlobUrl(blobUrl, 1500);
+          // Register blob URL for prompt release (Requirement 7)
+          this.registerBlobUrl(localBlobUrl, 10000);
 
           if (typeof document !== "undefined") {
             const a = document.createElement("a");
             a.style.display = "none";
-            a.href = blobUrl;
+            a.href = localBlobUrl;
             a.download = `${safeFilename}.m4a`;
             document.body.appendChild(a);
             a.click();
-            const aTimer = setTimeout(() => {
+            setTimeout(() => {
               try {
-                if (document.body.contains(a)) document.body.removeChild(a);
+                if (document.body && document.body.contains(a)) document.body.removeChild(a);
               } catch (_) {}
-            }, 300);
-            if (aTimer && typeof aTimer.unref === "function") aTimer.unref();
+            }, 500);
           }
 
-          rawBlob = null; // Release binary buffer reference immediately
+          rawBlob = null; // Release binary buffer reference immediately (Requirement 3)
           downloadedSuccessfully = true;
         } catch (fetchErr) {
-          console.warn(`[DownloadManager] Blob fetch notice for "${cleanTitle}":`, fetchErr.message);
+          console.warn(`[DownloadManager] Stream fetch notice for "${cleanTitle}":`, fetchErr.message);
         }
       }
 
-      // 3. Fallback: native browser anchor stream
+      // 3. Fallback: native browser anchor stream without popup blocker triggers
       if (!downloadedSuccessfully) {
         try {
           if (typeof document !== "undefined") {
             const a = document.createElement("a");
             a.style.display = "none";
             a.href = optimizedUrl || downloadUrl;
-            a.target = "_blank";
-            a.rel = "noopener noreferrer";
             a.download = `${safeFilename}.m4a`;
             document.body.appendChild(a);
             a.click();
             setTimeout(() => {
               try {
-                if (document.body.contains(a)) document.body.removeChild(a);
+                if (document.body && document.body.contains(a)) document.body.removeChild(a);
               } catch (_) {}
-            }, 300);
+            }, 500);
           }
           downloadedSuccessfully = true;
         } catch (_) {}
       }
 
-      // 4. Status notifications
+      // 4. Status notifications (Requirement 10)
       if (downloadedSuccessfully) {
         if (isBatch && batchIndex === batchTotal) {
           showToast(`🎉 All ${batchTotal} songs downloaded successfully! [Saved to Mobile Music App]`, "success");
@@ -5404,29 +5461,37 @@ const DownloadManager = {
       showToast(`⚠️ Download error for "${song.title || 'Song'}".`, "error");
       return false;
     } finally {
-      // 5. Guaranteed cleanup in finally block:
-      // Always remove song from active concurrency tracker
+      // 5. Guaranteed cleanup in finally block (Requirements 2, 6, 8, 9)
       this.activeDownloadingSongIds.delete(songId);
 
-      // Always restore trigger button state and markup
       if (triggerBtn) {
         triggerBtn.disabled = false;
         triggerBtn.classList.remove("is-downloading");
 
-        if (downloadedSuccessfully) {
-          triggerBtn.innerHTML = `<span>✓</span> Done`;
-          const resetTimer = setTimeout(() => {
-            try {
-              if (triggerBtn) {
-                triggerBtn.innerHTML = originalButtonHTML || `<span>⬇️</span> Download`;
-                if (originalButtonTitle) triggerBtn.title = originalButtonTitle;
-              }
-            } catch (_) {}
-          }, 1500);
-          if (resetTimer && typeof resetTimer.unref === "function") resetTimer.unref();
+        if (isFeatured) {
+          resetFeaturedDownloadButton(song);
+        } else if (isPlayerBar) {
+          resetPlayerDownloadButton(song);
+        } else if (isFullscreen) {
+          resetFullscreenDownloadButton(song);
         } else {
-          triggerBtn.innerHTML = originalButtonHTML || `<span>⬇️</span> Download`;
-          if (originalButtonTitle) triggerBtn.title = originalButtonTitle;
+          // Regular card or playlist row button
+          if (downloadedSuccessfully) {
+            triggerBtn.innerHTML = `<span>✓</span> Done`;
+            setTimeout(() => {
+              try {
+                if (triggerBtn) {
+                  triggerBtn.innerHTML = originalButtonHTML || `<span>⬇️</span> Download`;
+                  if (originalButtonTitle) triggerBtn.title = originalButtonTitle;
+                  triggerBtn.disabled = false;
+                  triggerBtn.classList.remove("is-downloading");
+                }
+              } catch (_) {}
+            }, 1000);
+          } else {
+            triggerBtn.innerHTML = originalButtonHTML || `<span>⬇️</span> Download`;
+            if (originalButtonTitle) triggerBtn.title = originalButtonTitle;
+          }
         }
       }
     }
@@ -6460,4 +6525,9 @@ if (typeof window !== "undefined") {
   window.detectSongVersionType = detectSongVersionType;
   window.openFullscreenPlayer = openFullscreenPlayer;
   window.closeFullscreenPlayer = closeFullscreenPlayer;
+  window.resetFeaturedDownloadButton = resetFeaturedDownloadButton;
+  window.resetPlayerDownloadButton = resetPlayerDownloadButton;
+  window.resetFullscreenDownloadButton = resetFullscreenDownloadButton;
+  window.DownloadManager = DownloadManager;
+  window.handleDownloadAction = handleDownloadAction;
 }

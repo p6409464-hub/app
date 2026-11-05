@@ -2075,13 +2075,12 @@ console.log("[PASS] Immediate state clearing verified: previous search results w
     return btn;
   });
 
-  // Consecutively download 5 distinct songs without refreshing the page
+  // Consecutively download 5 distinct songs without refreshing the page (using individual buttons)
   for (let i = 0; i < 5; i++) {
     const song = fiveSongs[i];
     const btn = mockButtons[i];
 
-    
-                const result = await handleDownloadAction(song, btn);
+    const result = await handleDownloadAction(song, btn);
     
     assert.strictEqual(result, true, `Song ${i + 1} ("${song.title}") must return successful download status`);
     assert(downloadedAudioUrls.length >= i + 1, `Song ${i + 1} must trigger a separate fresh audio fetch`);
@@ -2090,7 +2089,34 @@ console.log("[PASS] Immediate state clearing verified: previous search results w
     assert.strictEqual(btn.disabled, false, `Button ${i + 1} must not remain stuck disabled after download`);
     assert(!btn.classList.contains("is-downloading"), `Button ${i + 1} must not retain is-downloading class`);
   }
-  console.log("[PASS] Tested downloading 5 different songs continuously without refreshing the page - ALL 5 SUCCEEDED!");
+  console.log("[PASS] Tested downloading 5 different songs continuously with independent buttons without refreshing the page - ALL 5 SUCCEEDED!");
+
+  // 2b. Consecutively download 5 distinct songs using the SAME SHARED FEATURED DOWNLOAD BUTTON without refreshing
+  DOM.featuredDownloadBtn = createMockElement("featuredDownloadBtn", "button");
+  DOM.featuredDlBitrateSub = createMockElement("featuredDlBitrateSub", "span");
+  DOM.featuredDownloadBtn.appendChild(DOM.featuredDlBitrateSub);
+  resetFeaturedDownloadButton(fiveSongs[0]);
+
+  downloadedAudioUrls = [];
+  createdBlobUrls = [];
+
+  for (let i = 0; i < 5; i++) {
+    const song = fiveSongs[i];
+    AppState.currentSong = song;
+    updateFeaturedPlayerUI(song);
+
+    // Verify button is ready and enabled before click
+    assert.strictEqual(DOM.featuredDownloadBtn.disabled, false, `Shared featuredDownloadBtn must be enabled before downloading song ${i + 1}`);
+    assert(!DOM.featuredDownloadBtn.classList.contains("is-downloading"), `Shared featuredDownloadBtn must not have is-downloading before song ${i + 1}`);
+
+    const result = await handleDownloadAction(song, DOM.featuredDownloadBtn);
+
+    assert.strictEqual(result, true, `Song ${i + 1} ("${song.title}") must download successfully on shared button`);
+    assert.strictEqual(DOM.featuredDownloadBtn.disabled, false, `Shared featuredDownloadBtn must be immediately re-enabled after song ${i + 1}`);
+    assert(!DOM.featuredDownloadBtn.classList.contains("is-downloading"), `Shared featuredDownloadBtn must not have is-downloading after song ${i + 1}`);
+    assert(DOM.featuredDownloadBtn.innerHTML.includes("featuredDlBitrateSub"), `Shared featuredDownloadBtn must retain its bitrate subtext structure`);
+  }
+  console.log("[PASS] Tested downloading 5 different songs continuously using the SAME SHARED BUTTON without refreshing the page - ALL 5 SUCCEEDED!");
 
   // Verify Per-Song Duplicate Click Prevention without blocking other songs (Requirement 9 & 8)
   const activeSong = fiveSongs[0];
