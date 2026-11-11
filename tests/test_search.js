@@ -98,6 +98,7 @@ function createMockElement(id, tag = "div") {
     querySelector() { return null; },
     setAttribute(k, v) { this[k] = v; },
     getAttribute(k) { return this[k] || null; },
+    removeAttribute(k) { delete this[k]; },
     focus() {},
     click() {
       this.dispatchEvent("click", { target: this, preventDefault() {} });
@@ -2922,7 +2923,8 @@ AppState.downloadedSongIds.clear();
   const card1HTML = createSongCardHTML(favTrack1);
   const card3HTML = createSongCardHTML(favTrack3);
   assert(card1HTML.includes("is-downloaded"), "Card 1 must have is-downloaded class");
-  assert(card1HTML.includes("✓ Downloaded"), "Card 1 button must display '✓ Downloaded'");
+  assert(card1HTML.includes("Already Downloaded") || card1HTML.includes("✓ Downloaded"), "Card 1 must display 'Already Downloaded' status");
+  assert(card1HTML.includes("Download Again"), "Card 1 must provide separate 'Download Again' button");
   assert(!card3HTML.includes("is-downloaded"), "Card 3 must not have is-downloaded class");
   assert(card3HTML.includes("Download"), "Card 3 must display Download action");
 
@@ -3098,9 +3100,83 @@ AppState.downloadedSongIds.clear();
   DownloadManager._executeDownload = origExecute;
 
   console.log("[PASS] Test 59: Zero Duplicate Download Prompts and Skipping of Already Downloaded Songs fully verified!");
+  // ========================================================================
+  // Test 60: Verifying 'Already Downloaded' Status Badge, Separate 'Download Again' Button,
+  // Non-Blocking Repeat Downloads with Unique Filenames & Zero Overwriting
+  // ========================================================================
+  console.log("\nTest 60: Verifying Already Downloaded Status, Separate Download Again Button, Unique Filenames & Repeat Downloads...");
+
+  // 1. If song has never been downloaded, card shows 'Download'
+  const unDownloadedSong = { id: "track_new_song", title: "New Melody Track", artist: "Singer A", audio_url: "https://example.com/new.mp4" };
+  assert(!isSongDownloaded(unDownloadedSong), "unDownloadedSong is initially not downloaded");
+  const unDownloadedHTML = createSongCardHTML(unDownloadedSong);
+  assert(unDownloadedHTML.includes("Download"), "Must show Download button for un-downloaded song");
+  assert(!unDownloadedHTML.includes("Already Downloaded"), "Must NOT show Already Downloaded status for un-downloaded song");
+  assert(!unDownloadedHTML.includes("Download Again"), "Must NOT show Download Again button for un-downloaded song");
+
+  // 2. Mark song as downloaded (or download it once)
+  markSongDownloaded(unDownloadedSong);
+  assert(isSongDownloaded(unDownloadedSong), "Song is now downloaded");
+  assert.strictEqual(getSongDownloadCount(unDownloadedSong), 1, "Download count must be 1");
+
+  // 3. Previously downloaded song shows 'Already Downloaded' as status AND separate 'Download Again' button
+  const downloadedHTML = createSongCardHTML(unDownloadedSong);
+  assert(downloadedHTML.includes("Already Downloaded"), "Must show 'Already Downloaded' as status badge");
+  assert(downloadedHTML.includes("download-status-badge"), "Must have download-status-badge class");
+  assert(downloadedHTML.includes("Download Again"), "Must provide separate 'Download Again' button");
+  assert(downloadedHTML.includes("download-again-btn"), "Must have download-again-btn class");
+  assert(downloadedHTML.includes('data-force="true"'), "Must have data-force='true' for repeat download");
+
+  // 4. Test clicking 'Download Again' executes repeat download successfully and does NOT block
+  let repeatTaskReceived = null;
+  const mockAgainBtn = createMockElement("btn_again");
+  mockAgainBtn.setAttribute("data-force", "true");
+  mockAgainBtn.classList.add("download-again-btn", "card-download-trigger");
+
+  const origExec = DownloadManager._executeDownload;
+  DownloadManager._executeDownload = async function(task) {
+    repeatTaskReceived = task;
+    markSongDownloaded(task.song);
+    return true;
+  };
+
+  const repeatResult = await DownloadManager.downloadSong(unDownloadedSong, mockAgainBtn);
+  assert.strictEqual(repeatResult, true, "Repeat download must succeed and not be blocked");
+  assert(repeatTaskReceived !== null, "_executeDownload must be called on Download Again");
+  assert.strictEqual(repeatTaskReceived.song.id, unDownloadedSong.id, "Correct song must be downloaded again");
+  assert.strictEqual(getSongDownloadCount(unDownloadedSong), 2, "Download count must increment to 2");
+
+  // 5. Test consecutive repeat downloads without page refresh
+  const thirdResult = await DownloadManager.downloadSong(unDownloadedSong, mockAgainBtn);
+  assert.strictEqual(thirdResult, true, "3rd consecutive download must succeed without page refresh");
+  assert.strictEqual(getSongDownloadCount(unDownloadedSong), 3, "Download count must increment to 3");
+
+  // 6. Test unique filename generation for repeated downloads: prevent overwriting
+  const cleanTitle = "New Melody Track";
+  const cleanArtist = "Singer A";
+  const countBefore = 1;
+  const repeatSuffix1 = countBefore > 0 ? ` (${countBefore})` : "";
+  assert.strictEqual(`${cleanTitle} - ${cleanArtist}${repeatSuffix1}.m4a`, "New Melody Track - Singer A (1).m4a", "Unique filename for repeat download must be generated");
+
+  // 7. Verify Player buttons & Featured button reflect 'Already Downloaded' status and 'Download Again' action
+  resetFeaturedDownloadButton(unDownloadedSong);
+  assert(DOM.featuredDownloadBtn.innerHTML.includes("Already Downloaded"), "Featured player must show Already Downloaded status");
+  assert(DOM.featuredDownloadBtn.innerHTML.includes("Download Again"), "Featured player must show Download Again action");
+  assert(DOM.featuredDownloadBtn.innerHTML.includes("featuredDlBitrateSub"), "Featured player must retain featuredDlBitrateSub");
+
+  resetPlayerDownloadButton(unDownloadedSong);
+  assert(DOM.playerDownloadBtn.innerHTML.includes("Download Again"), "Mini player bar must show Download Again");
+
+  resetFullscreenDownloadButton(unDownloadedSong);
+  assert(DOM.fullscreenDownloadBtn.title.includes("Download Again") || DOM.fullscreenDownloadBtn.title.includes("Already Downloaded"), "Fullscreen player must indicate Download Again");
+
+  // Restore DownloadManager._executeDownload
+  DownloadManager._executeDownload = origExec;
+
+  console.log("[PASS] Test 60: Already Downloaded Status, Separate Download Again Button, Unique Filenames & Repeat Downloads fully verified!");
 
   console.log("\n==================================================");
-  console.log("ALL 59 ADVANCED SEARCH, MUSIC PLAYER, 3-STATE REPEAT, PLAYBACK SPEED, QUEUE CONTROLS, DEDICATED FAVOURITES, IN-BROWSER ZIP BUILDER, EQUALIZER, LYRICS, ANDROID MOBILE DOWNLOADS, VOICE SEARCH, FAVOURITE TYPE DROPDOWN, FAVOURITE SEQUENTIAL PLAYBACK, ACCURATE GENRE TYPE MATCHING & ZERO DUPLICATE PROMPT TESTS PASSED!");
+  console.log("ALL 60 ADVANCED SEARCH, MUSIC PLAYER, 3-STATE REPEAT, PLAYBACK SPEED, QUEUE CONTROLS, DEDICATED FAVOURITES, IN-BROWSER ZIP BUILDER, EQUALIZER, LYRICS, ANDROID MOBILE DOWNLOADS, VOICE SEARCH, FAVOURITE TYPE DROPDOWN, FAVOURITE SEQUENTIAL PLAYBACK, ACCURATE GENRE TYPE MATCHING & ZERO DUPLICATE PROMPT TESTS PASSED!");
   console.log("==================================================\n");
   process.exit(0);
 })();

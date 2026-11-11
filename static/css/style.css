@@ -1590,6 +1590,43 @@ body {
   box-shadow: 0 0 12px rgba(34, 197, 94, 0.4);
 }
 
+/* Card Download Group & Download Again Button */
+.card-download-group {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+
+.download-status-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 0.72rem;
+  font-weight: 700;
+  padding: 5px 10px;
+  border-radius: var(--radius-full);
+  white-space: nowrap;
+}
+
+.download-status-badge.already-downloaded {
+  background: rgba(34, 197, 94, 0.15);
+  border: 1px solid rgba(34, 197, 94, 0.45);
+  color: #86efac;
+}
+
+.download-btn.download-again-btn {
+  background: rgba(168, 85, 247, 0.16);
+  border: 1px solid rgba(168, 85, 247, 0.45);
+  color: #d8b4fe;
+}
+.download-btn.download-again-btn:hover {
+  background: rgba(168, 85, 247, 0.32);
+  color: #fff;
+  border-color: #a855f7;
+  box-shadow: 0 0 12px rgba(168, 85, 247, 0.45);
+}
+
 .download-all-btn {
   background: linear-gradient(135deg, #10b981 0%, #059669 100%);
   color: #fff;

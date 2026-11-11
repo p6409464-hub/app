@@ -121,6 +121,7 @@ const AppState = {
   pageSize: 24,          // Number of tracks per page chunk
   favourites: safeGetStorage("pranesh_hub_favs", []),
   downloadedSongIds: new Set(safeGetStorage("pranesh_hub_downloaded_ids", [])),
+  downloadCounts: safeGetStorage("pranesh_hub_download_counts", {}),
   history: safeGetStorage("pranesh_hub_history", []),
   queue: [],
   isPlaylistOpen: false,
@@ -3312,6 +3313,23 @@ function getSongDownloadKey(song) {
   return `${cleanTitle} - ${cleanArtist}`;
 }
 
+function getSongDownloadCount(songOrId) {
+  if (!songOrId || !AppState.downloadCounts) return 0;
+  let count = 0;
+  if (typeof songOrId === "object") {
+    if (songOrId.id && AppState.downloadCounts[String(songOrId.id)]) {
+      count = Math.max(count, AppState.downloadCounts[String(songOrId.id)]);
+    }
+    const key = getSongDownloadKey(songOrId);
+    if (key && AppState.downloadCounts[key]) {
+      count = Math.max(count, AppState.downloadCounts[key]);
+    }
+    return count;
+  }
+  const strId = String(songOrId);
+  return AppState.downloadCounts[strId] || 0;
+}
+
 function isSongDownloaded(songOrId) {
   if (!songOrId || !AppState.downloadedSongIds) return false;
   if (typeof songOrId === "object") {
@@ -3329,32 +3347,67 @@ function markSongDownloaded(songOrId) {
   if (!AppState.downloadedSongIds) {
     AppState.downloadedSongIds = new Set();
   }
+  if (!AppState.downloadCounts) {
+    AppState.downloadCounts = {};
+  }
   let idStr = "";
+  let keyStr = "";
+  let songTitle = "Song";
   if (typeof songOrId === "object") {
     idStr = songOrId.id ? String(songOrId.id) : "";
-    if (idStr) AppState.downloadedSongIds.add(idStr);
-    const key = getSongDownloadKey(songOrId);
-    if (key) AppState.downloadedSongIds.add(key);
+    keyStr = getSongDownloadKey(songOrId);
+    songTitle = songOrId.title || "Song";
+    if (idStr) {
+      AppState.downloadedSongIds.add(idStr);
+      AppState.downloadCounts[idStr] = (AppState.downloadCounts[idStr] || 0) + 1;
+    }
+    if (keyStr) {
+      AppState.downloadedSongIds.add(keyStr);
+      AppState.downloadCounts[keyStr] = (AppState.downloadCounts[keyStr] || 0) + 1;
+    }
   } else {
     idStr = String(songOrId);
     AppState.downloadedSongIds.add(idStr);
+    AppState.downloadCounts[idStr] = (AppState.downloadCounts[idStr] || 0) + 1;
   }
 
   try {
     if (typeof localStorage !== "undefined") {
       localStorage.setItem("pranesh_hub_downloaded_ids", JSON.stringify(Array.from(AppState.downloadedSongIds)));
+      localStorage.setItem("pranesh_hub_download_counts", JSON.stringify(AppState.downloadCounts));
     }
   } catch (_) {}
 
-  // Realtime DOM update: reflect downloaded state on any existing card buttons and player buttons
+  // Realtime DOM update: reflect downloaded state on any existing card buttons and player buttons without refresh
   if (typeof document !== "undefined") {
     try {
       if (idStr && typeof document.querySelectorAll === "function") {
-        const cardBtns = document.querySelectorAll(`.card-download-trigger[data-id="${escapeAttr(idStr)}"]`);
+        const groups = document.querySelectorAll(`.card-download-group[data-id="${escapeAttr(idStr)}"]`);
+        groups.forEach(group => {
+          group.innerHTML = `
+            <span class="download-status-badge already-downloaded" title="Already saved on your device">✓ Already Downloaded</span>
+            <button class="download-btn download-again-btn card-download-trigger card-download-again-trigger is-downloaded" data-id="${escapeAttr(idStr)}" data-force="true" title="Download ${escapeAttr(songTitle)} again">
+              <span>🔄</span> Download Again
+            </button>
+          `;
+          const againBtn = group.querySelector(".download-again-btn");
+          if (againBtn) {
+            againBtn.onclick = (e) => {
+              e.stopPropagation();
+              const s = (typeof getSongById === "function") ? getSongById(idStr) : (typeof songOrId === "object" ? songOrId : null);
+              if (s) handleDownloadAction(s, againBtn);
+            };
+          }
+        });
+
+        const cardBtns = document.querySelectorAll(`.card-download-trigger[data-id="${escapeAttr(idStr)}"]:not(.download-again-btn)`);
         cardBtns.forEach(btn => {
-          btn.classList.add("is-downloaded");
-          btn.innerHTML = "✓ Downloaded";
-          btn.title = "Already saved on your device (Skipped re-download)";
+          if (!btn.closest(".card-download-group")) {
+            btn.classList.add("is-downloaded", "download-again-btn", "card-download-again-trigger");
+            btn.setAttribute("data-force", "true");
+            btn.innerHTML = "<span>🔄</span> Download Again";
+            btn.title = `Already Downloaded - Download "${songTitle}" Again`;
+          }
         });
       }
       if (AppState.currentSong && (AppState.currentSong.id === idStr || (typeof songOrId === "object" && AppState.currentSong.id === songOrId.id))) {
@@ -4994,21 +5047,30 @@ function createSongCardHTML(song) {
 
   // Action Button: Download & Mobile Music App buttons enabled for all audio tracks
   const isDownloaded = isSongDownloaded(song.id);
-  const dlBtnText = isDownloaded ? "✓ Downloaded" : "<span>⬇️</span> Download";
-  const dlBtnClass = isDownloaded ? "download-btn card-download-trigger is-downloaded" : "download-btn card-download-trigger";
-  const dlBtnTitle = isDownloaded
-    ? `Already saved to device: ${escapeAttr(song.title)} (Click to download again)`
-    : `Download ${escapeAttr(song.title)} MP3`;
+  let dlControlHTML = "";
+  if (isDownloaded) {
+    dlControlHTML = `
+      <span class="download-status-badge already-downloaded" title="Already saved on your device">✓ Already Downloaded</span>
+      <button class="download-btn download-again-btn card-download-trigger card-download-again-trigger is-downloaded" data-id="${escapeAttr(song.id)}" data-force="true" title="Download ${escapeAttr(song.title)} again">
+        <span>🔄</span> Download Again
+      </button>
+    `;
+  } else {
+    dlControlHTML = `
+      <button class="download-btn card-download-trigger" data-id="${escapeAttr(song.id)}" title="Download ${escapeAttr(song.title)} MP3">
+        <span>⬇️</span> Download
+      </button>
+    `;
+  }
 
   let actionBtnHTML = `
-    <button class="${dlBtnClass}" data-id="${escapeAttr(song.id)}" title="${dlBtnTitle}">
-      ${dlBtnText}
-    </button>
+    <div class="card-download-group" data-id="${escapeAttr(song.id)}">
+      ${dlControlHTML}
+    </div>
     <button class="card-musicapp-btn card-musicapp-trigger" data-id="${escapeAttr(song.id)}" title="Open ${escapeAttr(song.title)} in Mobile Music App">
       <span>📱</span> Music App
     </button>
   `;
-
   const safeCover = escapeAttr(song.cover_url || "static/images/only_friends_theme.svg");
   const movieBadge = song.album ? ` • <span class="card-album-tag" title="Movie/Album: ${escapeAttr(song.album)}">${escapeHTML(song.album)}</span>` : "";
   const isSpotify = song.source === "spotify";
@@ -5871,20 +5933,23 @@ function resetFeaturedDownloadButton(song = AppState.currentSong) {
 
   const isDownloaded = song && isSongDownloaded(song);
   if (isDownloaded) {
-    DOM.featuredDownloadBtn.classList.add("is-downloaded");
-    DOM.featuredDownloadBtn.title = `Already saved on your device: ${song.title || 'Song'}`;
+    DOM.featuredDownloadBtn.classList.add("is-downloaded", "download-again-btn");
+    DOM.featuredDownloadBtn.setAttribute("data-force", "true");
+    DOM.featuredDownloadBtn.title = `Already saved on your device: ${song.title || 'Song'} (Click to download again)`;
     DOM.featuredDownloadBtn.innerHTML = `
-      <span class="btn-dl-icon" style="color: #4ade80;">✓</span>
+      <span class="btn-dl-icon" style="color: #60a5fa;">🔄</span>
       <div class="btn-dl-text-wrap">
-        <span class="btn-dl-title">Saved on Device</span>
-        <span id="featuredDlBitrateSub" class="btn-dl-sub">Stored in Downloads folder</span>
+        <span class="btn-dl-status-tag" style="font-size:0.72rem;color:#86efac;font-weight:700;">✓ Already Downloaded</span>
+        <span class="btn-dl-title">Download Again</span>
+        <span id="featuredDlBitrateSub" class="btn-dl-sub">Save another copy to device</span>
       </div>
     `;
     DOM.featuredDlBitrateSub = document.getElementById("featuredDlBitrateSub");
     return;
   }
 
-  DOM.featuredDownloadBtn.classList.remove("is-downloaded");
+  DOM.featuredDownloadBtn.classList.remove("is-downloaded", "download-again-btn");
+  if (typeof DOM.featuredDownloadBtn.removeAttribute === "function") DOM.featuredDownloadBtn.removeAttribute("data-force");
   const q = AppState.downloadQuality || "48";
   let subText = "< 2MB (48kbps) • Saves 85% RAM";
   if (q === "96") subText = "96kbps • Saves 70% RAM";
@@ -5910,11 +5975,13 @@ function resetPlayerDownloadButton(song = AppState.currentSong) {
   DOM.playerDownloadBtn.classList.remove("is-downloading");
   const isDownloaded = song && isSongDownloaded(song);
   if (isDownloaded) {
-    DOM.playerDownloadBtn.classList.add("is-downloaded");
-    DOM.playerDownloadBtn.innerHTML = `<span>✓</span> Saved`;
-    DOM.playerDownloadBtn.title = (song && song.title) ? `Already saved: ${song.title}` : "Already saved on your device";
+    DOM.playerDownloadBtn.classList.add("is-downloaded", "download-again-btn");
+    DOM.playerDownloadBtn.setAttribute("data-force", "true");
+    DOM.playerDownloadBtn.innerHTML = `<span>🔄</span> Download Again`;
+    DOM.playerDownloadBtn.title = (song && song.title) ? `Already Downloaded: ${song.title} (Click to download again)` : "Already Downloaded - Click to download again";
   } else {
-    DOM.playerDownloadBtn.classList.remove("is-downloaded");
+    DOM.playerDownloadBtn.classList.remove("is-downloaded", "download-again-btn");
+    if (typeof DOM.playerDownloadBtn.removeAttribute === "function") DOM.playerDownloadBtn.removeAttribute("data-force");
     DOM.playerDownloadBtn.innerHTML = `<span>⬇️</span> Download`;
     DOM.playerDownloadBtn.title = (song && song.title) ? `Download ${song.title} MP3` : "Download Authorized Audio";
   }
@@ -5927,11 +5994,13 @@ function resetFullscreenDownloadButton(song = AppState.currentSong) {
   fsDlBtn.classList.remove("is-downloading");
   const isDownloaded = song && isSongDownloaded(song);
   if (isDownloaded) {
-    fsDlBtn.classList.add("is-downloaded");
-    fsDlBtn.innerHTML = `✓`;
-    fsDlBtn.title = (song && song.title) ? `Already saved: ${song.title}` : "Already saved on your device";
+    fsDlBtn.classList.add("is-downloaded", "download-again-btn");
+    fsDlBtn.setAttribute("data-force", "true");
+    fsDlBtn.innerHTML = `🔄`;
+    fsDlBtn.title = (song && song.title) ? `Already Downloaded: ${song.title} (Click to download again)` : "Already Downloaded - Download Again";
   } else {
-    fsDlBtn.classList.remove("is-downloaded");
+    fsDlBtn.classList.remove("is-downloaded", "download-again-btn");
+    if (typeof fsDlBtn.removeAttribute === "function") fsDlBtn.removeAttribute("data-force");
     fsDlBtn.innerHTML = `⬇️`;
     fsDlBtn.title = (song && song.title) ? `Download "${song.title}" MP3` : "Download Current Track";
   }
@@ -6201,17 +6270,26 @@ const DownloadManager = {
     if (!song) return Promise.resolve(false);
     const songId = song.id ? String(song.id) : `${song.title || "unknown"}_${song.artist || "unknown"}`;
     
-    // Requirement 9: Prevent duplicate clicks on the SAME song while actively downloading, without blocking other songs
+    // Prevent duplicate clicks on the SAME song while actively downloading, without blocking other songs
     if (triggerBtn && this.activeDownloadingSongIds.has(songId)) {
       showToast(`⚠️ "${song.title || 'Song'}" is already downloading...`, "info");
       return Promise.resolve(false);
     }
 
-    // Requirement: "if one time the song is download dont show like this just leave it"
-    // If the song is already downloaded, NEVER trigger browser re-download or show "Download file again?" prompt!
-    if (!force && isSongDownloaded(song)) {
+    const isForce = Boolean(
+      force ||
+      (triggerBtn && (
+        triggerBtn.getAttribute("data-force") === "true" ||
+        triggerBtn.classList.contains("download-again-btn") ||
+        triggerBtn.classList.contains("card-download-again-trigger")
+      ))
+    );
+
+    // If the song is already downloaded and is NOT a force/Download-Again request:
+    if (!isForce && isSongDownloaded(song)) {
       if (triggerBtn) {
-        triggerBtn.classList.add("is-downloaded");
+        triggerBtn.classList.add("is-downloaded", "download-again-btn", "card-download-again-trigger");
+        triggerBtn.setAttribute("data-force", "true");
         if (triggerBtn === DOM.featuredDownloadBtn || triggerBtn.id === "featuredDownloadBtn") {
           resetFeaturedDownloadButton(song);
         } else if (triggerBtn === DOM.playerDownloadBtn || triggerBtn.id === "playerDownloadBtn") {
@@ -6219,15 +6297,14 @@ const DownloadManager = {
         } else if (typeof resetFullscreenDownloadButton === "function" && (triggerBtn === DOM.fullscreenDownloadBtn || triggerBtn.id === "fullscreenDownloadBtn")) {
           resetFullscreenDownloadButton(song);
         } else {
-          triggerBtn.innerHTML = "✓ Downloaded";
-          triggerBtn.title = `Already saved on your device: ${song.title || 'Song'}`;
+          triggerBtn.innerHTML = "<span>🔄</span> Download Again";
+          triggerBtn.title = `Already downloaded. Click to download "${song.title || 'Song'}" again`;
         }
       }
       showToast(`✓ "${song.title || 'Song'}" is already saved on your device (Skipped re-download).`, "info");
       return Promise.resolve(true);
     }
 
-    // Requirement 8: Ensure the download button works for every song independently
     // Unstick any residual disabled or downloading state on the trigger button
     if (triggerBtn) {
       triggerBtn.disabled = false;
@@ -6344,7 +6421,9 @@ const DownloadManager = {
 
     const cleanTitle = (song.title || "Song").replace(/[/\\?%*:|"<>]/g, "").trim().substring(0, 80);
     const cleanArtist = (song.artist || "Artist").replace(/[/\\?%*:|"<>]/g, "").trim().substring(0, 60);
-    const safeFilename = `${cleanTitle} - ${cleanArtist}`;
+    const downloadCount = getSongDownloadCount(song);
+    const repeatSuffix = downloadCount > 0 ? ` (${downloadCount})` : "";
+    const safeFilename = `${cleanTitle} - ${cleanArtist}${repeatSuffix}`;
 
     const isFeatured = triggerBtn && triggerBtn.id === "featuredDownloadBtn";
     const isPlayerBar = triggerBtn && triggerBtn.id === "playerDownloadBtn";
@@ -6596,7 +6675,15 @@ if (typeof window !== "undefined") {
 
 function handleDownloadAction(song, triggerBtn = null) {
   if (!song) return Promise.resolve(false);
-  return DownloadManager.downloadSong(song, triggerBtn);
+  const isForce = Boolean(
+    triggerBtn && (
+      triggerBtn.getAttribute("data-force") === "true" ||
+      triggerBtn.classList.contains("download-again-btn") ||
+      triggerBtn.classList.contains("card-download-again-trigger") ||
+      triggerBtn.classList.contains("is-downloaded")
+    )
+  );
+  return DownloadManager.downloadSong(song, triggerBtn, isForce);
 }
 
 // Direct Handler to Open Audio File in Mobile Default Music App via system share sheet
@@ -8032,6 +8119,7 @@ if (typeof window !== "undefined") {
   window.GENRE_DEFINITIONS = GENRE_DEFINITIONS;
   window.analyzeSongGenre = analyzeSongGenre;
   window.isSongDownloaded = isSongDownloaded;
+  window.getSongDownloadCount = getSongDownloadCount;
   window.markSongDownloaded = markSongDownloaded;
   window.renderFavTypeOptionsHTML = renderFavTypeOptionsHTML;
   window.getActiveFavouritesList = getActiveFavouritesList;
