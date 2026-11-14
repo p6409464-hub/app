@@ -1,0 +1,18 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 80 80" width="100%" height="100%">
+    <defs>
+      <linearGradient id="kanGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+        <stop offset="0%" stop-color="#f472b6"/>
+        <stop offset="100%" stop-color="#db2777"/>
+      </linearGradient>
+    </defs>
+    <!-- Mysore Palace Grand Dome -->
+    <path d="M 40 12 C 46 22, 54 26, 54 34 L 26 34 C 26 26, 34 22, 40 12 Z" fill="url(#kanGrad)" />
+    <rect x="24" y="36" width="32" height="6" rx="2" fill="#fbcfe8" />
+    <!-- Pillars and Base -->
+    <rect x="26" y="44" width="4" height="22" rx="1" fill="url(#kanGrad)" />
+    <rect x="34" y="44" width="4" height="22" rx="1" fill="url(#kanGrad)" />
+    <rect x="42" y="44" width="4" height="22" rx="1" fill="url(#kanGrad)" />
+    <rect x="50" y="44" width="4" height="22" rx="1" fill="url(#kanGrad)" />
+    <rect x="22" y="64" width="36" height="4" rx="2" fill="url(#kanGrad)" />
+    <circle cx="40" cy="10" r="2.5" fill="#fbcfe8" />
+  </svg>

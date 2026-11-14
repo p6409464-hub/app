@@ -1,0 +1,21 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" width="100%" height="100%">
+    <defs>
+      <linearGradient id="mMelody" x1="0%" y1="0%" x2="100%" y2="100%">
+        <stop offset="0%" stop-color="#1e1b4b"/>
+        <stop offset="100%" stop-color="#0f172a"/>
+      </linearGradient>
+      <linearGradient id="moonGlow" x1="0%" y1="0%" x2="100%" y2="100%">
+        <stop offset="0%" stop-color="#fef08a"/>
+        <stop offset="100%" stop-color="#38bdf8"/>
+      </linearGradient>
+    </defs>
+    <rect width="100" height="100" rx="16" fill="url(#mMelody)" />
+    <!-- Crescent Moon -->
+    <path d="M 52 26 C 38 28, 30 42, 34 56 C 38 68, 50 74, 62 70 C 48 68, 44 50, 52 38 C 55 33, 58 30, 62 28 C 58 26, 55 26, 52 26 Z" fill="url(#moonGlow)" />
+    <!-- Twinkling Stars -->
+    <circle cx="28" cy="28" r="1.5" fill="#fef08a" />
+    <circle cx="68" cy="36" r="2" fill="#bae6fd" />
+    <circle cx="74" cy="52" r="1.5" fill="#fef08a" />
+    <circle cx="25" cy="55" r="1.2" fill="#bae6fd" />
+    <circle cx="48" cy="78" r="1.5" fill="#bae6fd" />
+  </svg>

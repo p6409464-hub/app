@@ -1,0 +1,18 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" width="100%" height="100%">
+    <defs>
+      <linearGradient id="e2k" x1="0%" y1="0%" x2="100%" y2="100%">
+        <stop offset="0%" stop-color="#2dd4bf"/>
+        <stop offset="100%" stop-color="#0284c7"/>
+      </linearGradient>
+    </defs>
+    <!-- Movie Clapperboard -->
+    <rect x="20" y="38" width="60" height="38" rx="4" fill="#0f172a" stroke="url(#e2k)" stroke-width="3" />
+    <!-- Top Clapper Bar -->
+    <g transform="translate(18, 22) rotate(-8)">
+      <rect x="0" y="0" width="62" height="14" rx="3" fill="#0f172a" stroke="url(#e2k)" stroke-width="2.5" />
+      <polygon points="12,0 18,0 8,14 2,14" fill="#2dd4bf" />
+      <polygon points="26,0 32,0 22,14 16,14" fill="#2dd4bf" />
+      <polygon points="40,0 46,0 36,14 30,14" fill="#2dd4bf" />
+      <polygon points="54,0 60,0 50,14 44,14" fill="#2dd4bf" />
+    </g>
+  </svg>

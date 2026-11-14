@@ -1,0 +1,19 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" width="100%" height="100%">
+    <defs>
+      <linearGradient id="e80s" x1="0%" y1="0%" x2="100%" y2="100%">
+        <stop offset="0%" stop-color="#ec4899"/>
+        <stop offset="100%" stop-color="#a855f7"/>
+      </linearGradient>
+    </defs>
+    <!-- Retro Cassette Tape -->
+    <rect x="15" y="24" width="70" height="48" rx="6" fill="#18181b" stroke="url(#e80s)" stroke-width="3" />
+    <!-- Cassette Label Area -->
+    <rect x="22" y="30" width="56" height="24" rx="3" fill="#27272a" />
+    <!-- Spools Window -->
+    <rect x="30" y="34" width="40" height="16" rx="2" fill="#09090b" stroke="url(#e80s)" stroke-width="1.5" />
+    <!-- Left & Right Spools -->
+    <circle cx="38" cy="42" r="5" fill="none" stroke="#f472b6" stroke-width="2" />
+    <circle cx="62" cy="42" r="5" fill="none" stroke="#f472b6" stroke-width="2" />
+    <!-- Trapezoid bottom -->
+    <polygon points="26,72 74,72 68,62 32,62" fill="#27272a" stroke="url(#e80s)" stroke-width="1.5" />
+  </svg>

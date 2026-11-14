@@ -1,0 +1,20 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" width="100%" height="100%">
+    <defs>
+      <linearGradient id="mRap" x1="0%" y1="0%" x2="100%" y2="100%">
+        <stop offset="0%" stop-color="#0369a1"/>
+        <stop offset="100%" stop-color="#082f49"/>
+      </linearGradient>
+    </defs>
+    <rect width="100" height="100" rx="16" fill="url(#mRap)" />
+    <!-- Stage Microphone with Spotlight -->
+    <!-- Diagonal Spotlight Rays -->
+    <polygon points="10,10 60,10 90,90 40,90" fill="#38bdf8" opacity="0.15" />
+    <!-- Mic Capsule -->
+    <g transform="translate(50, 48) rotate(-35)">
+      <rect x="-8" y="-24" width="16" height="24" rx="8" fill="#e0f2fe" stroke="#38bdf8" stroke-width="2" />
+      <line x1="-8" y1="-12" x2="8" y2="-12" stroke="#0284c7" stroke-width="1.5" />
+      <line x1="0" y1="-24" x2="0" y2="0" stroke="#0284c7" stroke-width="1.5" />
+      <!-- Mic Body -->
+      <path d="M -6 0 L -4 28 L 4 28 L 6 0 Z" fill="#0369a1" stroke="#38bdf8" stroke-width="1.5" />
+    </g>
+  </svg>

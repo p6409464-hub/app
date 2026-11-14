@@ -600,6 +600,77 @@ function setupEventListeners() {
     });
   }
 
+  // Open Player Nav Button
+  const openPlayerBtn = document.getElementById("openPlayerNavBtn");
+  if (openPlayerBtn) {
+    openPlayerBtn.addEventListener("click", () => {
+      const playerEl = document.getElementById("featuredPlayerSection");
+      if (playerEl) {
+        playerEl.scrollIntoView({ behavior: "smooth", block: "start" });
+      }
+    });
+  }
+
+  // Hero Browse Button
+  const heroBrowseBtn = document.getElementById("heroBrowseSongsBtn");
+  if (heroBrowseBtn) {
+    heroBrowseBtn.addEventListener("click", () => {
+      AppState.activeSection = "full_library";
+      AppState.activeLanguage = "all";
+      AppState.activeType = "all";
+      AppState.currentPage = 1;
+      updateActivePills();
+      renderContent();
+      const cont = document.getElementById("contentContainer");
+      if (cont) cont.scrollIntoView({ behavior: "smooth", block: "start" });
+    });
+  }
+
+  // Nav Links smooth navigation
+  document.querySelectorAll(".nav-link").forEach(link => {
+    link.addEventListener("click", (e) => {
+      document.querySelectorAll(".nav-link").forEach(l => l.classList.remove("active"));
+      link.classList.add("active");
+      const targetNav = link.dataset.nav;
+      if (targetNav === "discover") {
+        AppState.activeSection = "all";
+        AppState.activeLanguage = "all";
+        AppState.activeType = "all";
+        updateActivePills();
+        renderContent();
+        const hero = document.getElementById("heroSection");
+        if (hero) hero.scrollIntoView({ behavior: "smooth" });
+      } else if (targetNav === "languages") {
+        const langSec = document.getElementById("browseLanguages");
+        if (langSec) langSec.scrollIntoView({ behavior: "smooth" });
+      } else if (targetNav === "favourites") {
+        AppState.activeSection = "favourites";
+        updateActivePills();
+        renderContent();
+        const cont = document.getElementById("contentContainer");
+        if (cont) cont.scrollIntoView({ behavior: "smooth" });
+      } else if (targetNav === "albums") {
+        AppState.activeSection = "all_songs";
+        updateActivePills();
+        renderContent();
+        const cont = document.getElementById("contentContainer");
+        if (cont) cont.scrollIntoView({ behavior: "smooth" });
+      }
+    });
+  });
+
+  // Smooth scroll to content on card click
+  document.querySelectorAll(".lang-card, .mood-card, .explore-card, .fav-banner-card").forEach(el => {
+    el.addEventListener("click", () => {
+      setTimeout(() => {
+        const cont = document.getElementById("contentContainer");
+        if (cont && window.innerWidth <= 1024) {
+          cont.scrollIntoView({ behavior: "smooth", block: "start" });
+        }
+      }, 80);
+    });
+  });
+
   // Section Navigation Pills (All, Trending, Recent, Favourites, History)
   DOM.sectionPills.forEach(pill => {
     pill.addEventListener("click", () => {
@@ -2597,9 +2668,11 @@ function loadCatalogue() {
   console.log(`[MusicHub] Catalogue loaded with ${AppState.masterSongs.length} tracks.`);
 
   if (!AppState.currentSong && AppState.masterSongs.length > 0) {
+    const manithanSong = AppState.masterSongs.find(s => s.title && s.title.toLowerCase().includes("manithan manithan")) ||
+                         AppState.masterSongs.find(s => s.album && s.album.toLowerCase().includes("manithan"));
     const initSong = (AppState.favourites.length > 0)
-      ? (AppState.masterSongs.find(s => s.id === AppState.favourites[0]) || AppState.masterSongs[0])
-      : AppState.masterSongs[0];
+      ? (AppState.masterSongs.find(s => s.id === AppState.favourites[0]) || manithanSong || AppState.masterSongs[0])
+      : (manithanSong || AppState.masterSongs[0]);
     if (initSong) {
       AppState.currentSong = initSong;
       updateFeaturedPlayerUI(initSong);

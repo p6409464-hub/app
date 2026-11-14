@@ -5,12 +5,13 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <meta name="referrer" content="no-referrer" />
   <title>Pranesh Music Hub - Modern Dark Music Experience</title>
-  <meta name="description" content="Stream and directly download Tamil, English, Malayalam, Instrumental, and Only Friends OST tracks in a modern, ad-free dark theme." />
-  <link rel="stylesheet" href="static/css/style.css?v=3.50.0" />
+  <meta name="description" content="Stream and directly download Tamil, Telugu, Hindi, Malayalam, Kannada, English and global hits in an ad-free ultra-modern dark theme." />
+  <link rel="icon" type="image/svg+xml" href="static/images/logo_icon.svg" />
+  <link rel="stylesheet" href="static/css/style.css?v=3.60.0" />
   <!-- Google Fonts: Inter -->
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet" />
 </head>
 <body>
 
@@ -18,47 +19,51 @@
        Top Navigation Bar
        ======================================================================== -->
   <header class="navbar">
-    <!-- Brand -->
-    <div class="brand" onclick="location.reload()">
-      <div class="brand-icon">🎵</div>
+    <!-- Brand with New PMH Logo -->
+    <div class="brand" onclick="location.reload()" title="Pranesh Music Hub - Home">
+      <div class="brand-logo-wrap">
+        <img src="static/images/logo_icon.svg" class="brand-logo-img" alt="PMH" />
+      </div>
       <div class="brand-text">
-        <h1>Pranesh Music Hub</h1>
-        <span>Ad-Free • Stream &amp; Download</span>
+        <h1 class="brand-title">Pranesh Music Hub</h1>
+        <span class="brand-subtitle">Music Library</span>
       </div>
     </div>
 
-    <!-- Search Bar -->
-    <div class="search-container">
-      <div class="search-input-wrapper">
-        <span class="search-icon">🔍</span>
-        <input 
-          type="text" 
-          id="searchInput" 
-          class="search-input" 
-          placeholder="Search songs, movie, artist, or type 'all songs' to check all..." 
-          autocomplete="off" 
-          spellcheck="false"
-        />
-        <div class="search-input-actions">
-          <button id="voiceLangToggleBtn" class="voice-lang-pill" type="button" title="Switch Voice Search Language (Tamil ta-IN / English en-IN)">தமிழ்</button>
-          <button id="voiceSearchBtn" class="voice-search-btn" type="button" title="Voice Search (Tamil / English)">🎙️</button>
-          <button id="clearSearchBtn" class="clear-search-btn" type="button" title="Clear search">✕</button>
+    <!-- Center Nav Links -->
+    <nav class="nav-links">
+      <a href="#heroSection" class="nav-link active" data-nav="discover">Discover</a>
+      <a href="#browseLanguages" class="nav-link" data-nav="languages">Languages</a>
+      <a href="#contentContainer" class="nav-link nav-fav-trigger section-pill" data-section="favourites" data-nav="favourites">Favourites</a>
+      <a href="#contentContainer" class="nav-link nav-albums-trigger section-pill" data-section="all_songs" data-nav="albums">Albums</a>
+    </nav>
+
+    <!-- Search Bar & Nav Actions -->
+    <div class="navbar-right">
+      <div class="search-container">
+        <div class="search-input-wrapper">
+          <span class="search-icon">🔍</span>
+          <input 
+            type="text" 
+            id="searchInput" 
+            class="search-input" 
+            placeholder="Search songs, movie, artist, or type 'all songs'..." 
+            autocomplete="off" 
+            spellcheck="false"
+          />
+          <div class="search-input-actions">
+            <button id="voiceLangToggleBtn" class="voice-lang-pill" type="button" title="Switch Voice Search Language (Tamil ta-IN / English en-IN)">தமிழ்</button>
+            <button id="voiceSearchBtn" class="voice-search-btn" type="button" title="Voice Search (Tamil / English)">🎙️</button>
+            <button id="clearSearchBtn" class="clear-search-btn" type="button" title="Clear search">✕</button>
+          </div>
         </div>
+        <div id="searchSuggestionsBox" class="search-suggestions-box" style="display: none;"></div>
       </div>
-      <div id="searchSuggestionsBox" class="search-suggestions-box" style="display: none;"></div>
-    </div>
 
-    <!-- Nav Actions -->
-    <div class="nav-actions">
-      <button id="checkAllSongsNavBtn" class="btn btn-pill section-pill" data-section="all_songs" title="Check all 7,200+ songs in catalogue">
-        <span>🎵</span> All Songs
+      <button id="openPlayerNavBtn" class="btn btn-open-player" title="Open / Scroll to Player">
+        <span>▶</span> Open player
       </button>
-      <button class="btn btn-pill section-pill" data-section="favourites" title="View your favourite tracks">
-        <span>❤️</span> Favourites
-      </button>
-      <button class="btn btn-pill section-pill" data-section="history" title="View recently played tracks">
-        <span>🕒</span> History
-      </button>
+
       <button id="themeToggleBtn" class="btn btn-pill theme-toggle-btn" title="Toggle Light / Dark Theme">
         <span id="themeToggleIcon">🌙</span> <span id="themeToggleText" class="hide-mobile">Dark</span>
       </button>
@@ -66,24 +71,65 @@
   </header>
 
   <!-- ========================================================================
-       Featured Medium-Big Player & Download Options Hub
+       Hero Section ("Every song, ready to play.")
+       ======================================================================== -->
+  <section id="heroSection" class="hero-section">
+    <div class="hero-container">
+      <!-- Left Column: Headlines & CTA -->
+      <div class="hero-content">
+        <h1 class="hero-headline">
+          Every song,<br />
+          <span class="hero-headline-accent">ready to play.</span>
+        </h1>
+        <p class="hero-subtext">
+          Find Tamil, Telugu, Hindi, Malayalam, Kannada and global favourites.
+        </p>
+        <div class="hero-cta-wrap">
+          <button id="heroBrowseSongsBtn" class="btn hero-cta-btn section-pill" data-section="full_library" title="Browse all 7,000+ songs">
+            <span>Browse 7,000+ songs</span>
+            <span class="hero-cta-arrow">›</span>
+          </button>
+          <div class="hero-kicker">MUSIC FOR EVERY MOOD</div>
+        </div>
+      </div>
+
+      <!-- Right Column: Glowing 3D Headphones Graphic & Ticker -->
+      <div class="hero-visual">
+        <div class="hero-headphones-container">
+          <img src="static/images/hero_headphones.svg" alt="Headphones" class="hero-headphones-img" />
+        </div>
+        <div class="hero-ticker">
+          <span>PLAY</span>
+          <span class="ticker-dot">•</span>
+          <span>EXPLORE</span>
+          <span class="ticker-dot">•</span>
+          <span>FEEL</span>
+          <span class="ticker-dot">•</span>
+          <span>REPEAT</span>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ========================================================================
+       Featured Medium-Big Player Card ("Manithan Manithan")
        ======================================================================== -->
   <div id="featuredPlayerSection" class="featured-player-section">
     <div class="featured-player-card">
       <div class="featured-glow-overlay"></div>
 
-      <!-- Top Status Pill -->
+      <!-- Top Status Pill & Audio Master Quality -->
       <div class="featured-status-bar">
         <div class="featured-status-pill">
           <span class="status-pulse-dot"></span>
           <span id="featuredPlayerStatus">READY TO PLAY</span>
         </div>
-        <span class="featured-format-badge">🎵 Full 320kbps Audio • No 30s Cutoffs</span>
+        <span class="featured-format-badge">⚡ 320kbps • Studio Master Audio</span>
       </div>
 
-      <!-- Main Player (Artwork + Details + Controls) -->
+      <!-- Main Player Body (Artwork + Info + Seekbar + Controls) -->
       <div class="featured-player-body">
-        <!-- Medium-Big Album Artwork -->
+        <!-- Album Artwork with Soundwave Animation -->
         <div class="featured-artwork-container">
           <img id="featuredThumb" class="featured-thumb-img" src="static/images/only_friends_theme.svg" alt="Cover Art" />
           <div id="featuredSoundwave" class="featured-soundwave-bars">
@@ -95,15 +141,15 @@
           </div>
         </div>
 
-        <!-- Song Info, Seekbar & Medium-Big Controls -->
+        <!-- Song Info, Seekbar & Controls -->
         <div class="featured-info-controls">
           <div class="featured-track-header">
             <div class="featured-track-meta">
-              <h2 id="featuredTitle" class="featured-title">Select or Search a Song</h2>
+              <h2 id="featuredTitle" class="featured-title">Manithan Manithan</h2>
               <div class="featured-artist-wrap">
-                <span id="featuredArtist" class="featured-artist">Pranesh Music Hub</span>
+                <span id="featuredArtist" class="featured-artist">Malaysia Vasudevan, Chandrabose, Vairamuthu</span>
                 <span class="featured-meta-separator">•</span>
-                <span id="featuredAlbum" class="featured-album">All Tamil &amp; Global Hits (1980-2026)</span>
+                <span id="featuredAlbum" class="featured-album">Manithan • Tamil</span>
               </div>
             </div>
             <button id="featuredFavBtn" class="featured-fav-btn" title="Toggle Favourite">🤍</button>
@@ -113,12 +159,11 @@
           <div class="featured-seekbar-container">
             <span id="featuredCurrentTime" class="f-time-display">0:00</span>
             <input type="range" id="featuredSeekbar" class="featured-seekbar-slider" min="0" max="100" value="0" step="0.1" />
-            <span id="featuredDurationTime" class="f-time-display">0:00</span>
+            <span id="featuredDurationTime" class="f-time-display">4:20</span>
           </div>
 
-          <!-- Medium-Big Controls -->
+          <!-- Controls Row -->
           <div class="featured-buttons-row">
-            <button id="featuredSpeedBtn" class="f-ctrl-btn f-speed-btn" title="Playback Speed: 1.0x">1.0x</button>
             <button id="featuredShuffleBtn" class="f-ctrl-btn" title="Shuffle Playback">🔀</button>
             <button id="featuredPrevBtn" class="f-ctrl-btn" title="Previous Track">⏮</button>
             <button id="featuredPlayPauseBtn" class="f-play-pause-btn" title="Play / Pause (Spacebar)">
@@ -126,6 +171,7 @@
             </button>
             <button id="featuredNextBtn" class="f-ctrl-btn" title="Next Track">⏭</button>
             <button id="featuredRepeatBtn" class="f-ctrl-btn" title="Repeat (Off / All / One)">🔁</button>
+            <button id="featuredSpeedBtn" class="f-ctrl-btn f-speed-btn" title="Playback Speed: 1.0x">1.0x</button>
             <button id="featuredEqBtn" class="f-ctrl-btn" title="Equalizer &amp; Bass Boost">🎚️</button>
             <button id="featuredLyricsBtn" class="f-ctrl-btn" title="Live Lyrics">📜</button>
             <button id="heroPlayBtn" style="display:none;" aria-hidden="true"></button>
@@ -133,11 +179,11 @@
         </div>
       </div>
 
-      <!-- Download Options (IN BLOW / BELOW OF PLAYING SONG) -->
+      <!-- Download Options (BELOW PLAYING SONG) -->
       <div class="featured-download-options">
         <div class="dl-options-header">
-          <span class="dl-header-title">📥 Download Options (&lt; 2MB Ultra-Light • Direct MP3)</span>
-          <span class="dl-header-badge">⚡ Less than 2MB • Zero Lag • Fast Download</span>
+          <span class="dl-header-title">📥 Download Options (&lt; 2MB Ultra-Light • Direct Audio)</span>
+          <span class="dl-header-badge">⚡ Less than 2MB • Zero Lag • Direct File</span>
         </div>
 
         <div class="dl-options-body">
@@ -192,28 +238,215 @@
   </div>
 
   <!-- ========================================================================
-       Filter Controls: Language & Section Pills
+       Front Page Section 1: Browse by language
+       ======================================================================== -->
+  <section id="browseLanguages" class="front-section">
+    <div class="front-section-header">
+      <h2 class="front-section-title">Browse by language</h2>
+      <button class="front-section-view-all section-pill" data-section="all" data-target="languages" title="View all language tracks">View all ›</button>
+    </div>
+    <div class="language-cards-grid">
+      <div class="lang-card lang-chip" data-lang="tamil" title="Tamil Music Collection">
+        <div class="card-icon-box glow-purple">
+          <img src="static/images/icons/lang_tamil.svg" alt="Tamil" />
+        </div>
+        <span class="card-label">Tamil</span>
+      </div>
+      <div class="lang-card lang-chip" data-lang="telugu" title="Telugu Music Collection">
+        <div class="card-icon-box glow-amber">
+          <img src="static/images/icons/lang_telugu.svg" alt="Telugu" />
+        </div>
+        <span class="card-label">Telugu</span>
+      </div>
+      <div class="lang-card lang-chip" data-lang="hindi" title="Hindi Music Collection">
+        <div class="card-icon-box glow-blue">
+          <img src="static/images/icons/lang_hindi.svg" alt="Hindi" />
+        </div>
+        <span class="card-label">Hindi</span>
+      </div>
+      <div class="lang-card lang-chip" data-lang="malayalam" title="Malayalam Music Collection">
+        <div class="card-icon-box glow-green">
+          <img src="static/images/icons/lang_malayalam.svg" alt="Malayalam" />
+        </div>
+        <span class="card-label">Malayalam</span>
+      </div>
+      <div class="lang-card lang-chip" data-lang="kannada" title="Kannada Music Collection">
+        <div class="card-icon-box glow-pink">
+          <img src="static/images/icons/lang_kannada.svg" alt="Kannada" />
+        </div>
+        <span class="card-label">Kannada</span>
+      </div>
+      <div class="lang-card lang-chip" data-lang="english" title="English Music Collection">
+        <div class="card-icon-box glow-cyan">
+          <img src="static/images/icons/lang_english.svg" alt="English" />
+        </div>
+        <span class="card-label">English</span>
+      </div>
+      <div class="lang-card lang-chip" data-lang="instrumental" title="Instrumental Collection">
+        <div class="card-icon-box glow-indigo">
+          <img src="static/images/icons/lang_instrumental.svg" alt="Instrumental" />
+        </div>
+        <span class="card-label">Instrumental</span>
+      </div>
+    </div>
+  </section>
+
+  <!-- ========================================================================
+       Front Page Section 2: Find your mood
+       ======================================================================== -->
+  <section id="findYourMood" class="front-section">
+    <div class="front-section-header">
+      <h2 class="front-section-title">Find your mood</h2>
+      <button class="front-section-view-all section-pill" data-section="all" data-target="moods" title="View all mood categories">View all ›</button>
+    </div>
+    <div class="mood-cards-grid">
+      <div class="mood-card type-chip" data-type="melody" title="Melody Music">
+        <div class="mood-card-thumb">
+          <img src="static/images/icons/mood_melody.svg" alt="Melody" />
+        </div>
+        <span class="mood-card-label">Melody</span>
+      </div>
+      <div class="mood-card type-chip" data-type="kuthu" title="Kuthu & Dance Beats">
+        <div class="mood-card-thumb">
+          <img src="static/images/icons/mood_kuthu.svg" alt="Kuthu & Dance" />
+        </div>
+        <span class="mood-card-label">Kuthu &amp; Dance</span>
+      </div>
+      <div class="mood-card type-chip" data-type="folk" title="Folk & Village Hits">
+        <div class="mood-card-thumb">
+          <img src="static/images/icons/mood_folk.svg" alt="Folk" />
+        </div>
+        <span class="mood-card-label">Folk</span>
+      </div>
+      <div class="mood-card type-chip" data-type="love" title="Love & Romantic Anthems">
+        <div class="mood-card-thumb">
+          <img src="static/images/icons/mood_love.svg" alt="Love" />
+        </div>
+        <span class="mood-card-label">Love</span>
+      </div>
+      <div class="mood-card type-chip" data-type="romantic" title="Romantic Hits">
+        <div class="mood-card-thumb">
+          <img src="static/images/icons/mood_romantic.svg" alt="Romantic" />
+        </div>
+        <span class="mood-card-label">Romantic</span>
+      </div>
+      <div class="mood-card type-chip" data-type="sad" title="Sad Melody & Emotional Tracks">
+        <div class="mood-card-thumb">
+          <img src="static/images/icons/mood_sad.svg" alt="Sad Melody" />
+        </div>
+        <span class="mood-card-label">Sad Melody</span>
+      </div>
+      <div class="mood-card type-chip" data-type="rap" title="Rap & Hip-Hop Tracks">
+        <div class="mood-card-thumb">
+          <img src="static/images/icons/mood_rap.svg" alt="Rap" />
+        </div>
+        <span class="mood-card-label">Rap</span>
+      </div>
+      <div class="mood-card type-chip" data-type="classical" title="Classical & Carnatic Melodies">
+        <div class="mood-card-thumb">
+          <img src="static/images/icons/mood_classical.svg" alt="Classical" />
+        </div>
+        <span class="mood-card-label">Classical</span>
+      </div>
+      <div class="mood-card type-chip" data-type="devotional" title="Devotional & Spiritual Songs">
+        <div class="mood-card-thumb">
+          <img src="static/images/icons/mood_devotional.svg" alt="Devotional" />
+        </div>
+        <span class="mood-card-label">Devotional</span>
+      </div>
+    </div>
+  </section>
+
+  <!-- ========================================================================
+       Front Page Section 3: Explore more music
+       ======================================================================== -->
+  <section id="exploreMoreMusic" class="front-section">
+    <div class="front-section-header">
+      <h2 class="front-section-title">Explore more music</h2>
+      <button class="front-section-view-all section-pill" data-section="all" data-target="explore" title="View all categories">View all ›</button>
+    </div>
+    <div class="explore-cards-grid">
+      <div class="explore-card section-pill" data-section="era_80s" title="80s Tamil & Global Classics (1980-1989)">
+        <div class="explore-icon-box glow-magenta">
+          <img src="static/images/icons/explore_80s.svg" alt="80s Movies" />
+        </div>
+        <span class="card-label">80s Movies</span>
+      </div>
+      <div class="explore-card section-pill" data-section="era_90s" title="90s Golden Era Soundtracks (1990-1999)">
+        <div class="explore-icon-box glow-cyan">
+          <img src="static/images/icons/explore_90s.svg" alt="90s Movies" />
+        </div>
+        <span class="card-label">90s Movies</span>
+      </div>
+      <div class="explore-card section-pill" data-section="era_2k" title="2K Millennium Hits (2000-2009)">
+        <div class="explore-icon-box glow-teal">
+          <img src="static/images/icons/explore_2k.svg" alt="2K Movies" />
+        </div>
+        <span class="card-label">2K Movies</span>
+      </div>
+      <div class="explore-card section-pill" data-section="era_now" title="Now Hits & Modern Releases (2010-2026)">
+        <div class="explore-icon-box glow-violet">
+          <img src="static/images/icons/explore_now.svg" alt="Now Movies" />
+        </div>
+        <span class="card-label">Now Movies</span>
+      </div>
+      <div class="explore-card section-pill" data-section="trending" title="Top Trending Songs">
+        <div class="explore-icon-box glow-pink">
+          <img src="static/images/icons/explore_trending.svg" alt="Trending Songs" />
+        </div>
+        <span class="card-label">Trending Songs</span>
+      </div>
+      <div class="explore-card section-pill" data-section="recent" title="Recently Added Tracks">
+        <div class="explore-icon-box glow-blue">
+          <img src="static/images/icons/explore_recent.svg" alt="Recently Added" />
+        </div>
+        <span class="card-label">Recently Added</span>
+      </div>
+    </div>
+  </section>
+
+  <!-- ========================================================================
+       Front Page Section 4: Your favourites, one tap away
+       ======================================================================== -->
+  <section class="front-section favourites-banner-section">
+    <div class="fav-banner-card section-pill" data-section="favourites" title="View Your Favourite Tracks">
+      <h3 class="fav-banner-title">Your favourites, one tap away</h3>
+      <p class="fav-banner-subtext">Tap the heart on any song to save it here.</p>
+      
+      <div class="fav-banner-centerpiece">
+        <div class="fav-wave-line left"></div>
+        <button class="fav-banner-heart-btn" aria-label="Open Favourites">
+          <span>💖</span>
+        </button>
+        <div class="fav-wave-line right"></div>
+      </div>
+      
+      <div class="fav-banner-tagline">YOUR MUSIC. ALWAYS WITH YOU.</div>
+    </div>
+  </section>
+
+  <!-- ========================================================================
+       Songs Catalogue & Active Filter Toolbar
        ======================================================================== -->
   <main class="container">
     <div class="filter-section">
-      <!-- Language Chips Row -->
-      <div class="filter-row">
-        <span class="filter-label">Language:</span>
-        <button class="chip lang-chip active" data-lang="all">All Languages</button>
-        <button class="chip lang-chip" data-lang="tamil">🌺 Tamil</button>
-        <button class="chip lang-chip" data-lang="telugu">🪘 Telugu</button>
-        <button class="chip lang-chip" data-lang="hindi">🪔 Hindi</button>
-        <button class="chip lang-chip" data-lang="malayalam">🌴 Malayalam</button>
-        <button class="chip lang-chip" data-lang="kannada">🪕 Kannada</button>
-        <button class="chip lang-chip" data-lang="english">🎸 English</button>
-        <button class="chip lang-chip" data-lang="instrumental">🎹 Instrumental</button>
-        <button class="chip lang-chip" data-lang="only_friends">🎬 Only Friends OST</button>
+      <!-- Active Toolbar Filter Header -->
+      <div class="filter-toolbar-header">
+        <div class="filter-header-left">
+          <span class="filter-section-icon">🎵</span>
+          <span id="activeFilterHeading" class="filter-section-heading">All Songs Catalogue</span>
+        </div>
+        <div class="filter-header-right">
+          <button id="checkAllSongsNavBtn" class="btn btn-pill section-pill active" data-section="all" title="View All Songs">
+            <span>✨</span> All Tracks
+          </button>
+        </div>
       </div>
 
-      <!-- Favourites by Type Dropdown Row -->
+      <!-- Favourites by Genre Dropdown Row -->
       <div class="filter-row fav-type-dropdown-row">
         <span class="filter-label">❤️ Favourites by Genre:</span>
-        <select id="filterFavTypeSelect" class="fav-type-select" title="Show only favourite songs in the dropdown by genre (Melody, Kuthu, Folk, Love, Sad Melody, Romantic, Gaana, Rap, Hip-Hop, Classical, Devotional, Motivational, Folk Dance, Western, Instrumental, Fusion, Independent Album, Film Album, Needs Verification)">
+        <select id="filterFavTypeSelect" class="fav-type-select" title="Show only favourite songs in the dropdown by genre">
           <option value="all">✨ All Favourites</option>
           <option value="melody">❤️ Melody</option>
           <option value="kuthu">🔥 Kuthu / Dappankuthu</option>
@@ -237,32 +470,29 @@
         </select>
       </div>
 
-      <!-- Type / Mood / Genre Filter Row -->
-      <div class="filter-row type-filter-row">
-        <span class="filter-label">Type / Mood:</span>
-        <button class="chip type-chip active" data-type="all">✨ All Types</button>
-        <button class="chip type-chip" data-type="melody">❤️ Melody &amp; Romance</button>
-        <button class="chip type-chip" data-type="kuthu">🔥 Kuthu &amp; Dance</button>
-        <button class="chip type-chip" data-type="folk">🥁 Folk &amp; Gaana</button>
-        <button class="chip type-chip" data-type="sad">💔 Sad &amp; Emotional</button>
-        <button class="chip type-chip" data-type="devotional">🕉️ Devotional</button>
-        <button class="chip type-chip" data-type="rap">🎤 Rap &amp; Hip-Hop</button>
-        <button class="chip type-chip" data-type="lofi">☕ Lofi &amp; Chill</button>
-        <button class="chip type-chip" data-type="edm">🎧 EDM &amp; Remix</button>
-        <button class="chip type-chip" data-type="spotify">🌟 Spotify Global</button>
-      </div>
-
-      <!-- Section Navigation Row -->
-      <div class="filter-row">
-        <span class="filter-label">Browse:</span>
-        <button class="chip section-pill active" data-section="all">All Sections</button>
-        <button class="chip section-pill" data-section="era_80s">📻 80s Movies (1980-89)</button>
-        <button class="chip section-pill" data-section="era_90s">📼 90s Movies (1990-99)</button>
-        <button class="chip section-pill" data-section="era_2k">💿 2K Movies (2000-09)</button>
-        <button class="chip section-pill" data-section="era_now">⚡ Now Movies (2010-2026)</button>
-        <button class="chip section-pill" data-section="full_library">📚 All Songs (7,000+)</button>
-        <button class="chip section-pill" data-section="trending">🔥 Trending Songs</button>
-        <button class="chip section-pill" data-section="recent">🆕 Recently Added</button>
+      <!-- Secondary Language / Era Filter Bar -->
+      <div class="filter-row filter-row-compact">
+        <span class="filter-label">Filter:</span>
+        <button class="chip lang-chip active" data-lang="all">All</button>
+        <button class="chip lang-chip" data-lang="tamil">Tamil</button>
+        <button class="chip lang-chip" data-lang="telugu">Telugu</button>
+        <button class="chip lang-chip" data-lang="hindi">Hindi</button>
+        <button class="chip lang-chip" data-lang="malayalam">Malayalam</button>
+        <button class="chip lang-chip" data-lang="kannada">Kannada</button>
+        <button class="chip lang-chip" data-lang="english">English</button>
+        <button class="chip lang-chip" data-lang="instrumental">Instrumental</button>
+        <button class="chip lang-chip" data-lang="only_friends">Only Friends OST</button>
+        <span class="filter-divider">|</span>
+        <button class="chip type-chip active" data-type="all">All Moods</button>
+        <button class="chip type-chip" data-type="melody">Melody</button>
+        <button class="chip type-chip" data-type="kuthu">Kuthu</button>
+        <button class="chip type-chip" data-type="folk">Folk</button>
+        <button class="chip type-chip" data-type="sad">Sad</button>
+        <button class="chip type-chip" data-type="devotional">Devotional</button>
+        <button class="chip type-chip" data-type="rap">Rap</button>
+        <button class="chip type-chip" data-type="lofi">Lofi</button>
+        <button class="chip type-chip" data-type="edm">EDM</button>
+        <button class="chip type-chip" data-type="spotify">Spotify</button>
       </div>
     </div>
 
@@ -285,6 +515,13 @@
     </div>
   </main>
 
+  <!-- ========================================================================
+       Bottom Audio Waveform & Branding Bar
+       ======================================================================== -->
+  <div class="bottom-branding-waveform">
+    <div class="branding-soundwave-line"></div>
+    <div class="branding-tagline">FULL 320KBPS AUDIO • NO 30S CUTOFFS</div>
+  </div>
   <!-- ========================================================================
        Sticky In-Page Music Player (Fixed at Bottom)
        ======================================================================== -->
