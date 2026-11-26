@@ -369,6 +369,9 @@ function setupEventListeners() {
   initTheme();
   initSearchSuggestions();
   initVoiceSearch();
+  if (typeof window !== 'undefined' && window.ImportCenterManager && typeof window.ImportCenterManager.init === 'function') {
+    window.ImportCenterManager.init();
+  }
 
   // Playback speed buttons
   [DOM.playbackSpeedBtn, DOM.featuredSpeedBtn, DOM.fullscreenSpeedBtn].forEach(btn => {
@@ -2663,6 +2666,15 @@ function loadCatalogue() {
 
   // Build high-performance Tamil phonological and transliteration inverted index
   buildSearchIndex(AppState.masterSongs);
+
+  // Load persistent imported tracks from IndexedDB (Phone, PC, APIs, Datasets)
+  if (typeof MusicDB !== 'undefined' && typeof MusicDB.getAllSongs === 'function') {
+    MusicDB.getAllSongs().then(storedSongs => {
+      if (Array.isArray(storedSongs) && storedSongs.length > 0) {
+        mergeImportedSongs(storedSongs, false);
+      }
+    }).catch(e => console.warn('[MusicHub] MusicDB.getAllSongs err:', e));
+  }
 
   // Production log
   console.log(`[MusicHub] Catalogue loaded with ${AppState.masterSongs.length} tracks.`);
@@ -5690,6 +5702,39 @@ function playSong(song, preserveQueue = false) {
 
   updatePlayerBarUI(song);
 
+  // Handle local audio files uploaded from Phone or Computer via IndexedDB Blob
+  if (song.source === "local" || song.audio_url === "blob:stored" || (song.audio_url && song.audio_url.startsWith("blob:"))) {
+    if (typeof MusicDB !== "undefined" && typeof MusicDB.getAudioBlob === "function") {
+      AppState.isLoading = true;
+      MusicDB.getAudioBlob(song.id).then(blob => {
+        AppState.isLoading = false;
+        if (blob) {
+          const blobUrl = (typeof window !== "undefined" && window.URL) ? window.URL.createObjectURL(blob) : "blob:mock";
+          if (typeof DownloadManager !== "undefined" && typeof DownloadManager.registerBlob === "function") {
+            DownloadManager.registerBlob(blobUrl, blob, 3600000);
+          }
+          if (typeof audioPlayer !== "undefined") {
+            audioPlayer.src = blobUrl;
+            audioPlayer.play().catch(e => console.warn("[MusicHub] Local audio playback:", e));
+          }
+          if (typeof updatePlayingCardHighlight === "function") updatePlayingCardHighlight();
+        } else {
+          showToast("⚠️ Local audio file not found in storage.", "warning");
+        }
+      }).catch(err => {
+        AppState.isLoading = false;
+        console.warn("[MusicHub] Local audio load err:", err);
+      });
+      return;
+    }
+  }
+
+  // Handle YouTube Music streams via background stream/embed
+  if (song.source === "youtube") {
+    playSpotifyInBackground(song);
+    return;
+  }
+
   // Audio source resolution: Always prioritize full-length 320kbps CDN stream
   let streamSrc = "";
   if (song.audio_url && song.audio_url.startsWith("http")) {
@@ -6340,6 +6385,17 @@ const DownloadManager = {
   },
 
   downloadSong(song, triggerBtn = null, force = false) {
+    if (!song) return Promise.resolve(false);
+
+    // Strict Spotify & YouTube Music Non-Downloadable Compliance Check
+    if (song.download_authorized === false || ((song.source === "spotify" || song.source === "youtube") && song.download_authorized !== true)) {
+      showToast(`🔒 "${song.title || 'Track'}" is licensed for authorized online streaming only and cannot be downloaded directly.`, "warning");
+      if (triggerBtn) {
+        triggerBtn.disabled = false;
+        triggerBtn.classList.remove("is-downloading");
+      }
+      return Promise.resolve(false);
+    }
     if (!song) return Promise.resolve(false);
     const songId = song.id ? String(song.id) : `${song.title || "unknown"}_${song.artist || "unknown"}`;
     
@@ -8161,6 +8217,541 @@ async function downloadFavouritesAsZip(songsToDownload, zipFilename = "Pranesh_M
 }
 
 
+
+// ==========================================================================
+// MULTI-SOURCE INDIAN MUSIC IMPORT SYSTEM & IMPORT CENTER DASHBOARD
+// ==========================================================================
+
+function mergeImportedSongs(newSongsList, persistToDB = false) {
+  if (!Array.isArray(newSongsList) || newSongsList.length === 0) return 0;
+
+  const currentMaster = Array.from(AppState.masterSongs || []);
+  const seenIds = new Set(currentMaster.map(s => String(s.id)));
+  const seenKeys = new Set(currentMaster.map(s => `${normalizeSearchText(s.title || s.name)}::${normalizeSearchText(s.artist || s.singer)}`));
+  const toAdd = [];
+
+  for (const s of newSongsList) {
+    if (!s || !s.id || !(s.title || s.name)) continue;
+    const title = s.title || s.name || "";
+    const artist = s.artist || s.singer || "";
+    const normTitle = normalizeSearchText(title);
+    const normArtist = normalizeSearchText(artist);
+    const trackKey = `${normTitle}::${normArtist}`;
+
+    if (seenIds.has(String(s.id)) || seenKeys.has(trackKey)) continue;
+
+    seenIds.add(String(s.id));
+    seenKeys.add(trackKey);
+
+    let cover = s.cover_url || "static/images/only_friends_theme.svg";
+    if (cover.startsWith("/")) cover = cover.substring(1);
+
+    const prepared = prepareSongSearchMetadata({
+      ...s,
+      title: title,
+      album: s.album || s.movie || "",
+      cover_url: cover,
+      download_authorized: s.download_authorized !== false && s.source !== "spotify" && s.source !== "youtube"
+    });
+
+    indexMovieTarget(prepared);
+    toAdd.push(prepared);
+  }
+
+  if (toAdd.length > 0) {
+    const updated = [...currentMaster, ...toAdd];
+    AppState.masterSongs = Object.freeze(updated);
+    AppState.songs = [...updated];
+    buildSearchIndex(AppState.masterSongs);
+
+    if (persistToDB && typeof MusicDB !== "undefined" && typeof MusicDB.putSongsBatch === "function") {
+      MusicDB.putSongsBatch(toAdd);
+    }
+    if (typeof ImportCenterManager !== "undefined" && typeof ImportCenterManager.renderMetrics === "function") {
+      ImportCenterManager.renderMetrics();
+    }
+    console.log(`[MusicHub] Merged ${toAdd.length} songs. Total master catalogue: ${AppState.masterSongs.length}`);
+  }
+  return toAdd.length;
+}
+
+var ImportCenterManager = {
+  isOpen: false,
+  activeTab: "history",
+
+  init() {
+    if (typeof document === "undefined") return;
+    this.modal = document.getElementById("importCenterModal");
+    this.openBtn = document.getElementById("openImportCenterBtn");
+    this.closeBtn = document.getElementById("closeImportCenterBtn");
+    this.backdrop = document.getElementById("importCenterBackdrop");
+
+    if (this.openBtn) {
+      this.openBtn.addEventListener("click", () => this.open());
+    }
+    if (this.closeBtn) {
+      this.closeBtn.addEventListener("click", () => this.close());
+    }
+    if (this.backdrop) {
+      this.backdrop.addEventListener("click", () => this.close());
+    }
+
+    // Tabs switching
+    const tabBtns = document.querySelectorAll(".import-tab-btn");
+    tabBtns.forEach(btn => {
+      btn.addEventListener("click", (e) => {
+        const tab = e.currentTarget.getAttribute("data-tab");
+        this.switchTab(tab);
+      });
+    });
+
+    // 1. Phone Storage Input
+    const btnImportPhone = document.getElementById("btnImportPhone");
+    const phoneAudioInput = document.getElementById("phoneAudioInput");
+    if (btnImportPhone && phoneAudioInput) {
+      btnImportPhone.addEventListener("click", () => phoneAudioInput.click());
+      phoneAudioInput.addEventListener("change", async (e) => {
+        if (e.target.files && e.target.files.length > 0 && typeof ImportEngine !== "undefined") {
+          this.showProgressConsole("Phone Audio Storage");
+          const res = await ImportEngine.importFromPhone(e.target.files, AppState.masterSongs);
+          if (res && res.importedSongs) {
+            mergeImportedSongs(res.importedSongs, true);
+          }
+          this.hideProgressConsole();
+          this.renderMetrics();
+          this.renderHistory();
+          this.renderDuplicates();
+          showToast(`📱 Imported ${res.added || 0} phone tracks (${res.duplicates || 0} duplicates skipped)`);
+          phoneAudioInput.value = "";
+        }
+      });
+    }
+
+    // 2. Computer Music Folder Input & Dropzone
+    const btnImportComputer = document.getElementById("btnImportComputer");
+    const computerFolderInput = document.getElementById("computerFolderInput");
+    const computerDropZone = document.getElementById("computerDropZone");
+    if (btnImportComputer && computerFolderInput) {
+      btnImportComputer.addEventListener("click", () => computerFolderInput.click());
+      computerFolderInput.addEventListener("change", async (e) => {
+        if (e.target.files && e.target.files.length > 0 && typeof ImportEngine !== "undefined") {
+          this.showProgressConsole("Computer Music Folder");
+          const res = await ImportEngine.importFromComputer(e.target.files, AppState.masterSongs);
+          if (res && res.importedSongs) {
+            mergeImportedSongs(res.importedSongs, true);
+          }
+          this.hideProgressConsole();
+          this.renderMetrics();
+          this.renderHistory();
+          this.renderDuplicates();
+          showToast(`💻 Imported ${res.added || 0} computer tracks (${res.duplicates || 0} duplicates skipped)`);
+          computerFolderInput.value = "";
+        }
+      });
+    }
+
+    if (computerDropZone) {
+      computerDropZone.addEventListener("click", () => {
+        if (computerFolderInput) computerFolderInput.click();
+      });
+      computerDropZone.addEventListener("dragover", (e) => {
+        e.preventDefault();
+        computerDropZone.classList.add("dragover");
+      });
+      computerDropZone.addEventListener("dragleave", () => {
+        computerDropZone.classList.remove("dragover");
+      });
+      computerDropZone.addEventListener("drop", async (e) => {
+        e.preventDefault();
+        computerDropZone.classList.remove("dragover");
+        if (e.dataTransfer && e.dataTransfer.files && e.dataTransfer.files.length > 0 && typeof ImportEngine !== "undefined") {
+          this.showProgressConsole("Dropped Music Files");
+          const res = await ImportEngine.importFromComputer(e.dataTransfer.files, AppState.masterSongs);
+          if (res && res.importedSongs) {
+            mergeImportedSongs(res.importedSongs, true);
+          }
+          this.hideProgressConsole();
+          this.renderMetrics();
+          this.renderHistory();
+          this.renderDuplicates();
+          showToast(`📂 Imported ${res.added || 0} dropped tracks`);
+        }
+      });
+    }
+
+    // 3. Authorized APIs
+    const btnImportApis = document.getElementById("btnImportApis");
+    if (btnImportApis) {
+      btnImportApis.addEventListener("click", async () => {
+        if (typeof ImportEngine === "undefined") return;
+        this.showProgressConsole("Authorized Indian Music APIs");
+        const res = await ImportEngine.importFromAPIs(undefined, AppState.masterSongs);
+        if (res && res.importedSongs) {
+          mergeImportedSongs(res.importedSongs, true);
+        }
+        this.hideProgressConsole();
+        this.renderMetrics();
+        this.renderHistory();
+        showToast(`🌐 Imported ${res.added || 0} tracks from Authorized Music APIs`);
+      });
+    }
+
+    // 4. Spotify Metadata
+    const btnImportSpotify = document.getElementById("btnImportSpotify");
+    if (btnImportSpotify) {
+      btnImportSpotify.addEventListener("click", async () => {
+        if (typeof ImportEngine === "undefined") return;
+        this.showProgressConsole("Spotify Music Metadata");
+        const res = await ImportEngine.importFromSpotify(undefined, AppState.masterSongs);
+        if (res && res.importedSongs) {
+          mergeImportedSongs(res.importedSongs, true);
+        }
+        this.hideProgressConsole();
+        this.renderMetrics();
+        this.renderHistory();
+        showToast(`🟢 Imported ${res.added || 0} Spotify metadata records (Authorized Streams Only)`);
+      });
+    }
+
+    // 5. YouTube Music Metadata
+    const btnImportYoutube = document.getElementById("btnImportYoutube");
+    if (btnImportYoutube) {
+      btnImportYoutube.addEventListener("click", async () => {
+        if (typeof ImportEngine === "undefined") return;
+        this.showProgressConsole("YouTube Music Metadata");
+        const res = await ImportEngine.importFromYouTubeMusic(undefined, AppState.masterSongs);
+        if (res && res.importedSongs) {
+          mergeImportedSongs(res.importedSongs, true);
+        }
+        this.hideProgressConsole();
+        this.renderMetrics();
+        this.renderHistory();
+        showToast(`🔴 Imported ${res.added || 0} YouTube Music metadata records (Authorized Streams Only)`);
+      });
+    }
+
+    // 6. Custom Dataset Input
+    const btnImportCustom = document.getElementById("btnImportCustom");
+    const customDatasetInput = document.getElementById("customDatasetInput");
+    if (btnImportCustom && customDatasetInput) {
+      btnImportCustom.addEventListener("click", () => customDatasetInput.click());
+      customDatasetInput.addEventListener("change", (e) => {
+        if (e.target.files && e.target.files[0] && typeof FileReader !== "undefined") {
+          const file = e.target.files[0];
+          const reader = new FileReader();
+          reader.onload = async (re) => {
+            if (typeof ImportEngine !== "undefined") {
+              this.showProgressConsole(`Custom Dataset (${file.name})`);
+              const res = await ImportEngine.importFromCustomFile(re.target.result, AppState.masterSongs);
+              if (res && res.importedSongs) {
+                mergeImportedSongs(res.importedSongs, true);
+              }
+              this.hideProgressConsole();
+              this.renderMetrics();
+              this.renderHistory();
+              showToast(`📁 Imported ${res.added || 0} songs from custom dataset`);
+              customDatasetInput.value = "";
+            }
+          };
+          reader.readAsText(file);
+        }
+      });
+    }
+
+    // 7. Scalable 100,000+ Indian Music Expansion
+    const btnImport100k = document.getElementById("btnImport100k");
+    if (btnImport100k) {
+      btnImport100k.addEventListener("click", async () => {
+        if (typeof generateMassiveIndianCatalogue !== "function") {
+          showToast("⚠️ Massive catalogue generator not available.", "warning");
+          return;
+        }
+        this.showProgressConsole("100,000+ Scalable Indian Music Library");
+        btnImport100k.disabled = true;
+        btnImport100k.textContent = "⏳ Generating 100,000+ Tracks...";
+
+        try {
+          const massive = generateMassiveIndianCatalogue(100000);
+          const added = mergeImportedSongs(massive, true);
+          if (typeof MusicDB !== "undefined" && typeof MusicDB.addHistory === "function") {
+            await MusicDB.addHistory({
+              source: "100k Indian Library Expansion",
+              count: massive.length,
+              addedCount: added,
+              duplicateCount: massive.length - added,
+              status: "SUCCESS",
+              message: `Expanded library with ${added} songs across 13+ Indian languages.`
+            });
+          }
+          showToast(`⚡ Successfully expanded library! Added ${added.toLocaleString()} songs across all Indian languages.`);
+        } finally {
+          btnImport100k.disabled = false;
+          btnImport100k.innerHTML = "<span>⚡</span> Expand to 100,000+ Indian Library";
+          this.hideProgressConsole();
+          this.renderMetrics();
+          this.renderHistory();
+        }
+      });
+    }
+
+    // 8. Master Runner: Import All Sources
+    const btnImportAllSources = document.getElementById("btnImportAllSources");
+    if (btnImportAllSources) {
+      btnImportAllSources.addEventListener("click", async () => {
+        if (typeof ImportEngine === "undefined") return;
+        this.showProgressConsole("Multi-Source Master Runner");
+        const res = await ImportEngine.importAll({}, AppState.masterSongs);
+        if (res && res.importedSongs) {
+          mergeImportedSongs(res.importedSongs, true);
+        }
+        this.hideProgressConsole();
+        this.renderMetrics();
+        this.renderHistory();
+        this.renderDuplicates();
+        showToast(res.summary || "Master Import complete!");
+      });
+    }
+
+    // Progress Controls (Pause / Resume / Cancel)
+    const pauseBtn = document.getElementById("pauseImportBtn");
+    const resumeBtn = document.getElementById("resumeImportBtn");
+    const cancelBtn = document.getElementById("cancelImportBtn");
+    if (pauseBtn) {
+      pauseBtn.addEventListener("click", () => {
+        if (typeof ImportEngine !== "undefined") ImportEngine.pause();
+        pauseBtn.style.display = "none";
+        if (resumeBtn) resumeBtn.style.display = "inline-flex";
+      });
+    }
+    if (resumeBtn) {
+      resumeBtn.addEventListener("click", () => {
+        if (typeof ImportEngine !== "undefined") ImportEngine.resume();
+        resumeBtn.style.display = "none";
+        if (pauseBtn) pauseBtn.style.display = "inline-flex";
+      });
+    }
+    if (cancelBtn) {
+      cancelBtn.addEventListener("click", () => {
+        if (typeof ImportEngine !== "undefined") ImportEngine.cancel();
+        this.hideProgressConsole();
+      });
+    }
+
+    // Clear and Retry buttons
+    const clearDuplicatesBtn = document.getElementById("clearDuplicatesBtn");
+    if (clearDuplicatesBtn) {
+      clearDuplicatesBtn.addEventListener("click", async () => {
+        if (typeof MusicDB !== "undefined" && typeof MusicDB.clearDuplicates === "function") {
+          await MusicDB.clearDuplicates();
+          this.renderDuplicates();
+          this.renderMetrics();
+          showToast("🗑️ Duplicates log cleared.");
+        }
+      });
+    }
+
+    const clearFailedBtn = document.getElementById("clearFailedBtn");
+    if (clearFailedBtn) {
+      clearFailedBtn.addEventListener("click", async () => {
+        if (typeof MusicDB !== "undefined" && typeof MusicDB.clearFailed === "function") {
+          await MusicDB.clearFailed();
+          this.renderFailed();
+          showToast("🗑️ Failed imports log cleared.");
+        }
+      });
+    }
+
+    // Wire up ImportEngine progress events
+    if (typeof ImportEngine !== "undefined") {
+      ImportEngine.on((event) => {
+        this.handleImportEvent(event);
+      });
+    }
+  },
+
+  open() {
+    if (!this.modal) this.init();
+    if (this.modal) {
+      this.modal.style.display = "flex";
+      this.isOpen = true;
+      this.renderMetrics();
+      this.renderHistory();
+      this.renderDuplicates();
+      this.renderFailed();
+    }
+  },
+
+  close() {
+    if (this.modal) {
+      this.modal.style.display = "none";
+      this.isOpen = false;
+    }
+  },
+
+  switchTab(tabName) {
+    this.activeTab = tabName;
+    document.querySelectorAll(".import-tab-btn").forEach(b => {
+      b.classList.toggle("active", b.getAttribute("data-tab") === tabName);
+    });
+    document.querySelectorAll(".import-tab-content").forEach(c => {
+      c.classList.remove("active");
+    });
+    const content = document.getElementById(`tabContent${tabName.charAt(0).toUpperCase() + tabName.slice(1)}`);
+    if (content) content.classList.add("active");
+  },
+
+  showProgressConsole(title) {
+    const consoleEl = document.getElementById("importProgressConsole");
+    const titleEl = document.getElementById("importProgressSourceTitle");
+    const barEl = document.getElementById("importProgressBar");
+    const percentEl = document.getElementById("importProgressPercentBadge");
+    const detailEl = document.getElementById("importStatusDetail");
+
+    if (consoleEl) consoleEl.style.display = "block";
+    if (titleEl) titleEl.textContent = `Importing from: ${title}`;
+    if (barEl) barEl.style.width = "0%";
+    if (percentEl) percentEl.textContent = "0%";
+    if (detailEl) detailEl.textContent = "Initializing connection...";
+  },
+
+  hideProgressConsole() {
+    const consoleEl = document.getElementById("importProgressConsole");
+    if (consoleEl) {
+      setTimeout(() => {
+        consoleEl.style.display = "none";
+      }, 1500);
+    }
+  },
+
+  handleImportEvent(evt) {
+    const barEl = document.getElementById("importProgressBar");
+    const percentEl = document.getElementById("importProgressPercentBadge");
+    const detailEl = document.getElementById("importStatusDetail");
+
+    if (evt.type === "progress" && evt.stats) {
+      const pct = evt.percentage || 0;
+      if (barEl) barEl.style.width = `${pct}%`;
+      if (percentEl) percentEl.textContent = `${pct}%`;
+      if (detailEl) {
+        detailEl.textContent = `Processing: ${evt.lastProcessed || 'Tracks'} • Added: ${evt.stats.added} | Duplicates: ${evt.stats.duplicates} | Failed: ${evt.stats.failed}`;
+      }
+    } else if (evt.type === "complete") {
+      if (barEl) barEl.style.width = "100%";
+      if (percentEl) percentEl.textContent = "100%";
+      if (detailEl) {
+        detailEl.textContent = `✅ Completed! Added: ${evt.stats?.added || 0} tracks (${evt.stats?.duplicates || 0} duplicates prevented)`;
+      }
+    }
+  },
+
+  async renderMetrics() {
+    const elTotal = document.getElementById("metricTotalSongs");
+    const elLocal = document.getElementById("metricLocalSongs");
+    const elApi = document.getElementById("metricApiSongs");
+    const elStreaming = document.getElementById("metricStreamingSongs");
+    const elDupes = document.getElementById("metricDuplicateSongs");
+
+    const total = AppState.masterSongs ? AppState.masterSongs.length : 0;
+    let localCount = 0;
+    let streamingCount = 0;
+    let apiCount = 0;
+
+    if (AppState.masterSongs) {
+      for (const s of AppState.masterSongs) {
+        if (s.source === "local") localCount++;
+        else if (s.source === "spotify" || s.source === "youtube") streamingCount++;
+        else apiCount++;
+      }
+    }
+
+    if (elTotal) elTotal.textContent = total > 0 ? `${total.toLocaleString()}+` : "0";
+    if (elLocal) elLocal.textContent = `${localCount.toLocaleString()}`;
+    if (elApi) elApi.textContent = `${apiCount.toLocaleString()}`;
+    if (elStreaming) elStreaming.textContent = `${streamingCount.toLocaleString()}`;
+
+    if (typeof MusicDB !== "undefined" && typeof MusicDB.getDuplicates === "function") {
+      const dupes = await MusicDB.getDuplicates(500);
+      if (elDupes) elDupes.textContent = `${dupes.length}`;
+      const badge = document.getElementById("duplicatesTabCount");
+      if (badge) badge.textContent = `${dupes.length}`;
+    }
+  },
+
+  async renderHistory() {
+    const listEl = document.getElementById("importHistoryList");
+    const countBadge = document.getElementById("historyTabCount");
+    if (!listEl) return;
+
+    if (typeof MusicDB !== "undefined" && typeof MusicDB.getHistory === "function") {
+      const history = await MusicDB.getHistory(30);
+      if (countBadge) countBadge.textContent = `${history.length}`;
+      if (history.length === 0) {
+        listEl.innerHTML = `<div class="tab-empty-msg">No import sessions recorded yet.</div>`;
+        return;
+      }
+
+      listEl.innerHTML = history.map(item => `
+        <div class="import-record-item">
+          <div>
+            <span class="import-record-source">${item.source || 'Import'}</span>
+            <span class="import-record-counts">• Added: ${item.addedCount || 0} | Duplicates: ${item.duplicateCount || 0}</span>
+          </div>
+          <span class="import-record-time">${item.dateStr || ''}</span>
+        </div>
+      `).join("");
+    }
+  },
+
+  async renderDuplicates() {
+    const listEl = document.getElementById("duplicateRecordsList");
+    if (!listEl) return;
+
+    if (typeof MusicDB !== "undefined" && typeof MusicDB.getDuplicates === "function") {
+      const dupes = await MusicDB.getDuplicates(50);
+      if (dupes.length === 0) {
+        listEl.innerHTML = `<div class="tab-empty-msg">Zero duplicates detected. Library is clean!</div>`;
+        return;
+      }
+
+      listEl.innerHTML = dupes.map(d => `
+        <div class="import-record-item">
+          <div>
+            <span style="font-weight:700; color:#f87171;">Duplicate: ${d.incoming || 'Track'}</span>
+            <div style="font-size:0.75rem; color:#94a3b8;">Matched existing: "${d.matched || 'Existing Track'}" • ${d.reason || ''}</div>
+          </div>
+          <span class="import-record-time">${new Date(d.timestamp).toLocaleTimeString()}</span>
+        </div>
+      `).join("");
+    }
+  },
+
+  async renderFailed() {
+    const listEl = document.getElementById("failedImportsList");
+    const countBadge = document.getElementById("failedTabCount");
+    if (!listEl) return;
+
+    if (typeof MusicDB !== "undefined" && typeof MusicDB.getFailed === "function") {
+      const failed = await MusicDB.getFailed();
+      if (countBadge) countBadge.textContent = `${failed.length}`;
+      if (failed.length === 0) {
+        listEl.innerHTML = `<div class="tab-empty-msg">Zero failed imports! Everything imported cleanly.</div>`;
+        return;
+      }
+
+      listEl.innerHTML = failed.map(f => `
+        <div class="import-record-item">
+          <div>
+            <span style="color:#ef4444; font-weight:700;">${f.item || 'File'}</span>
+            <div style="font-size:0.75rem; color:#94a3b8;">${f.error || 'Failed'}</div>
+          </div>
+          <span class="import-record-time">${f.source || ''}</span>
+        </div>
+      `).join("");
+    }
+  }
+};
+
+
 // Expose advanced modules and handlers on window
 if (typeof window !== "undefined") {
   window.ZipArchiveBuilder = ZipArchiveBuilder;
@@ -8196,4 +8787,9 @@ if (typeof window !== "undefined") {
   window.markSongDownloaded = markSongDownloaded;
   window.renderFavTypeOptionsHTML = renderFavTypeOptionsHTML;
   window.getActiveFavouritesList = getActiveFavouritesList;
+  window.mergeImportedSongs = mergeImportedSongs;
+  window.ImportCenterManager = ImportCenterManager;
+  window.AppState = AppState;
+  window.searchMasterSongs = searchMasterSongs;
+  window.searchCatalogue = searchMasterSongs;
 }

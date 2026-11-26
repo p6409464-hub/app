@@ -4435,3 +4435,450 @@ body {
     display: none;
   }
 }
+
+/* ==========================================================================
+   Brand Full Logo & Top Nav Import Center Button
+   ========================================================================== */
+.brand-logo-full {
+  height: 42px;
+  width: auto;
+  max-width: 175px;
+  object-fit: contain;
+  filter: drop-shadow(0 0 10px rgba(168, 85, 247, 0.45));
+  transition: transform 0.25s ease;
+}
+
+.brand:hover .brand-logo-full {
+  transform: scale(1.04);
+}
+
+.import-center-nav-btn {
+  background: linear-gradient(135deg, rgba(124, 58, 237, 0.25) 0%, rgba(59, 130, 246, 0.25) 100%);
+  border: 1px solid rgba(168, 85, 247, 0.45);
+  color: #c084fc;
+  font-weight: 700;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 16px;
+  border-radius: var(--radius-full);
+  font-size: 0.88rem;
+  cursor: pointer;
+  transition: all 0.25s ease;
+}
+
+.import-center-nav-btn:hover {
+  background: linear-gradient(135deg, rgba(124, 58, 237, 0.45) 0%, rgba(59, 130, 246, 0.45) 100%);
+  border-color: #c084fc;
+  box-shadow: 0 0 15px rgba(168, 85, 247, 0.4);
+  transform: translateY(-1px);
+}
+
+/* ==========================================================================
+   Multi-Source Indian Music Import Center Dashboard Modal
+   ========================================================================== */
+.import-center-modal {
+  position: fixed;
+  inset: 0;
+  z-index: 10000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+}
+
+.import-center-backdrop {
+  position: absolute;
+  inset: 0;
+  background: rgba(8, 6, 20, 0.88);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+}
+
+.import-center-dialog {
+  position: relative;
+  z-index: 2;
+  width: 100%;
+  max-width: 960px;
+  max-height: 90vh;
+  overflow-y: auto;
+  background: linear-gradient(145deg, #16122a 0%, #0d0a1a 100%);
+  border: 1px solid rgba(168, 85, 247, 0.35);
+  border-radius: 20px;
+  box-shadow: 0 25px 60px rgba(0, 0, 0, 0.7), 0 0 35px rgba(139, 92, 246, 0.25);
+  padding: 28px;
+  color: #fff;
+}
+
+/* Modal Header */
+.import-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 22px;
+  padding-bottom: 16px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.import-title-group {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+
+.import-title-icon-box {
+  width: 44px;
+  height: 44px;
+  border-radius: 12px;
+  background: linear-gradient(135deg, #8b5cf6 0%, #ec4899 100%);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 22px;
+  box-shadow: 0 0 20px rgba(139, 92, 246, 0.5);
+}
+
+.import-main-title {
+  font-size: 1.35rem;
+  font-weight: 800;
+  background: linear-gradient(90deg, #ffffff 0%, #c4b5fd 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  margin-bottom: 3px;
+}
+
+.import-sub-title {
+  font-size: 0.82rem;
+  color: #94a3b8;
+}
+
+/* Overview Metric Strip */
+.import-metrics-strip {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+  gap: 12px;
+  margin-bottom: 24px;
+}
+
+.metric-card {
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(255, 255, 255, 0.07);
+  border-radius: 12px;
+  padding: 12px 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  transition: all 0.2s ease;
+}
+
+.metric-card:hover {
+  background: rgba(139, 92, 246, 0.08);
+  border-color: rgba(168, 85, 247, 0.3);
+}
+
+.metric-val {
+  font-size: 1.45rem;
+  font-weight: 800;
+  color: #c084fc;
+}
+
+.metric-lbl {
+  font-size: 0.72rem;
+  color: #94a3b8;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+/* Progress & Control Console */
+.import-progress-console {
+  background: rgba(20, 15, 40, 0.85);
+  border: 1px solid rgba(139, 92, 246, 0.4);
+  border-radius: 14px;
+  padding: 16px 20px;
+  margin-bottom: 24px;
+  box-shadow: 0 0 25px rgba(124, 58, 237, 0.2);
+}
+
+.progress-console-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 10px;
+}
+
+.progress-source-title {
+  font-size: 0.92rem;
+  font-weight: 700;
+  color: #f1f5f9;
+}
+
+.progress-percent-badge {
+  background: rgba(168, 85, 247, 0.25);
+  border: 1px solid rgba(168, 85, 247, 0.5);
+  color: #d8b4fe;
+  font-size: 0.82rem;
+  font-weight: 800;
+  padding: 2px 10px;
+  border-radius: 12px;
+}
+
+.import-progress-track {
+  width: 100%;
+  height: 8px;
+  background: rgba(255, 255, 255, 0.08);
+  border-radius: 4px;
+  overflow: hidden;
+  margin-bottom: 12px;
+}
+
+.import-progress-fill {
+  height: 100%;
+  background: linear-gradient(90deg, #8b5cf6 0%, #ec4899 50%, #38bdf8 100%);
+  border-radius: 4px;
+  transition: width 0.25s ease;
+}
+
+.progress-console-footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+  flex-wrap: wrap;
+}
+
+.progress-status-detail {
+  font-size: 0.8rem;
+  color: #94a3b8;
+  flex: 1;
+}
+
+.progress-controls-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.btn-ctrl-pause {
+  background: rgba(234, 179, 8, 0.2);
+  border-color: rgba(234, 179, 8, 0.5);
+  color: #fde047;
+  font-size: 0.8rem;
+  padding: 5px 14px;
+}
+
+.btn-ctrl-resume {
+  background: rgba(34, 197, 94, 0.2);
+  border-color: rgba(34, 197, 94, 0.5);
+  color: #86efac;
+  font-size: 0.8rem;
+  padding: 5px 14px;
+}
+
+.btn-ctrl-cancel {
+  background: rgba(239, 68, 68, 0.2);
+  border-color: rgba(239, 68, 68, 0.5);
+  color: #fca5a5;
+  font-size: 0.8rem;
+  padding: 5px 14px;
+}
+
+/* Source Cards Grid */
+.import-sources-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+  gap: 16px;
+  margin-bottom: 28px;
+}
+
+.source-card {
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 14px;
+  padding: 18px;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  gap: 14px;
+  transition: all 0.25s ease;
+}
+
+.source-card:hover {
+  background: rgba(255, 255, 255, 0.05);
+  border-color: rgba(168, 85, 247, 0.4);
+  transform: translateY(-2px);
+  box-shadow: 0 8px 25px rgba(0, 0, 0, 0.4);
+}
+
+.featured-source-card {
+  background: linear-gradient(135deg, rgba(88, 28, 135, 0.3) 0%, rgba(30, 27, 75, 0.3) 100%);
+  border-color: rgba(168, 85, 247, 0.45);
+}
+
+.master-source-card {
+  background: linear-gradient(135deg, rgba(124, 58, 237, 0.25) 0%, rgba(219, 39, 119, 0.25) 100%);
+  border-color: rgba(236, 72, 153, 0.45);
+}
+
+.source-card-header {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+}
+
+.source-card-icon {
+  font-size: 26px;
+  flex-shrink: 0;
+}
+
+.source-card-title {
+  font-size: 1.02rem;
+  font-weight: 700;
+  color: #fff;
+  margin-bottom: 4px;
+}
+
+.source-card-desc {
+  font-size: 0.78rem;
+  color: #94a3b8;
+  line-height: 1.45;
+}
+
+.source-action-btn {
+  width: 100%;
+  padding: 10px 14px;
+  font-size: 0.88rem;
+  font-weight: 700;
+  border-radius: 10px;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+}
+
+.btn-glow {
+  box-shadow: 0 0 20px rgba(168, 85, 247, 0.45);
+}
+
+.btn-master-glow {
+  background: linear-gradient(135deg, #ec4899 0%, #8b5cf6 100%);
+  box-shadow: 0 0 25px rgba(236, 72, 153, 0.5);
+}
+
+.computer-dropzone {
+  border: 1px dashed rgba(255, 255, 255, 0.2);
+  border-radius: 8px;
+  padding: 8px;
+  text-align: center;
+  font-size: 0.72rem;
+  color: #94a3b8;
+  background: rgba(0, 0, 0, 0.2);
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.computer-dropzone.dragover {
+  border-color: #c084fc;
+  background: rgba(168, 85, 247, 0.15);
+  color: #f1f5f9;
+}
+
+/* Management Tabs */
+.import-tabs-container {
+  background: rgba(10, 8, 22, 0.6);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 14px;
+  overflow: hidden;
+}
+
+.import-tabs-nav {
+  display: flex;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+  background: rgba(0, 0, 0, 0.25);
+}
+
+.import-tab-btn {
+  flex: 1;
+  padding: 12px 16px;
+  background: none;
+  border: none;
+  border-bottom: 2px solid transparent;
+  color: #94a3b8;
+  font-size: 0.85rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.import-tab-btn:hover {
+  color: #f1f5f9;
+}
+
+.import-tab-btn.active {
+  color: #c084fc;
+  border-bottom-color: #c084fc;
+  background: rgba(168, 85, 247, 0.08);
+}
+
+.import-tab-content {
+  display: none;
+  padding: 18px;
+  max-height: 220px;
+  overflow-y: auto;
+}
+
+.import-tab-content.active {
+  display: block;
+}
+
+.tab-actions-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 12px;
+}
+
+.duplicates-info-note {
+  font-size: 0.76rem;
+  color: #94a3b8;
+}
+
+.import-records-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.import-record-item {
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  border-radius: 8px;
+  padding: 8px 12px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  font-size: 0.82rem;
+}
+
+.import-record-source {
+  font-weight: 700;
+  color: #c084fc;
+}
+
+.import-record-counts {
+  color: #94a3b8;
+  font-size: 0.78rem;
+}
+
+.import-record-time {
+  font-size: 0.72rem;
+  color: #64748b;
+}
+
+.tab-empty-msg {
+  text-align: center;
+  color: #64748b;
+  font-size: 0.82rem;
+  padding: 24px 0;
+}

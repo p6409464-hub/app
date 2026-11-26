@@ -21,13 +21,7 @@
   <header class="navbar">
     <!-- Brand with New PMH Logo -->
     <div class="brand" onclick="location.reload()" title="Pranesh Music Hub - Home">
-      <div class="brand-logo-wrap">
-        <img src="static/images/logo_icon.svg" class="brand-logo-img" alt="PMH" />
-      </div>
-      <div class="brand-text">
-        <h1 class="brand-title">Pranesh Music Hub</h1>
-        <span class="brand-subtitle">Music Library</span>
-      </div>
+      <img src="static/images/logo.svg" class="brand-logo-full" alt="Pranesh Music Hub" />
     </div>
 
     <!-- Center Nav Links -->
@@ -59,6 +53,10 @@
         </div>
         <div id="searchSuggestionsBox" class="search-suggestions-box" style="display: none;"></div>
       </div>
+
+      <button id="openImportCenterBtn" class="btn btn-pill import-center-nav-btn" title="Open Multi-Source Indian Music Import Center">
+        <span>⚡</span> <span class="hide-mobile">Import Center</span>
+      </button>
 
       <button id="openPlayerNavBtn" class="btn btn-open-player" title="Open / Scroll to Player">
         <span>▶</span> Open player
@@ -752,11 +750,242 @@
     </div>
   </div>
 
+  <!-- ========================================================================
+       Multi-Source Indian Music Import Center Modal
+       ======================================================================== -->
+  <div id="importCenterModal" class="import-center-modal" style="display: none;">
+    <div class="import-center-backdrop" id="importCenterBackdrop"></div>
+    <div class="import-center-dialog">
+      <!-- Modal Header -->
+      <div class="import-header">
+        <div class="import-title-group">
+          <div class="import-title-icon-box">⚡</div>
+          <div>
+            <h2 class="import-main-title">Multi-Source Indian Music Import Center</h2>
+            <p class="import-sub-title">Unified Indian Music Hub • Scalable to 100,000+ Songs • All Indian Languages</p>
+          </div>
+        </div>
+        <button id="closeImportCenterBtn" class="modal-close-btn" title="Close Import Center">✕</button>
+      </div>
+
+      <!-- Real-time Database Overview Metrics -->
+      <div class="import-metrics-strip">
+        <div class="metric-card">
+          <span class="metric-val" id="metricTotalSongs">7,202+</span>
+          <span class="metric-lbl">Total Songs in Hub</span>
+        </div>
+        <div class="metric-card">
+          <span class="metric-val" id="metricLocalSongs">0</span>
+          <span class="metric-lbl">Local Audio Files</span>
+        </div>
+        <div class="metric-card">
+          <span class="metric-val" id="metricApiSongs">7,198</span>
+          <span class="metric-lbl">API &amp; Master Tracks</span>
+        </div>
+        <div class="metric-card">
+          <span class="metric-val" id="metricStreamingSongs">0</span>
+          <span class="metric-lbl">Spotify / YT Metadata</span>
+        </div>
+        <div class="metric-card">
+          <span class="metric-val" id="metricDuplicateSongs">0</span>
+          <span class="metric-lbl">Duplicates Prevented</span>
+        </div>
+      </div>
+
+      <!-- Live Progress & Control Console (Visible During Operations) -->
+      <div id="importProgressConsole" class="import-progress-console" style="display: none;">
+        <div class="progress-console-header">
+          <span id="importProgressSourceTitle" class="progress-source-title">Importing Tracks...</span>
+          <span id="importProgressPercentBadge" class="progress-percent-badge">0%</span>
+        </div>
+        <div class="import-progress-track">
+          <div id="importProgressBar" class="import-progress-fill" style="width: 0%;"></div>
+        </div>
+        <div class="progress-console-footer">
+          <span id="importStatusDetail" class="progress-status-detail">Preparing import engine...</span>
+          <div class="progress-controls-row">
+            <button id="pauseImportBtn" class="btn btn-pill btn-ctrl-pause" title="Pause Import">⏸ Pause</button>
+            <button id="resumeImportBtn" class="btn btn-pill btn-ctrl-resume" style="display: none;" title="Resume Import">▶ Resume</button>
+            <button id="cancelImportBtn" class="btn btn-pill btn-ctrl-cancel" title="Cancel Import">🛑 Cancel</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Multi-Source Import Cards Grid -->
+      <div class="import-sources-grid">
+        <!-- 1. Phone Storage -->
+        <div class="source-card">
+          <div class="source-card-header">
+            <span class="source-card-icon">📱</span>
+            <div>
+              <h3 class="source-card-title">Import from Phone</h3>
+              <p class="source-card-desc">System file picker: MP3, WAV, FLAC, M4A, OGG &amp; AAC audio files</p>
+            </div>
+          </div>
+          <button id="btnImportPhone" class="btn btn-primary source-action-btn">
+            <span>📱</span> Select Phone Audio Files
+          </button>
+          <input type="file" id="phoneAudioInput" multiple accept="audio/*,.mp3,.wav,.flac,.m4a,.ogg,.aac" style="display: none;" />
+        </div>
+
+        <!-- 2. Computer Music Folders -->
+        <div class="source-card">
+          <div class="source-card-header">
+            <span class="source-card-icon">💻</span>
+            <div>
+              <h3 class="source-card-title">Import from Computer</h3>
+              <p class="source-card-desc">Select local music folders or drag &amp; drop audio directory</p>
+            </div>
+          </div>
+          <button id="btnImportComputer" class="btn btn-primary source-action-btn">
+            <span>💻</span> Select Music Folder
+          </button>
+          <div id="computerDropZone" class="computer-dropzone">
+            <span>📂 Or drag &amp; drop music folder / files here</span>
+          </div>
+          <input type="file" id="computerFolderInput" webkitdirectory directory multiple style="display: none;" />
+        </div>
+
+        <!-- 3. Authorized Indian Music APIs -->
+        <div class="source-card">
+          <div class="source-card-header">
+            <span class="source-card-icon">🌐</span>
+            <div>
+              <h3 class="source-card-title">Import from APIs</h3>
+              <p class="source-card-desc">JioSaavn, iTunes Indian Music &amp; Internet Archive collections</p>
+            </div>
+          </div>
+          <button id="btnImportApis" class="btn btn-pill source-action-btn">
+            <span>🌐</span> Fetch Indian API Tracks
+          </button>
+        </div>
+
+        <!-- 4. Spotify Metadata (Strictly Non-Downloadable) -->
+        <div class="source-card">
+          <div class="source-card-header">
+            <span class="source-card-icon">🟢</span>
+            <div>
+              <h3 class="source-card-title">Import from Spotify</h3>
+              <p class="source-card-desc">Authorized Spotify metadata with verified web playback links</p>
+            </div>
+          </div>
+          <button id="btnImportSpotify" class="btn btn-pill source-action-btn">
+            <span>🟢</span> Import Spotify Metadata
+          </button>
+        </div>
+
+        <!-- 5. YouTube Music Metadata (Strictly Non-Downloadable) -->
+        <div class="source-card">
+          <div class="source-card-header">
+            <span class="source-card-icon">🔴</span>
+            <div>
+              <h3 class="source-card-title">Import from YouTube Music</h3>
+              <p class="source-card-desc">YouTube Music track metadata with licensed stream embeds</p>
+            </div>
+          </div>
+          <button id="btnImportYoutube" class="btn btn-pill source-action-btn">
+            <span>🔴</span> Import YouTube Tracks
+          </button>
+        </div>
+
+        <!-- 6. Other Authorized Catalogs (JSON / CSV) -->
+        <div class="source-card">
+          <div class="source-card-header">
+            <span class="source-card-icon">📁</span>
+            <div>
+              <h3 class="source-card-title">Other Authorized Sources</h3>
+              <p class="source-card-desc">Import external song datasets from JSON or CSV files</p>
+            </div>
+          </div>
+          <button id="btnImportCustom" class="btn btn-pill source-action-btn">
+            <span>📁</span> Choose JSON / CSV File
+          </button>
+          <input type="file" id="customDatasetInput" accept=".json,.csv" style="display: none;" />
+        </div>
+
+        <!-- 7. Scalable 100,000+ Indian Music Expansion -->
+        <div class="source-card featured-source-card">
+          <div class="source-card-header">
+            <span class="source-card-icon">⚡</span>
+            <div>
+              <h3 class="source-card-title">100,000+ Indian Music Expansion</h3>
+              <p class="source-card-desc">Load 100,000+ songs across Tamil, Telugu, Hindi, Malayalam, Kannada, Punjabi, Bengali, Marathi, Gujarati, Urdu, Odia, Assamese &amp; Sanskrit</p>
+            </div>
+          </div>
+          <button id="btnImport100k" class="btn btn-primary source-action-btn btn-glow">
+            <span>⚡</span> Expand to 100,000+ Indian Library
+          </button>
+        </div>
+
+        <!-- 8. Master Runner: Import All Sources -->
+        <div class="source-card master-source-card">
+          <div class="source-card-header">
+            <span class="source-card-icon">🚀</span>
+            <div>
+              <h3 class="source-card-title">Import All Sources</h3>
+              <p class="source-card-desc">Sequential batch runner across all connected providers with deduplication</p>
+            </div>
+          </div>
+          <button id="btnImportAllSources" class="btn btn-primary source-action-btn btn-master-glow">
+            <span>🚀</span> Run Master Import
+          </button>
+        </div>
+      </div>
+
+      <!-- Management Tabs: History, Failed, Duplicates -->
+      <div class="import-tabs-container">
+        <div class="import-tabs-nav">
+          <button id="tabBtnHistory" class="import-tab-btn active" data-tab="history">
+            📜 Import History (<span id="historyTabCount">0</span>)
+          </button>
+          <button id="tabBtnFailed" class="import-tab-btn" data-tab="failed">
+            ⚠️ Failed Imports (<span id="failedTabCount">0</span>)
+          </button>
+          <button id="tabBtnDuplicates" class="import-tab-btn" data-tab="duplicates">
+            👥 Duplicate Records (<span id="duplicatesTabCount">0</span>)
+          </button>
+        </div>
+
+        <!-- Tab 1: History Content -->
+        <div id="tabContentHistory" class="import-tab-content active">
+          <div id="importHistoryList" class="import-records-list">
+            <div class="tab-empty-msg">No import sessions recorded yet.</div>
+          </div>
+        </div>
+
+        <!-- Tab 2: Failed Content -->
+        <div id="tabContentFailed" class="import-tab-content">
+          <div class="tab-actions-bar">
+            <button id="retryAllFailedBtn" class="btn btn-pill" style="font-size: 0.8rem; padding: 4px 12px;">🔄 Retry All Failed</button>
+            <button id="clearFailedBtn" class="btn btn-pill" style="font-size: 0.8rem; padding: 4px 12px;">🗑️ Clear Log</button>
+          </div>
+          <div id="failedImportsList" class="import-records-list">
+            <div class="tab-empty-msg">Zero failed imports! Everything imported cleanly.</div>
+          </div>
+        </div>
+
+        <!-- Tab 3: Duplicates Content -->
+        <div id="tabContentDuplicates" class="import-tab-content">
+          <div class="tab-actions-bar">
+            <span class="duplicates-info-note">Duplicates are automatically identified and skipped to prevent duplicate prompts and library bloat.</span>
+            <button id="clearDuplicatesBtn" class="btn btn-pill" style="font-size: 0.8rem; padding: 4px 12px;">🗑️ Clear Log</button>
+          </div>
+          <div id="duplicateRecordsList" class="import-records-list">
+            <div class="tab-empty-msg">Zero duplicates detected.</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
   <!-- Hidden file input for Favourites JSON Import -->
   <input type="file" id="favImportInput" accept=".json" style="display: none;" />
 
   <!-- JavaScript Application Logic -->
-  <script src="static/js/songs_data.js?v=3.50.0"></script>
-  <script src="static/js/app.js?v=3.50.0"></script>
+  <script src="static/js/db.js?v=4.0.0"></script>
+  <script src="static/js/import_engine.js?v=4.0.0"></script>
+  <script src="static/js/indian_massive_catalogue.js?v=4.0.0"></script>
+  <script src="static/js/songs_data.js?v=4.0.0"></script>
+  <script src="static/js/app.js?v=4.0.0"></script>
 </body>
 </html>
