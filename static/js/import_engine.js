@@ -621,6 +621,265 @@
     }
 
     /**
+     * Import from MusicBrainz Open Music Metadata API (Phase 5)
+     */
+    async importFromMusicBrainz(query = "A. R. Rahman", limit = 20, existingSongs = []) {
+      this.activeSource = "musicbrainz";
+      this.state = IMPORT_STATES.RUNNING;
+      this.initStats(limit);
+
+      const importedSongs = [];
+      try {
+        const url = `https://musicbrainz.org/ws/2/recording/?query=${encodeURIComponent(query)}&fmt=json&limit=${limit}`;
+        const resp = await fetch(url, {
+          headers: { "User-Agent": "PraneshMusicHub/5.0.0 (admin@praneshmusichub.org)" }
+        });
+        if (resp.ok) {
+          const data = await resp.json();
+          const recordings = data.recordings || [];
+          for (const rec of recordings) {
+            if (this.checkControlFlags()) break;
+            const title = rec.title || "MusicBrainz Track";
+            const artist = (rec["artist-credit"] && rec["artist-credit"].map(a => a.name).join(", ")) || "Artist";
+            const album = (rec.releases && rec.releases[0] && rec.releases[0].title) || query;
+            const year = (rec.releases && rec.releases[0] && rec.releases[0].date) ? parseInt(rec.releases[0].date) : 2020;
+            const duration = rec.length ? Math.round(rec.length / 1000) : 240;
+            const m = Math.floor(duration / 60);
+            const s = duration % 60;
+            const isrc = (rec.isrcs && rec.isrcs[0]) || "";
+
+            const songRecord = {
+              id: `mb_${rec.id || Date.now()}`,
+              title: title,
+              artist: artist,
+              album: album,
+              year: year,
+              duration: duration,
+              duration_str: `${m}:${s < 10 ? '0' : ''}${s}`,
+              language: "Tamil",
+              era: year < 2000 ? (year < 1990 ? "80s" : "90s") : (year < 2010 ? "2k" : "now"),
+              type: "melody",
+              category: "Global Songs",
+              sections: ["trending"],
+              cover_url: "static/images/only_friends_theme.svg",
+              audio_url: "",
+              isrc: isrc,
+              download_authorized: false,
+              source: "musicbrainz",
+              added_at: Date.now(),
+              tags: [title.toLowerCase(), artist.toLowerCase(), album.toLowerCase(), "musicbrainz"]
+            };
+
+            const dupCheck = this.isDuplicate(songRecord, existingSongs.concat(importedSongs));
+            if (dupCheck.isDup) {
+              this.stats.duplicates++;
+            } else {
+              importedSongs.push(songRecord);
+              this.stats.added++;
+              if (global.MusicDB) await global.MusicDB.putSong(songRecord);
+            }
+            this.stats.processed++;
+            this.emit("progress", {
+              current: this.stats.processed,
+              total: this.stats.total,
+              percentage: Math.min(100, Math.round((this.stats.processed / this.stats.total) * 100)),
+              lastProcessed: title
+            });
+          }
+        }
+      } catch (err) {
+        console.warn("[ImportEngine] MusicBrainz fetch:", err.message);
+        this.stats.failed++;
+      }
+
+      await this.finalizeImport("MusicBrainz Metadata", importedSongs);
+      return { ...this.stats, importedSongs };
+    }
+
+    /**
+     * Import from Deezer Public API (Phase 5)
+     */
+    async importFromDeezer(query = "Tamil Hits", limit = 20, existingSongs = []) {
+      this.activeSource = "deezer";
+      this.state = IMPORT_STATES.RUNNING;
+      this.initStats(limit);
+
+      const importedSongs = [];
+      try {
+        const url = `https://api.deezer.com/search?q=${encodeURIComponent(query)}&limit=${limit}`;
+        const resp = await fetch(url);
+        if (resp.ok) {
+          const data = await resp.json();
+          const list = data.data || [];
+          for (const item of list) {
+            if (this.checkControlFlags()) break;
+            const title = item.title || "Deezer Track";
+            const artist = (item.artist && item.artist.name) || "Artist";
+            const album = (item.album && item.album.title) || query;
+            const duration = item.duration || 240;
+            const m = Math.floor(duration / 60);
+            const s = duration % 60;
+
+            const songRecord = {
+              id: `dz_${item.id || Date.now()}`,
+              title: title,
+              artist: artist,
+              album: album,
+              duration: duration,
+              duration_str: `${m}:${s < 10 ? '0' : ''}${s}`,
+              language: "Tamil",
+              era: "now",
+              type: "melody",
+              category: "Global Songs",
+              sections: ["trending"],
+              cover_url: (item.album && item.album.cover_medium) || "static/images/only_friends_theme.svg",
+              audio_url: item.preview || "",
+              download_authorized: true,
+              source: "deezer",
+              added_at: Date.now(),
+              tags: [title.toLowerCase(), artist.toLowerCase(), album.toLowerCase(), "deezer"]
+            };
+
+            const dupCheck = this.isDuplicate(songRecord, existingSongs.concat(importedSongs));
+            if (dupCheck.isDup) {
+              this.stats.duplicates++;
+            } else {
+              importedSongs.push(songRecord);
+              this.stats.added++;
+              if (global.MusicDB) await global.MusicDB.putSong(songRecord);
+            }
+            this.stats.processed++;
+            this.emit("progress", {
+              current: this.stats.processed,
+              total: this.stats.total,
+              percentage: Math.min(100, Math.round((this.stats.processed / this.stats.total) * 100)),
+              lastProcessed: title
+            });
+          }
+        }
+      } catch (err) {
+        console.warn("[ImportEngine] Deezer fetch:", err.message);
+        this.stats.failed++;
+      }
+
+      await this.finalizeImport("Deezer API", importedSongs);
+      return { ...this.stats, importedSongs };
+    }
+
+    /**
+     * Complete Album Importer (Phase 4):
+     * Finds associated music albums and retrieves ALL available tracks from those albums,
+     * showing singer, composer, album and year, keeping different versions separate.
+     */
+    async importFullAlbum(albumOrMovieName, existingSongs = []) {
+      if (!albumOrMovieName) return { added: 0, tracks: [] };
+      this.activeSource = "full_album";
+      this.state = IMPORT_STATES.RUNNING;
+      const cleanTarget = albumOrMovieName.toLowerCase().replace(/[^\w\s]/g, "").trim();
+
+      const matchedTracks = [];
+
+      // 1. Check in AUTHENTIC_COMPLETE_ALBUMS from indian_massive_catalogue
+      const globalMeta = global.AUTHENTIC_COMPLETE_ALBUMS || [];
+      for (const alb of globalMeta) {
+        const albMovieClean = (alb.movie || "").toLowerCase().replace(/[^\w\s]/g, "").trim();
+        const albNameClean = (alb.album || "").toLowerCase().replace(/[^\w\s]/g, "").trim();
+        if (albMovieClean.includes(cleanTarget) || albNameClean.includes(cleanTarget) || cleanTarget.includes(albMovieClean) || cleanTarget.includes(albNameClean)) {
+          for (const trk of alb.tracks) {
+            matchedTracks.push({
+              id: trk.id,
+              title: trk.title,
+              artist: trk.artist,
+              composer: trk.composer || alb.composer,
+              album: alb.album,
+              movie: alb.movie,
+              year: alb.year,
+              era: alb.era,
+              language: alb.language,
+              album_type: alb.album_type,
+              type: trk.genres[0] || "melody",
+              genres: trk.genres,
+              version: trk.version,
+              category: `${alb.language} Songs`,
+              sections: ["trending", alb.language.toLowerCase()],
+              cover_url: alb.cover_url,
+              audio_url: trk.audio_url,
+              download_authorized: trk.download_authorized,
+              playback_status: trk.playback_status || "available",
+              source: "album_import"
+            });
+          }
+        }
+      }
+
+      // 2. Fetch from iTunes API Indian store for this specific album
+      try {
+        const itunesUrl = `https://itunes.apple.com/search?term=${encodeURIComponent(albumOrMovieName)}&country=IN&entity=song&limit=50`;
+        const resp = await fetch(itunesUrl);
+        if (resp.ok) {
+          const data = await resp.json();
+          const items = data.results || [];
+          for (const item of items) {
+            const itemAlbum = (item.collectionName || "").toLowerCase();
+            if (itemAlbum.includes(cleanTarget) || cleanTarget.includes(itemAlbum)) {
+              matchedTracks.push({
+                id: `alb_itunes_${item.trackId || Date.now()}`,
+                title: item.trackName || "Track",
+                artist: item.artistName || "Artist",
+                composer: item.artistName || "Composer",
+                album: item.collectionName || albumOrMovieName,
+                movie: albumOrMovieName,
+                year: item.releaseDate ? parseInt(item.releaseDate) : 2015,
+                duration: Math.round((item.trackTimeMillis || 240000) / 1000),
+                duration_str: `${Math.floor((item.trackTimeMillis || 240000) / 60000)}:${String(Math.floor(((item.trackTimeMillis || 240000) % 60000) / 1000)).padStart(2, '0')}`,
+                language: "Tamil",
+                album_type: "movie_soundtrack",
+                type: "melody",
+                genres: ["melody", "film_album"],
+                version: "Original OST",
+                cover_url: item.artworkUrl100 ? item.artworkUrl100.replace("100x100bb", "500x500bb") : "static/images/only_friends_theme.svg",
+                audio_url: item.previewUrl || "",
+                download_authorized: true,
+                playback_status: "available",
+                source: "album_import"
+              });
+            }
+          }
+        }
+      } catch (e) {
+        console.warn("[ImportEngine] Album online lookup notice:", e.message);
+      }
+
+      // Deduplicate exact track duplicates while keeping versions separate
+      const deduped = [];
+      const seenKeys = new Set();
+      for (const trk of matchedTracks) {
+        const k = `${this.normalizeKey(trk.title)}__${this.extractVersion(trk.title, trk.album)}`;
+        if (!seenKeys.has(k)) {
+          seenKeys.add(k);
+          deduped.push(trk);
+        }
+      }
+
+      this.initStats(deduped.length);
+      const addedSongs = [];
+      for (const trk of deduped) {
+        const dupCheck = this.isDuplicate(trk, existingSongs.concat(addedSongs));
+        if (dupCheck.isDup) {
+          this.stats.duplicates++;
+        } else {
+          addedSongs.push(trk);
+          this.stats.added++;
+          if (global.MusicDB) await global.MusicDB.putSong(trk);
+        }
+        this.stats.processed++;
+      }
+
+      await this.finalizeImport(`Album: ${albumOrMovieName}`, addedSongs);
+      return { ...this.stats, tracks: addedSongs };
+    }
+
+    /**
      * Import Other Authorized Sources (Bulk JSON / CSV file)
      */
     async importFromCustomFile(fileOrJson, existingSongs = []) {

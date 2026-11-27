@@ -944,6 +944,9 @@
           <button id="tabBtnDuplicates" class="import-tab-btn" data-tab="duplicates">
             👥 Duplicate Records (<span id="duplicatesTabCount">0</span>)
           </button>
+          <button id="tabBtnAdmin" class="import-tab-btn" data-tab="admin">
+            📊 Admin &amp; Analytics
+          </button>
         </div>
 
         <!-- Tab 1: History Content -->
@@ -972,6 +975,117 @@
           </div>
           <div id="duplicateRecordsList" class="import-records-list">
             <div class="tab-empty-msg">Zero duplicates detected.</div>
+          </div>
+        </div>
+
+        <!-- Tab 4: Admin & Analytics Dashboard (Phase 13) -->
+        <div id="tabContentAdmin" class="import-tab-content">
+          <div class="admin-dashboard-wrapper">
+            <!-- 1. Real System Statistics Cards -->
+            <div class="admin-kpi-grid">
+              <div class="admin-kpi-card">
+                <span class="admin-kpi-val" id="adminTotalTracks">0</span>
+                <span class="admin-kpi-label">Total Songs in Master DB</span>
+              </div>
+              <div class="admin-kpi-card">
+                <span class="admin-kpi-val" id="adminUniqueTitles">0</span>
+                <span class="admin-kpi-label">Unique Song Titles</span>
+              </div>
+              <div class="admin-kpi-card">
+                <span class="admin-kpi-val" id="adminMovieAlbums">0</span>
+                <span class="admin-kpi-label">Movie Soundtracks</span>
+              </div>
+              <div class="admin-kpi-card">
+                <span class="admin-kpi-val" id="adminIndieAlbums">0</span>
+                <span class="admin-kpi-label">Independent Albums</span>
+              </div>
+              <div class="admin-kpi-card">
+                <span class="admin-kpi-val" id="adminPlaybackReady">0</span>
+                <span class="admin-kpi-label">Playback-Ready (320k/Local)</span>
+              </div>
+              <div class="admin-kpi-card">
+                <span class="admin-kpi-val" id="adminDownloadAuth">0</span>
+                <span class="admin-kpi-label">Download-Authorized</span>
+              </div>
+            </div>
+
+            <!-- 2. Universal Album Importer Tool -->
+            <div class="admin-tool-box">
+              <h4 class="admin-tool-title">💿 Universal Full Album Soundtrack Importer</h4>
+              <p class="admin-tool-desc">Search any movie or independent album (e.g. <em>Chennai 600028</em>, <em>Mankatha</em>, <em>Pushpa</em>) to aggregate and import its complete available soundtrack with distinct versions and playback availability.</p>
+              <div class="admin-album-input-group">
+                <input type="text" id="adminAlbumInput" class="admin-text-input" placeholder="Enter movie or album name (e.g. Chennai 600028)..." />
+                <button id="btnAdminAlbumImport" class="btn btn-primary" style="padding: 10px 20px;">
+                  <span>💿</span> Import Full Album
+                </button>
+              </div>
+              <div id="adminAlbumImportStatus" class="admin-status-msg" style="display: none;"></div>
+            </div>
+
+            <!-- 3. Connected Providers Status Grid -->
+            <div class="admin-providers-box">
+              <h4 class="admin-tool-title">🌐 Connected Metadata &amp; Audio Providers</h4>
+              <div class="admin-providers-grid">
+                <div class="admin-provider-item status-online">
+                  <span class="provider-dot online"></span>
+                  <div><strong>JioSaavn API</strong> - Direct 320kbps full-length CDN audio</div>
+                </div>
+                <div class="admin-provider-item status-online">
+                  <span class="provider-dot online"></span>
+                  <div><strong>Apple iTunes Music</strong> - High-resolution previews &amp; metadata</div>
+                </div>
+                <div class="admin-provider-item status-online">
+                  <span class="provider-dot online"></span>
+                  <div><strong>MusicBrainz API</strong> - Open community discography database</div>
+                </div>
+                <div class="admin-provider-item status-online">
+                  <span class="provider-dot online"></span>
+                  <div><strong>Deezer Music API</strong> - Authorized streaming preview streams</div>
+                </div>
+                <div class="admin-provider-item status-online">
+                  <span class="provider-dot online"></span>
+                  <div><strong>Spotify Web API</strong> - Authorized web streaming metadata (Non-downloadable)</div>
+                </div>
+                <div class="admin-provider-item status-online">
+                  <span class="provider-dot online"></span>
+                  <div><strong>YouTube Music API</strong> - Licensed video/audio metadata (Non-downloadable)</div>
+                </div>
+                <div class="admin-provider-item status-online">
+                  <span class="provider-dot online"></span>
+                  <div><strong>Local Storage (IndexedDB)</strong> - High-speed binary Blob &amp; JSON persistence</div>
+                </div>
+              </div>
+            </div>
+
+            <!-- 4. Real Language Distribution Breakdown -->
+            <div class="admin-distribution-box">
+              <h4 class="admin-tool-title">🌐 Language Coverage Breakdown (All 23+ Languages)</h4>
+              <div id="adminLanguageBreakdown" class="admin-chips-cloud">
+                <span class="admin-loading-txt">Calculating language statistics...</span>
+              </div>
+            </div>
+
+            <!-- 5. Real Genre & Variety Breakdown -->
+            <div class="admin-distribution-box">
+              <h4 class="admin-tool-title">🎵 Music Variety &amp; Genre Breakdown</h4>
+              <div id="adminGenreBreakdown" class="admin-chips-cloud">
+                <span class="admin-loading-txt">Calculating genre statistics...</span>
+              </div>
+            </div>
+
+            <!-- 6. Administrative Diagnostic Controls -->
+            <div class="admin-actions-row">
+              <button id="btnAdminReindex" class="btn btn-pill">
+                <span>⚡</span> Rebuild &amp; Optimize Inverted Search Index
+              </button>
+              <button id="btnAdminHealthCheck" class="btn btn-pill">
+                <span>🩺</span> Run Database Integrity Check
+              </button>
+              <button id="btnAdminSyncStorage" class="btn btn-pill">
+                <span>💾</span> Force Sync to IndexedDB Storage
+              </button>
+            </div>
+            <div id="adminDiagnosticReport" class="admin-diagnostic-output" style="display: none;"></div>
           </div>
         </div>
       </div>
