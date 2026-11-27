@@ -1052,6 +1052,8 @@ function transliterateTamilToEnglish(text) {
 
   // Intervocalic & nasal-consonant phonetic naturalization for Tamil
   return out
+    .replace(/([aeiou])t([aeiou])/g, '$1d$2')
+    .replace(/aay(\b|$)/g, 'ai$1')
     .replace(/ngk/g, 'ng')
     .replace(/nt/g, 'nd')
     .replace(/nth/g, 'nth')
@@ -1294,7 +1296,7 @@ function extractConsonantSkeleton(word) {
   return consonants;
 }
 
-// Strict Consonant Compatibility Check (prevents 'Thavaniye' -> 'Thaniye' collision)
+// Strict Consonant Compatibility Check (prevents 'Thavaniye' -> 'Thaniye' collision while allowing Tamil Tanglish terminal endings)
 function areConsonantsCompatible(qWord, targetWord) {
   const sk1 = extractConsonantSkeleton(qWord);
   const sk2 = extractConsonantSkeleton(targetWord);
@@ -1307,7 +1309,7 @@ function areConsonantsCompatible(qWord, targetWord) {
     if (sk1[i] !== sk2[i]) return false;
   }
   const extra = (sk1.length > sk2.length ? sk1 : sk2).slice(minLen);
-  return extra.every(c => c === "y" || c === "v" || c === "n" || c === "m");
+  return extra.every(c => c === "y" || c === "v" || c === "n" || c === "m" || c === "l" || c === "r" || c === "h" || c === "z");
 }
 
 // Universal Tamil Tanglish Morphological Stemmer
@@ -2764,12 +2766,18 @@ function autoImportSongToCatalogue(song) {
   const exists = AppState.masterSongs.some(s => s.id === song.id || (normalizeSearchText(s.title || "") === normTitle && normalizeSearchText(s.artist || "") === normArtist));
   if (exists) return;
 
+  const hasDirectAudio = Boolean(song.audio_url && (song.audio_url.includes("aac.saavncdn.com") || song.audio_url.includes(".mp4") || song.audio_url.includes(".mp3")));
+  const isDownloadPermitted = hasDirectAudio || (song.download_authorized !== undefined
+    ? Boolean(song.download_authorized)
+    : !(song.source === "spotify" || song.source === "youtube" || song.is_streaming_only));
+
   const prepared = prepareSongSearchMetadata({
     ...song,
     title: rawTitle,
     artist: rawArtist,
     album: song.album || song.movie || "Online Single",
-    download_authorized: true,
+    download_authorized: isDownloadPermitted,
+    playback_status: hasDirectAudio ? "available" : (song.playback_status || (isDownloadPermitted ? "available" : "stream_only")),
     tags: [
       normTitle,
       normArtist,
@@ -2779,8 +2787,7 @@ function autoImportSongToCatalogue(song) {
       song.era || "now",
       "movie",
       "movie songs",
-      "jiosaavn",
-      "spotify",
+      song.source || "online",
       "imported",
       "trending"
     ]
@@ -2791,15 +2798,25 @@ function autoImportSongToCatalogue(song) {
   if (typeof indexSingleSong === "function") {
     indexSingleSong(prepared);
   }
+  if (typeof indexMovieTarget === "function") {
+    indexMovieTarget(prepared);
+  }
+
+  // Persist directly into IndexedDB (MusicDB) for true offline & permanent reload survival
+  if (typeof MusicDB !== "undefined" && typeof MusicDB.putSong === "function") {
+    MusicDB.putSong(prepared).catch(() => {});
+  }
 
   try {
     const rawStored = localStorage.getItem("pmh_imported_songs");
     const stored = rawStored ? JSON.parse(rawStored) : [];
     if (!stored.some(s => s.id === prepared.id)) {
       stored.unshift(prepared);
-      localStorage.setItem("pmh_imported_songs", JSON.stringify(stored.slice(0, 250)));
+      localStorage.setItem("pmh_imported_songs", JSON.stringify(stored.slice(0, 500)));
     }
   } catch (_) {}
+
+  return prepared;
 }
 
 // ==========================================================================
@@ -3058,7 +3075,34 @@ function getSearchQueryVariants(cleanQuery) {
   if (lower.includes("dh")) variants.add(lower.replace(/dh/g, "th"));
   if (lower.includes("th")) variants.add(lower.replace(/th/g, "dh"));
 
-  return Array.from(variants).slice(0, 4);
+  // 6. Terminal "ai" <-> "al" (e.g. kidaithai <-> kidaithal)
+  if (lower.endsWith("ai")) variants.add(lower.slice(0, -2) + "al");
+  if (lower.endsWith("al")) variants.add(lower.slice(0, -2) + "ai");
+
+  // 7. Unicode Tamil Script Transliteration Variant
+  if (containsTamilScript(cleanQuery)) {
+    const transliterated = transliterateTamilToEnglish(cleanQuery);
+    if (transliterated) {
+      const tLower = transliterated.toLowerCase().trim();
+      variants.add(tLower);
+      const voiced = tLower.replace(/([aeiou])t([aeiou])/gi, "$1d$2");
+      variants.add(voiced);
+      [tLower, voiced].forEach(t => {
+        if (t.endsWith("aay")) {
+          variants.add(t.slice(0, -3) + "ai");
+          variants.add(t.slice(0, -3) + "al");
+          variants.add(t.slice(0, -3) + "aal");
+        } else if (t.endsWith("ay")) {
+          variants.add(t.slice(0, -2) + "ai");
+          variants.add(t.slice(0, -2) + "al");
+        }
+      });
+      const normTrans = normalizeSearchText(transliterated);
+      if (normTrans) variants.add(normTrans);
+    }
+  }
+
+  return Array.from(variants).slice(0, 12);
 }
 
 // Background JioSaavn & Online Catalogue Search Fallback (Zero Redirection, Full-Length Streams)
@@ -3113,7 +3157,7 @@ async function fetchSpotifySearchResults(query, requestId, isParallel = false) {
     const apiSongQuery = isYearOnly ? `Tamil hits ${yearMatch[1]}` : cleanQuery;
     const apiAlbumQuery = isYearOnly ? `Tamil ${yearMatch[1]}` : cleanQuery;
 
-    // Launch iTunes India in parallel with JioSaavn for maximum speed
+    // Launch iTunes India, Deezer & MusicBrainz in parallel with JioSaavn for maximum speed & universal coverage
     const itunesPromise = (async () => {
       try {
         const searchUrl = `https://itunes.apple.com/search?term=${encodeURIComponent(cleanQuery)}&country=IN&entity=song&limit=40`;
@@ -3123,6 +3167,37 @@ async function fetchSpotifySearchResults(query, requestId, isParallel = false) {
           if (data && data.results && Array.isArray(data.results) && data.results.length > 0) {
             const filteredResults = data.results.filter(r => !isAmateurCoverOrKaraoke(r.trackName, r.artistName));
             return filteredResults.length > 0 ? filteredResults : data.results;
+          }
+        }
+      } catch (_) {}
+      return [];
+    })();
+
+    const deezerPromise = (async () => {
+      try {
+        const dzUrl = `https://api.deezer.com/search?q=${encodeURIComponent(cleanQuery)}&limit=30`;
+        const res = await fetch(dzUrl, { signal: abortController.signal });
+        if (res.ok) {
+          const data = await res.json();
+          if (data && Array.isArray(data.data) && data.data.length > 0) {
+            return data.data.filter(r => !isAmateurCoverOrKaraoke(r.title, r.artist && r.artist.name));
+          }
+        }
+      } catch (_) {}
+      return [];
+    })();
+
+    const mbPromise = (async () => {
+      try {
+        const mbUrl = `https://musicbrainz.org/ws/2/recording/?query=${encodeURIComponent(cleanQuery)}&fmt=json&limit=20`;
+        const res = await fetch(mbUrl, {
+          signal: abortController.signal,
+          headers: { "User-Agent": "PraneshMusicHub/5.0.0 (contact@praneshmusichub.org)" }
+        });
+        if (res.ok) {
+          const data = await res.json();
+          if (data && Array.isArray(data.recordings) && data.recordings.length > 0) {
+            return data.recordings.filter(r => !isAmateurCoverOrKaraoke(r.title));
           }
         }
       } catch (_) {}
@@ -3175,12 +3250,20 @@ async function fetchSpotifySearchResults(query, requestId, isParallel = false) {
       }
     } catch (_) {}
 
-    // Query Spotify & iTunes India Global Network in parallel (country=IN for complete Tamil catalog 1980-2026)
+    // Await iTunes, Deezer and MusicBrainz in parallel
     let itunesSongs = [];
+    let deezerSongs = [];
+    let mbSongs = [];
+
     try {
-      const itunesRawResults = await itunesPromise;
-      if (Array.isArray(itunesRawResults) && itunesRawResults.length > 0) {
-        itunesSongs = itunesRawResults.map((r, index) => {
+      const [itunesRes, deezerRes, mbRes] = await Promise.allSettled([
+        itunesPromise,
+        deezerPromise,
+        mbPromise
+      ]);
+
+      if (itunesRes.status === "fulfilled" && Array.isArray(itunesRes.value) && itunesRes.value.length > 0) {
+        itunesSongs = itunesRes.value.map((r, index) => {
           const durSec = Math.round((r.trackTimeMillis || 210000) / 1000);
           const artwork = (r.artworkUrl100 || "").replace("100x100bb", "600x600bb") || "static/images/only_friends_theme.svg";
 
@@ -3188,7 +3271,6 @@ async function fetchSpotifySearchResults(query, requestId, isParallel = false) {
           const decodedArtist = decodeHtmlEntities(r.artistName || "Unknown Artist");
           const decodedAlbum = decodeHtmlEntities(r.collectionName || "Single");
 
-          // Check if authentic full-length 320kbps JioSaavn stream is available in catalogue or live results
           const localMatch = findFullLengthAudioMatch(decodedTitle, decodedArtist, decodedAlbum) ||
             liveJioSongs.find(j => {
               const jCore = cleanCoreTitle(j.title);
@@ -3216,9 +3298,88 @@ async function fetchSpotifySearchResults(query, requestId, isParallel = false) {
             audio_file: "",
             is_preview: !hasFullAudio,
             download_authorized: true,
+            playback_status: finalAudio ? "available" : "metadata_only",
             source: "spotify",
             spotify_id: r.trackId ? String(r.trackId) : "",
             tags: ["spotify", "jiosaavn", "online", "global", normalizeSearchText(decodedTitle), normalizeSearchText(decodedArtist)]
+          });
+        });
+      }
+
+      if (deezerRes.status === "fulfilled" && Array.isArray(deezerRes.value) && deezerRes.value.length > 0) {
+        deezerSongs = deezerRes.value.map((item, idx) => {
+          const durSec = item.duration || 220;
+          const decodedTitle = decodeHtmlEntities(item.title || "Unknown Title");
+          const decodedArtist = decodeHtmlEntities((item.artist && item.artist.name) || "Unknown Artist");
+          const decodedAlbum = decodeHtmlEntities((item.album && item.album.title) || cleanQuery);
+          const artwork = (item.album && (item.album.cover_big || item.album.cover_medium)) || "static/images/only_friends_theme.svg";
+
+          const localMatch = findFullLengthAudioMatch(decodedTitle, decodedArtist, decodedAlbum) ||
+            liveJioSongs.find(j => {
+              const jCore = cleanCoreTitle(j.title);
+              const rCore = cleanCoreTitle(decodedTitle);
+              return jCore && rCore && (jCore === rCore || jCore.includes(rCore) || rCore.includes(jCore));
+            });
+
+          const hasFullAudio = localMatch && localMatch.audio_url && !localMatch.audio_url.includes("deezer.com");
+          const finalAudio = hasFullAudio ? localMatch.audio_url : (item.preview || "");
+
+          return prepareSongSearchMetadata({
+            id: `dz_${item.id || (Date.now() + "_" + idx)}`,
+            title: decodedTitle,
+            artist: decodedArtist,
+            album: decodedAlbum,
+            movie: decodedAlbum,
+            year: 2024,
+            duration: durSec,
+            duration_str: formatTime(durSec),
+            language: AppState.activeLanguage !== "all" ? capitalize(AppState.activeLanguage) : "Global",
+            category: "Deezer Global Music Network",
+            sections: ["trending"],
+            cover_url: artwork,
+            audio_url: finalAudio,
+            audio_file: "",
+            is_preview: Boolean(!hasFullAudio && item.preview),
+            download_authorized: true,
+            playback_status: finalAudio ? "available" : "metadata_only",
+            source: "deezer",
+            tags: ["deezer", "online", normalizeSearchText(decodedTitle), normalizeSearchText(decodedArtist)]
+          });
+        });
+      }
+
+      if (mbRes.status === "fulfilled" && Array.isArray(mbRes.value) && mbRes.value.length > 0) {
+        mbSongs = mbRes.value.map((rec, idx) => {
+          const title = decodeHtmlEntities(rec.title || "Track");
+          const artist = decodeHtmlEntities((rec["artist-credit"] && rec["artist-credit"].map(a => a.name).join(", ")) || "Artist");
+          const album = decodeHtmlEntities((rec.releases && rec.releases[0] && rec.releases[0].title) || cleanQuery);
+          const year = (rec.releases && rec.releases[0] && rec.releases[0].date) ? parseInt(rec.releases[0].date) : 2020;
+          const durSec = rec.length ? Math.round(rec.length / 1000) : 220;
+
+          const localMatch = findFullLengthAudioMatch(title, artist, album);
+          const finalAudio = localMatch && localMatch.audio_url ? localMatch.audio_url : "";
+
+          return prepareSongSearchMetadata({
+            id: `mb_${rec.id || (Date.now() + "_" + idx)}`,
+            title: title,
+            artist: artist,
+            album: album,
+            movie: album,
+            year: year,
+            duration: durSec,
+            duration_str: formatTime(durSec),
+            language: AppState.activeLanguage !== "all" ? capitalize(AppState.activeLanguage) : "Global",
+            category: "MusicBrainz Global Metadata",
+            sections: ["trending"],
+            cover_url: "static/images/only_friends_theme.svg",
+            audio_url: finalAudio,
+            audio_file: "",
+            is_preview: false,
+            download_authorized: false,
+            playback_status: finalAudio ? "available" : "metadata_only",
+            source: "musicbrainz",
+            isrc: (rec.isrcs && rec.isrcs[0]) || "",
+            tags: ["musicbrainz", "online", normalizeSearchText(title), normalizeSearchText(artist)]
           });
         });
       }
@@ -3228,11 +3389,11 @@ async function fetchSpotifySearchResults(query, requestId, isParallel = false) {
 
     if (requestId !== AppState.searchRequestId) return;
 
-    // Merge and deduplicate results
+    // Merge and deduplicate results across all connected providers
     const combinedOnline = [];
     const seenOnline = new Set();
 
-    // Prefer live JioSaavn full-length 320kbps tracks first
+    // 1. Prefer live JioSaavn full-length 320kbps tracks first
     for (const s of liveJioSongs) {
       const key = cleanCoreTitle(s.title) + "_" + normalizeSearchText(s.artist);
       if (!seenOnline.has(key)) {
@@ -3241,18 +3402,35 @@ async function fetchSpotifySearchResults(query, requestId, isParallel = false) {
       }
     }
 
-    // Add Spotify tracks
+    // 2. Add iTunes / Spotify tracks
     for (const s of itunesSongs) {
       const key = cleanCoreTitle(s.title) + "_" + normalizeSearchText(s.artist);
       if (!seenOnline.has(key)) {
         seenOnline.add(key);
         combinedOnline.push(s);
       } else {
-        // Track already exists from JioSaavn; ensure Spotify badge exists in spotifyResults
         const existing = combinedOnline.find(x => cleanCoreTitle(x.title) + "_" + normalizeSearchText(x.artist) === key);
         if (existing && !existing.audio_url && s.audio_url) {
           existing.audio_url = s.audio_url;
         }
+      }
+    }
+
+    // 3. Add Deezer tracks
+    for (const s of deezerSongs) {
+      const key = cleanCoreTitle(s.title) + "_" + normalizeSearchText(s.artist);
+      if (!seenOnline.has(key)) {
+        seenOnline.add(key);
+        combinedOnline.push(s);
+      }
+    }
+
+    // 4. Add MusicBrainz tracks
+    for (const s of mbSongs) {
+      const key = cleanCoreTitle(s.title) + "_" + normalizeSearchText(s.artist);
+      if (!seenOnline.has(key)) {
+        seenOnline.add(key);
+        combinedOnline.push(s);
       }
     }
 
@@ -3270,7 +3448,14 @@ async function fetchSpotifySearchResults(query, requestId, isParallel = false) {
         return scoreB - scoreA;
       });
 
-      // DO NOT mass auto-import unverified search results! Only import when played
+      // Auto-import discovered verified matching online tracks permanently into website catalogue & IndexedDB when missing locally
+      if (!isParallel && filteredOnline.length > 0) {
+        const topMatch = filteredOnline[0];
+        if (topMatch && (topMatch.audio_url || topMatch.source === "spotify" || topMatch.source === "deezer")) {
+          autoImportSongToCatalogue(topMatch);
+        }
+      }
+
       AppState.spotifyResults = itunesSongs.length > 0 ? itunesSongs : filteredOnline.filter(s => s.source === "spotify");
       if (AppState.spotifyResults.length === 0) {
         AppState.spotifyResults = filteredOnline.map(s => ({ ...s, source: "spotify" }));
@@ -9035,4 +9220,6 @@ if (typeof window !== "undefined") {
   window.AppState = AppState;
   window.searchMasterSongs = searchMasterSongs;
   window.searchCatalogue = searchMasterSongs;
+  window.fetchSpotifySearchResults = fetchSpotifySearchResults;
+  window.autoImportSongToCatalogue = autoImportSongToCatalogue;
 }
