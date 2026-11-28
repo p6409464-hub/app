@@ -2772,9 +2772,7 @@ function loadCatalogue() {
   if (!AppState.currentSong && AppState.masterSongs.length > 0) {
     const manithanSong = AppState.masterSongs.find(s => s.title && s.title.toLowerCase().includes("manithan manithan")) ||
                          AppState.masterSongs.find(s => s.album && s.album.toLowerCase().includes("manithan"));
-    const initSong = (AppState.favourites.length > 0)
-      ? (AppState.masterSongs.find(s => s.id === AppState.favourites[0]) || manithanSong || AppState.masterSongs[0])
-      : (manithanSong || AppState.masterSongs[0]);
+    const initSong = manithanSong || (AppState.favourites.length > 0 ? AppState.masterSongs.find(s => s.id === AppState.favourites[0]) : null) || AppState.masterSongs[0];
     if (initSong) {
       AppState.currentSong = initSong;
       updateFeaturedPlayerUI(initSong);
@@ -2982,7 +2980,9 @@ function executeSearch(rawQuery) {
 async function fetchJioMirrorApi(pathAndQuery, signal) {
   const mirrors = [
     "https://jiosaavn-api-sage.vercel.app",
-    "https://jiosaavn-api-nine.vercel.app"
+    "https://jiosaavn-api-nine.vercel.app",
+    "https://saavn.me",
+    "https://jiosaavn-api-privatecvc2.vercel.app"
   ];
   for (const base of mirrors) {
     try {
@@ -5852,15 +5852,15 @@ async function fetchFallbackAudioUrl(song) {
 }
 
 // Resolves authentic 320kbps full-length stream so online songs NEVER cut off at 30 seconds
-async function resolveOnlineFullStream(song) {
+async function resolveOnlineFullStream(song, forceResolve = false) {
   if (!song) return "";
-  if (song.audio_url && song.audio_url.includes("aac.saavncdn.com") && !song.audio_url.includes("_p.mp4") && (!song.duration || song.duration >= 60)) {
+  if (!forceResolve && song.audio_url && song.audio_url.includes("aac.saavncdn.com") && !song.audio_url.includes("_p.mp4") && (!song.duration || song.duration >= 60)) {
     return song.audio_url;
   }
 
   // 1. Check local master catalogue first using intelligent original singer & core title matcher
   const match = findFullLengthAudioMatch(song.title, song.artist, song.album);
-  if (match && match.audio_url && !match.audio_url.includes("apple.com")) {
+  if (match && match.audio_url && !match.audio_url.includes("apple.com") && (!forceResolve || match.audio_url !== song.audio_url)) {
     song.audio_url = match.audio_url;
     song.is_preview = false;
     song.duration = match.duration || song.duration;
@@ -6075,25 +6075,11 @@ function playSong(song, preserveQueue = false) {
     const currentSrc = audioPlayer.src || "";
     console.warn(`[MusicHub] Audio stream error on: ${currentSrc} (tier ${fallbackRetryStage})`);
 
-    // Tier 1: Progressive CDN Bitrate Step-Down (_320 -> _160 -> _96 -> _48)
-    if (currentSrc.includes("_320.mp4")) {
+    // Tier 1: Progressive CDN Bitrate Step-Down (_320 -> _160) - retry once on same CDN
+    if (fallbackRetryStage === 1 && currentSrc.includes("_320.mp4")) {
       const alt160 = currentSrc.replace("_320.mp4", "_160.mp4");
       console.log("[MusicHub] Tier 1: Retrying at 160kbps:", alt160);
       audioPlayer.src = alt160;
-      audioPlayer.play().catch(() => {});
-      return;
-    }
-    if (currentSrc.includes("_160.mp4")) {
-      const alt96 = currentSrc.replace("_160.mp4", "_96.mp4");
-      console.log("[MusicHub] Tier 1b: Retrying at 96kbps:", alt96);
-      audioPlayer.src = alt96;
-      audioPlayer.play().catch(() => {});
-      return;
-    }
-    if (currentSrc.includes("_96.mp4")) {
-      const alt48 = currentSrc.replace("_96.mp4", "_48.mp4");
-      console.log("[MusicHub] Tier 1c: Retrying ultra-light at 48kbps:", alt48);
-      audioPlayer.src = alt48;
       audioPlayer.play().catch(() => {});
       return;
     }
@@ -6102,7 +6088,7 @@ function playSong(song, preserveQueue = false) {
     if (fallbackRetryStage <= 2) {
       const altSong = AppState.masterSongs.find(s =>
         s.id !== song.id &&
-        s.title.toLowerCase() === song.title.toLowerCase() &&
+        s.title.toLowerCase().trim() === song.title.toLowerCase().trim() &&
         s.audio_url &&
         s.audio_url.includes("aac.saavncdn.com") &&
         s.audio_url !== currentSrc
@@ -6115,10 +6101,10 @@ function playSong(song, preserveQueue = false) {
       }
     }
 
-    // Tier 3: Asynchronously resolve live direct stream from external mirror
+    // Tier 3: Asynchronously resolve live direct stream from external mirror with forceResolve
     if (fallbackRetryStage <= 3) {
       try {
-        const liveUrl = await resolveOnlineFullStream(song);
+        const liveUrl = await resolveOnlineFullStream(song, true);
         if (liveUrl && liveUrl !== currentSrc && !liveUrl.includes("apple.com") && !liveUrl.includes("preview")) {
           console.log(`[MusicHub] Tier 3: Retrying with freshly resolved stream for: ${song.title}`);
           audioPlayer.src = liveUrl;
@@ -6228,6 +6214,11 @@ function togglePlayPause() {
     return;
   }
 
+  if (!audioPlayer.src || audioPlayer.src === "" || audioPlayer.src === window.location.href) {
+    playSong(AppState.currentSong);
+    return;
+  }
+
   if (audioPlayer.paused) {
     const playPromise = (typeof audioPlayer.play === "function") ? audioPlayer.play() : undefined;
     if (playPromise !== undefined) {
@@ -6280,6 +6271,16 @@ function playNextSong() {
     }
   }
 
+  if (!AppState.queue || AppState.queue.length === 0) {
+    if (AppState.searchResults && AppState.searchResults.length > 0) {
+      AppState.queue = [...AppState.searchResults];
+    } else if (AppState.songs && AppState.songs.length > 0) {
+      AppState.queue = [...AppState.songs];
+    } else if (AppState.masterSongs && AppState.masterSongs.length > 0) {
+      AppState.queue = [...AppState.masterSongs];
+    }
+  }
+
   if (!AppState.queue || AppState.queue.length === 0) return;
 
   if (AppState.isShuffle) {
@@ -6310,6 +6311,16 @@ function playPreviousSong() {
       AppState.queue = favList;
       playSong(favList[prevIdx], true);
       return;
+    }
+  }
+
+  if (!AppState.queue || AppState.queue.length === 0) {
+    if (AppState.searchResults && AppState.searchResults.length > 0) {
+      AppState.queue = [...AppState.searchResults];
+    } else if (AppState.songs && AppState.songs.length > 0) {
+      AppState.queue = [...AppState.songs];
+    } else if (AppState.masterSongs && AppState.masterSongs.length > 0) {
+      AppState.queue = [...AppState.masterSongs];
     }
   }
 

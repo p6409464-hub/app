@@ -58,13 +58,6 @@ exit /b
 
 :browser_login
 echo.
-echo Clearing cached GitHub credentials for Git Credential Manager...
-cmdkey /delete:git:https://github.com
-git credential reject
-protocol=https
-host=github.com
-
-echo.
 echo Now attempting push. A browser window will open to authorize p6409464-hub...
 cd /d "%~dp0"
 git push -u origin main
