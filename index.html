@@ -129,7 +129,7 @@
       <div class="featured-player-body">
         <!-- Album Artwork with Soundwave Animation -->
         <div class="featured-artwork-container">
-          <img id="featuredThumb" class="featured-thumb-img" src="static/images/only_friends_theme.svg" alt="Cover Art" />
+          <img id="featuredThumb" class="featured-thumb-img" src="static/images/manithan_cover_hd.png" alt="Cover Art" onerror="this.onerror=null; this.src='static/images/manithan_cover_hd.png';" />
           <div id="featuredSoundwave" class="featured-soundwave-bars">
             <span class="sw-bar"></span>
             <span class="sw-bar"></span>
@@ -150,7 +150,10 @@
                 <span id="featuredAlbum" class="featured-album">Manithan • Tamil</span>
               </div>
             </div>
-            <button id="featuredFavBtn" class="featured-fav-btn" title="Toggle Favourite">🤍</button>
+            <div class="featured-track-actions">
+              <span class="featured-badge-pill">⚡ 320kbps</span>
+              <button id="featuredFavBtn" class="featured-fav-btn" title="Toggle Favourite">🤍</button>
+            </div>
           </div>
 
           <!-- Medium-Big Seekbar -->
@@ -169,6 +172,10 @@
             </button>
             <button id="featuredNextBtn" class="f-ctrl-btn" title="Next Track">⏭</button>
             <button id="featuredRepeatBtn" class="f-ctrl-btn" title="Repeat (Off / All / One)">🔁</button>
+            <div class="featured-vol-wrap">
+              <span class="f-vol-icon">🔊</span>
+              <input type="range" id="featuredVolSlider" class="f-vol-slider" min="0" max="1" step="0.05" value="1" title="Volume Slider" />
+            </div>
             <button id="featuredSpeedBtn" class="f-ctrl-btn f-speed-btn" title="Playback Speed: 1.0x">1.0x</button>
             <button id="featuredEqBtn" class="f-ctrl-btn" title="Equalizer &amp; Bass Boost">🎚️</button>
             <button id="featuredLyricsBtn" class="f-ctrl-btn" title="Live Lyrics">📜</button>
@@ -422,6 +429,36 @@
       <div class="fav-banner-tagline">YOUR MUSIC. ALWAYS WITH YOU.</div>
     </div>
   </section>
+
+  <!-- ========================================================================
+       Front Page Visual Soundwave Footer ("FULL 320KBPS AUDIO • NO 30S CUTOFFS")
+       ======================================================================== -->
+  <div class="front-soundwave-footer">
+    <div class="front-soundwave-graphic">
+      <div class="sw-spectrum-bar" style="height: 6px;"></div>
+      <div class="sw-spectrum-bar" style="height: 12px;"></div>
+      <div class="sw-spectrum-bar" style="height: 18px;"></div>
+      <div class="sw-spectrum-bar" style="height: 28px;"></div>
+      <div class="sw-spectrum-bar" style="height: 16px;"></div>
+      <div class="sw-spectrum-bar" style="height: 38px;"></div>
+      <div class="sw-spectrum-bar" style="height: 22px;"></div>
+      <div class="sw-spectrum-bar" style="height: 48px;"></div>
+      <div class="sw-spectrum-bar" style="height: 32px;"></div>
+      <div class="sw-spectrum-bar" style="height: 56px;"></div>
+      <div class="sw-spectrum-bar" style="height: 44px;"></div>
+      <div class="sw-spectrum-bar" style="height: 62px;"></div>
+      <div class="sw-spectrum-bar" style="height: 36px;"></div>
+      <div class="sw-spectrum-bar" style="height: 52px;"></div>
+      <div class="sw-spectrum-bar" style="height: 24px;"></div>
+      <div class="sw-spectrum-bar" style="height: 42px;"></div>
+      <div class="sw-spectrum-bar" style="height: 18px;"></div>
+      <div class="sw-spectrum-bar" style="height: 32px;"></div>
+      <div class="sw-spectrum-bar" style="height: 14px;"></div>
+      <div class="sw-spectrum-bar" style="height: 22px;"></div>
+      <div class="sw-spectrum-bar" style="height: 8px;"></div>
+    </div>
+    <div class="front-soundwave-caption">FULL 320KBPS AUDIO &bull; NO 30S CUTOFFS</div>
+  </div>
 
   <!-- ========================================================================
        Songs Catalogue & Active Filter Toolbar

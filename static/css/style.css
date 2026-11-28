@@ -61,6 +61,12 @@
   --shadow-card: 0 8px 32px 0 rgba(0, 0, 0, 0.08);
 }
 
+html {
+  overflow-x: hidden;
+  -webkit-text-size-adjust: 100%;
+  scroll-behavior: smooth;
+}
+
 * {
   margin: 0;
   padding: 0;
@@ -80,6 +86,7 @@ body {
   padding-bottom: calc(var(--player-height) + 40px);
   overflow-x: hidden;
   -webkit-font-smoothing: antialiased;
+  touch-action: manipulation;
 }
 
 /* Custom Scrollbar */
@@ -806,6 +813,116 @@ body {
   color: #ec4899;
   border-color: rgba(236, 72, 153, 0.5);
   background: rgba(236, 72, 153, 0.15);
+}
+
+.featured-track-actions {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-shrink: 0;
+}
+
+.featured-badge-pill {
+  background: rgba(139, 92, 246, 0.22);
+  border: 1px solid rgba(168, 85, 247, 0.45);
+  color: #c084fc;
+  font-size: 0.78rem;
+  font-weight: 700;
+  padding: 4px 12px;
+  border-radius: var(--radius-full);
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  box-shadow: 0 0 12px rgba(139, 92, 246, 0.25);
+}
+
+.featured-vol-wrap {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  margin-left: 6px;
+  padding: 4px 10px;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: var(--radius-full);
+}
+
+.f-vol-icon {
+  font-size: 0.95rem;
+  opacity: 0.85;
+}
+
+.f-vol-slider {
+  width: 75px;
+  height: 5px;
+  accent-color: #8b5cf6;
+  border-radius: 999px;
+  cursor: pointer;
+  background: rgba(255, 255, 255, 0.18);
+  outline: none;
+}
+
+@media (max-width: 640px) {
+  .featured-vol-wrap {
+    display: none;
+  }
+}
+
+/* Front Page Visual Soundwave Footer ("FULL 320KBPS AUDIO • NO 30S CUTOFFS") */
+.front-soundwave-footer {
+  max-width: 1200px;
+  margin: 36px auto 30px;
+  padding: 0 20px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 16px;
+  opacity: 0.9;
+}
+
+.front-soundwave-graphic {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 5px;
+  width: 100%;
+  max-width: 440px;
+  height: 68px;
+}
+
+.sw-spectrum-bar {
+  flex: 1;
+  max-width: 4px;
+  background: linear-gradient(180deg, #c084fc 0%, #8b5cf6 50%, #6366f1 100%);
+  border-radius: var(--radius-full);
+  box-shadow: 0 0 8px rgba(168, 85, 247, 0.4);
+  animation: spectrumPulse 2.4s ease-in-out infinite alternate;
+}
+
+.sw-spectrum-bar:nth-child(2n) {
+  animation-delay: 0.25s;
+  animation-duration: 2.1s;
+}
+
+.sw-spectrum-bar:nth-child(3n) {
+  animation-delay: 0.5s;
+  animation-duration: 2.7s;
+}
+
+@keyframes spectrumPulse {
+  0% { transform: scaleY(0.7); opacity: 0.7; }
+  50% { transform: scaleY(1.15); opacity: 1; }
+  100% { transform: scaleY(0.8); opacity: 0.75; }
+}
+
+.front-soundwave-caption {
+  font-size: 0.78rem;
+  font-weight: 700;
+  letter-spacing: 2.5px;
+  text-transform: uppercase;
+  color: #94a3b8;
+  text-align: center;
 }
 
 .featured-seekbar-container {
@@ -2881,8 +2998,9 @@ body {
     min-height: 38px;
     font-size: 1rem;
   }
-  .featured-player-section.is-scrolled .bitrate-selector-group {
-    display: none;
+  .featured-player-section.is-scrolled .bitrate-selector-group,
+  .featured-player-section.is-scrolled .featured-download-options {
+    display: none !important;
   }
   .navbar {
     padding: 10px 14px;

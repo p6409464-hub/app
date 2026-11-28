@@ -40,7 +40,7 @@ function safeSetStorage(key, value) {
 
 // Built-in offline audio library with verified full-length 320kbps streams (Zero 30s cutoffs!)
 const DEFAULT_STATIC_SONGS = [
-  {"id":"saavn_fzAg5UIy","title":"Manithan Manithan","artist":"Malaysia Vasudevan, Chandrabose, Vairamuthu","album":"Manithan","duration":260,"duration_str":"4:20","language":"Tamil","era":"80s","category":"Tamil Songs","sections":["trending","recent","era_80s","tamil"],"cover_url":"https://c.saavncdn.com/123/Manithan-1987-500x500.jpg","audio_url":"https://aac.saavncdn.com/123/eea4bbb94ae71a217d4c2910fd4d2baa_320.mp4","download_authorized":true,"tags":["manithan","manithan manithan","rajinikanth","rajini","chandrabose","malaysia vasudevan","80s","80s movie","80s songs","80s hits","tamil","trending"]},
+  {"id":"saavn_fzAg5UIy","title":"Manithan Manithan","artist":"Malaysia Vasudevan, Chandrabose, Vairamuthu","album":"Manithan","duration":260,"duration_str":"4:20","language":"Tamil","era":"80s","category":"Tamil Songs","sections":["trending","recent","era_80s","tamil"],"cover_url":"static/images/manithan_cover_hd.png","audio_url":"https://aac.saavncdn.com/123/eea4bbb94ae71a217d4c2910fd4d2baa_320.mp4","download_authorized":true,"tags":["manithan","manithan manithan","rajinikanth","rajini","chandrabose","malaysia vasudevan","80s","80s movie","80s songs","80s hits","tamil","trending"]},
   {"id":"saavn_ioz_b6hk","title":"Vaanathe Paarthein","artist":"S. P. Balasubrahmanyam, Chandrabose, Vairamuthu","album":"Manithan","duration":315,"duration_str":"5:15","language":"Tamil","era":"80s","category":"Tamil Songs","sections":["trending","recent","era_80s","tamil"],"cover_url":"https://c.saavncdn.com/123/Manithan-1987-500x500.jpg","audio_url":"https://aac.saavncdn.com/123/56fcc3f711bc8c9cd080608c0c9bab3a_320.mp4","download_authorized":true,"tags":["vaanathe paarthein","vanathai parthen","vaanathe paarthen","vanathe parthen","manithan","rajinikanth","spb","chandrabose","80s","80s movie","80s songs","80s hits","tamil","trending"]},
   {"id":"saavn_g51Odreb","title":"Aval","artist":"Santhosh Narayanan, Pradeep Kumar, Priya Hemesh, Vivek","album":"Manithan","duration":266,"duration_str":"4:26","language":"Tamil","era":"now","category":"Tamil Songs","sections":["trending","recent","era_now","tamil"],"cover_url":"https://c.saavncdn.com/386/Manithan-Tamil-2016-500x500.jpg","audio_url":"https://aac.saavncdn.com/386/19daccdb0bcf64f0318e10eccffe2773_320.mp4","download_authorized":true,"tags":["aval","aval manithan","manithan","pradeep kumar","santhosh narayanan","udhayanidhi stalin","now","now movie","now hits","tamil","trending"]},
   { id: "saavn_aasai_machaan_1", title: "Aasai Machaan", artist: "Swarnalatha, Arunmozhi, Ilaiyaraaja", album: "Kummi Paattu", duration: 302, duration_str: "5:02", language: "Tamil", category: "Tamil Songs", sections: ["trending", "recent", "era_90s", "tamil"], cover_url: "https://c.saavncdn.com/550/Kummi-Paattu-Tamil-2021-20230407030208-500x500.jpg", audio_url: "https://aac.saavncdn.com/550/9f902008db8062361c3b58713205661b_320.mp4", audio_file: "", download_authorized: true, tags: ["aasai machaan", "aasa machan", "adi aasa machan", "aasai machan", "swarnalatha", "arunmozhi", "ilaiyaraaja", "kummi paattu", "90s", "tamil", "trending"], era: "90s" },
@@ -489,10 +489,10 @@ function setupEventListeners() {
         executeSearch("");
         return;
       }
-      // 60ms micro-debounce ensures smooth, responsive typing without frame drops
+      // 180ms debounce ensures smooth, responsive typing without mobile keyboard lag or frame drops
       searchInputDebounceTimer = setTimeout(() => {
         executeSearch(val);
-      }, 60);
+      }, 180);
     });
 
     DOM.searchInput.addEventListener("keydown", (e) => {
@@ -787,6 +787,20 @@ function setupEventListeners() {
   }
 
   // Volume Controls
+  const featuredVol = document.getElementById("featuredVolSlider");
+  if (featuredVol) {
+    featuredVol.value = AppState.volume;
+    featuredVol.addEventListener("input", (e) => {
+      const val = parseFloat(e.target.value);
+      AppState.volume = val;
+      audioPlayer.volume = val;
+      AppState.isMuted = val === 0;
+      if (DOM.volumeSlider) DOM.volumeSlider.value = val;
+      safeSetStorage("pranesh_hub_vol", val);
+      updateVolumeIcon();
+    });
+  }
+
   if (DOM.volumeSlider) {
     DOM.volumeSlider.value = AppState.volume;
     DOM.volumeSlider.addEventListener("input", (e) => {
@@ -794,6 +808,7 @@ function setupEventListeners() {
       AppState.volume = val;
       audioPlayer.volume = val;
       AppState.isMuted = val === 0;
+      if (featuredVol) featuredVol.value = val;
       safeSetStorage("pranesh_hub_vol", val);
       updateVolumeIcon();
     });
@@ -804,10 +819,12 @@ function setupEventListeners() {
       if (AppState.isMuted) {
         audioPlayer.volume = AppState.volume || 0.85;
         if (DOM.volumeSlider) DOM.volumeSlider.value = audioPlayer.volume;
+        if (featuredVol) featuredVol.value = audioPlayer.volume;
         AppState.isMuted = false;
       } else {
         audioPlayer.volume = 0;
         if (DOM.volumeSlider) DOM.volumeSlider.value = 0;
+        if (featuredVol) featuredVol.value = 0;
         AppState.isMuted = true;
       }
       updateVolumeIcon();
@@ -966,14 +983,27 @@ function setupEventListeners() {
     }
   });
 
-  // Sticky Player Scroll Listener (Keeps Play Button in Same Place when scrolling)
+  // Sticky Player Scroll Listener (Optimized via requestAnimationFrame for 60fps/120fps mobile scrolling)
+  let scrollTicking = false;
   window.addEventListener("scroll", () => {
     if (!DOM.featuredPlayerSection) return;
-    const isScrolled = (typeof window !== "undefined" && (window.pageYOffset || (document.documentElement && document.documentElement.scrollTop) || 0) > 30);
-    if (isScrolled) {
-      DOM.featuredPlayerSection.classList.add("is-scrolled");
-    } else {
-      DOM.featuredPlayerSection.classList.remove("is-scrolled");
+    if (!scrollTicking) {
+      scrollTicking = true;
+      const checkScroll = () => {
+        const scrollTop = (typeof window !== "undefined" && (window.pageYOffset || (document.documentElement && document.documentElement.scrollTop) || 0));
+        const isScrolled = scrollTop > 30;
+        if (isScrolled) {
+          DOM.featuredPlayerSection.classList.add("is-scrolled");
+        } else {
+          DOM.featuredPlayerSection.classList.remove("is-scrolled");
+        }
+        scrollTicking = false;
+      };
+      if (typeof requestAnimationFrame === "function") {
+        requestAnimationFrame(checkScroll);
+      } else {
+        checkScroll();
+      }
     }
   }, { passive: true });
 }
@@ -3105,6 +3135,9 @@ function getSearchQueryVariants(cleanQuery) {
   return Array.from(variants).slice(0, 12);
 }
 
+// High-Speed In-Memory LRU Cache for External Search API results
+const apiSearchCache = new Map();
+
 // Background JioSaavn & Online Catalogue Search Fallback (Zero Redirection, Full-Length Streams)
 async function fetchSpotifySearchResults(query, requestId, isParallel = false) {
   if (!query) return;
@@ -3115,6 +3148,26 @@ async function fetchSpotifySearchResults(query, requestId, isParallel = false) {
   if (strippedOnline) {
     cleanQuery = strippedOnline;
   }
+
+  // Check in-memory cache to return results in 0ms without hitting external servers
+  const cacheKey = `${cleanQuery.toLowerCase()}_${isParallel}`;
+  if (apiSearchCache.has(cacheKey)) {
+    const cached = apiSearchCache.get(cacheKey);
+    if (requestId === AppState.searchRequestId && Array.isArray(cached) && cached.length > 0) {
+      AppState.spotifyResults = cached;
+      AppState.isSpotifyFallbackResults = !isParallel;
+      AppState.isFetchingSpotify = false;
+      if (isParallel) {
+        AppState.searchResults = [...AppState.jioResults, ...cached];
+      } else {
+        AppState.searchResults = cached;
+      }
+      AppState.queue = [...AppState.searchResults];
+      renderContent();
+      return;
+    }
+  }
+
   const abortController = new AbortController();
   AppState.activeSearchAbortController = abortController;
 
@@ -3204,7 +3257,7 @@ async function fetchSpotifySearchResults(query, requestId, isParallel = false) {
       return [];
     })();
 
-    const queryVariants = getSearchQueryVariants(cleanQuery);
+    const queryVariants = getSearchQueryVariants(cleanQuery).slice(0, 2);
     const songEndpoints = [
       `/api/search/songs?query=${encodeURIComponent(apiSongQuery)}&limit=30`
     ];
@@ -3447,6 +3500,13 @@ async function fetchSpotifySearchResults(query, requestId, isParallel = false) {
         const scoreA = scoreAndMatchSong(a, query).score;
         return scoreB - scoreA;
       });
+
+      // Cache verified results for fast instant retrieval
+      apiSearchCache.set(cacheKey, filteredOnline);
+      if (apiSearchCache.size > 150) {
+        const firstKey = apiSearchCache.keys().next().value;
+        apiSearchCache.delete(firstKey);
+      }
 
       // Auto-import discovered verified matching online tracks permanently into website catalogue & IndexedDB when missing locally
       if (!isParallel && filteredOnline.length > 0) {
@@ -5411,7 +5471,7 @@ function createSongCardHTML(song) {
   return `
     <div class="song-card ${isThisPlaying ? 'now-playing' : ''}" data-id="${escapeAttr(song.id)}">
       <div class="card-thumb-wrap">
-        <img class="card-thumb-img" src="${safeCover}" alt="${escapeAttr(song.title)}" loading="lazy" onerror="this.src='static/images/only_friends_theme.svg'" />
+        <img class="card-thumb-img" src="${safeCover}" alt="${escapeAttr(song.title)}" loading="lazy" decoding="async" onerror="this.src='static/images/only_friends_theme.svg'" />
         <span class="card-category-tag">${escapeHTML(song.language || "Music")}</span>
         ${(() => {
           const v = detectSongVersionType(song);
@@ -5465,10 +5525,16 @@ function attachCardListeners(pool = []) {
            AppState.songs.find(s => String(s.id) === String(id));
   };
 
-  // Play button triggers
+  let lastPlayTriggerTime = 0;
+
+  // Play button triggers (click with debounce guard; no conflicting touchend scroll hijack)
   document.querySelectorAll(".card-play-trigger").forEach(btn => {
     const handlePlay = (e) => {
       e.stopPropagation();
+      const now = Date.now();
+      if (now - lastPlayTriggerTime < 300) return;
+      lastPlayTriggerTime = now;
+
       const song = getSongById(btn.dataset.id);
       if (song) {
         if (AppState.currentSong && AppState.currentSong.id === song.id) {
@@ -5488,16 +5554,16 @@ function attachCardListeners(pool = []) {
       }
     };
     btn.addEventListener("click", handlePlay);
-    btn.addEventListener("touchend", (e) => {
-      e.preventDefault();
-      handlePlay(e);
-    }, { passive: false });
   });
 
   // Entire Card Click plays track
   document.querySelectorAll(".song-card").forEach(card => {
     card.addEventListener("click", (e) => {
-      if (e.target.closest("button") || e.target.closest("a")) return;
+      if (e.target.closest("button") || e.target.closest("a") || e.target.closest("input")) return;
+      const now = Date.now();
+      if (now - lastPlayTriggerTime < 300) return;
+      lastPlayTriggerTime = now;
+
       const song = getSongById(card.dataset.id);
       if (song) {
         if (AppState.currentSong && AppState.currentSong.id === song.id) {
@@ -6002,24 +6068,82 @@ function playSong(song, preserveQueue = false) {
   if (DOM.playPauseIcon) DOM.playPauseIcon.textContent = "⏳";
   updatePlayingCardHighlight();
 
-  // Resilient error fallback: If 320kbps CDN stream encounters a network hiccup, seamlessly try 160kbps stream on same CDN
-  audioPlayer.onerror = () => {
-    console.warn("[MusicHub] Audio stream notice on:", audioPlayer.src);
-    audioPlayer.onerror = null;
-    if (audioPlayer.src && audioPlayer.src.includes("_320.mp4")) {
-      const alt160 = audioPlayer.src.replace("_320.mp4", "_160.mp4");
-      console.log("[MusicHub] Retrying full-length stream at 160kbps:", alt160);
+  // Resilient multi-tier error fallback: Automatically tries the next available source if one fails
+  let fallbackRetryStage = 0;
+  audioPlayer.onerror = async () => {
+    fallbackRetryStage++;
+    const currentSrc = audioPlayer.src || "";
+    console.warn(`[MusicHub] Audio stream error on: ${currentSrc} (tier ${fallbackRetryStage})`);
+
+    // Tier 1: Progressive CDN Bitrate Step-Down (_320 -> _160 -> _96 -> _48)
+    if (currentSrc.includes("_320.mp4")) {
+      const alt160 = currentSrc.replace("_320.mp4", "_160.mp4");
+      console.log("[MusicHub] Tier 1: Retrying at 160kbps:", alt160);
       audioPlayer.src = alt160;
       audioPlayer.play().catch(() => {});
       return;
     }
-    const altSong = AppState.masterSongs.find(s => s.id !== song.id && s.title.toLowerCase() === song.title.toLowerCase());
-    if (altSong && altSong.audio_url && altSong.audio_url.includes("aac.saavncdn.com")) {
-      audioPlayer.src = altSong.audio_url;
+    if (currentSrc.includes("_160.mp4")) {
+      const alt96 = currentSrc.replace("_160.mp4", "_96.mp4");
+      console.log("[MusicHub] Tier 1b: Retrying at 96kbps:", alt96);
+      audioPlayer.src = alt96;
       audioPlayer.play().catch(() => {});
       return;
     }
-    playSpotifyInBackground(AppState.currentSong);
+    if (currentSrc.includes("_96.mp4")) {
+      const alt48 = currentSrc.replace("_96.mp4", "_48.mp4");
+      console.log("[MusicHub] Tier 1c: Retrying ultra-light at 48kbps:", alt48);
+      audioPlayer.src = alt48;
+      audioPlayer.play().catch(() => {});
+      return;
+    }
+
+    // Tier 2: Check catalogue for identical canonical counterpart with valid stream
+    if (fallbackRetryStage <= 2) {
+      const altSong = AppState.masterSongs.find(s =>
+        s.id !== song.id &&
+        s.title.toLowerCase() === song.title.toLowerCase() &&
+        s.audio_url &&
+        s.audio_url.includes("aac.saavncdn.com") &&
+        s.audio_url !== currentSrc
+      );
+      if (altSong && altSong.audio_url) {
+        console.log(`[MusicHub] Tier 2: Retrying with catalogue counterpart: ${altSong.title}`);
+        audioPlayer.src = altSong.audio_url;
+        audioPlayer.play().catch(() => {});
+        return;
+      }
+    }
+
+    // Tier 3: Asynchronously resolve live direct stream from external mirror
+    if (fallbackRetryStage <= 3) {
+      try {
+        const liveUrl = await resolveOnlineFullStream(song);
+        if (liveUrl && liveUrl !== currentSrc && !liveUrl.includes("apple.com") && !liveUrl.includes("preview")) {
+          console.log(`[MusicHub] Tier 3: Retrying with freshly resolved stream for: ${song.title}`);
+          audioPlayer.src = liveUrl;
+          audioPlayer.play().catch(() => {});
+          return;
+        }
+      } catch (_) {}
+    }
+
+    // Tier 4: Fall back to Spotify background player if track exists
+    if (song.spotify_id || song.source === "spotify" || song.source === "youtube") {
+      playSpotifyInBackground(AppState.currentSong || song);
+      return;
+    }
+
+    // Tier 5: All authorized sources genuinely exhausted - stop loading, reset UI & notify user
+    audioPlayer.onerror = null;
+    AppState.isLoading = false;
+    AppState.isPlaying = false;
+    if (DOM.playPauseIcon) DOM.playPauseIcon.textContent = "▶";
+    if (DOM.featuredPlayIcon) DOM.featuredPlayIcon.textContent = "▶";
+    if (DOM.featuredPlayerStatus) DOM.featuredPlayerStatus.textContent = "UNAVAILABLE";
+    if (DOM.featuredSoundwave) DOM.featuredSoundwave.classList.remove("playing");
+    updatePlayingCardHighlight();
+    showToast(`⚠️ "${song.title}" is currently unavailable from streaming servers. Please try another song.`, "warning");
   };
 
   // Immediate upgrade of any 30s preview snippet before assigning src
@@ -6231,6 +6355,8 @@ function updateSeekbar() {
 }
 
 function updateVolumeIcon() {
+  const featuredVol = document.getElementById("featuredVolSlider");
+  if (featuredVol) featuredVol.value = AppState.isMuted ? 0 : audioPlayer.volume;
   if (!DOM.volumeIcon) return;
   if (AppState.isMuted || audioPlayer.volume === 0) {
     DOM.volumeIcon.textContent = "🔇";
@@ -6244,7 +6370,7 @@ function updateVolumeIcon() {
 function updateFeaturedPlayerUI(song) {
   if (!song) return;
   if (DOM.featuredThumb) {
-    DOM.featuredThumb.src = song.cover_url || "static/images/only_friends_theme.svg";
+    DOM.featuredThumb.src = song.cover_url || "static/images/manithan_cover_hd.png";
     DOM.featuredThumb.alt = song.title || "Album Art";
   }
   if (DOM.featuredTitle) DOM.featuredTitle.textContent = song.title || "Untitled Track";
